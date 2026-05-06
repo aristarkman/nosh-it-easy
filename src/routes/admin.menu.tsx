@@ -35,6 +35,8 @@ function MenuAdmin() {
   const [loading, setLoading] = useState(true);
   const [q, setQ] = useState("");
   const [cat, setCat] = useState<string>("");
+  const [page, setPage] = useState(0);
+  const PAGE_SIZE = 50;
 
   async function load() {
     setLoading(true);
