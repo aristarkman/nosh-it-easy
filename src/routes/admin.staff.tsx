@@ -16,7 +16,7 @@ function StaffPage() {
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [roles, setRoles] = useState<Role[]>([]);
   const [userId, setUserId] = useState("");
-  const [loc, setLoc] = useState(LOCATIONS[0].id);
+  const [loc, setLoc] = useState<string>(LOCATIONS[0].id);
 
   const load = async () => {
     const [{ data: a }, { data: r }] = await Promise.all([

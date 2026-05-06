@@ -12,12 +12,21 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as TabletRouteImport } from './routes/tablet'
 import { Route as OrderTypeRouteImport } from './routes/order-type'
 import { Route as MenuRouteImport } from './routes/menu'
+import { Route as DispatchRouteImport } from './routes/dispatch'
 import { Route as CheckoutRouteImport } from './routes/checkout'
 import { Route as CartRouteImport } from './routes/cart'
+import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AdminIndexRouteImport } from './routes/admin.index'
 import { Route as StaffLoginRouteImport } from './routes/staff.login'
 import { Route as ItemItemIdRouteImport } from './routes/item.$itemId'
 import { Route as ConfirmationOrderIdRouteImport } from './routes/confirmation.$orderId'
+import { Route as AdminZonesRouteImport } from './routes/admin.zones'
+import { Route as AdminThrottleRouteImport } from './routes/admin.throttle'
+import { Route as AdminStaffRouteImport } from './routes/admin.staff'
+import { Route as AdminHoursRouteImport } from './routes/admin.hours'
+import { Route as AdminDriversRouteImport } from './routes/admin.drivers'
+import { Route as AdminClosuresRouteImport } from './routes/admin.closures'
 
 const TabletRoute = TabletRouteImport.update({
   id: '/tablet',
@@ -34,6 +43,11 @@ const MenuRoute = MenuRouteImport.update({
   path: '/menu',
   getParentRoute: () => rootRouteImport,
 } as any)
+const DispatchRoute = DispatchRouteImport.update({
+  id: '/dispatch',
+  path: '/dispatch',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const CheckoutRoute = CheckoutRouteImport.update({
   id: '/checkout',
   path: '/checkout',
@@ -44,10 +58,20 @@ const CartRoute = CartRouteImport.update({
   path: '/cart',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminRoute = AdminRouteImport.update({
+  id: '/admin',
+  path: '/admin',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
+} as any)
+const AdminIndexRoute = AdminIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AdminRoute,
 } as any)
 const StaffLoginRoute = StaffLoginRouteImport.update({
   id: '/staff/login',
@@ -64,81 +88,165 @@ const ConfirmationOrderIdRoute = ConfirmationOrderIdRouteImport.update({
   path: '/confirmation/$orderId',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminZonesRoute = AdminZonesRouteImport.update({
+  id: '/zones',
+  path: '/zones',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminThrottleRoute = AdminThrottleRouteImport.update({
+  id: '/throttle',
+  path: '/throttle',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminStaffRoute = AdminStaffRouteImport.update({
+  id: '/staff',
+  path: '/staff',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminHoursRoute = AdminHoursRouteImport.update({
+  id: '/hours',
+  path: '/hours',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminDriversRoute = AdminDriversRouteImport.update({
+  id: '/drivers',
+  path: '/drivers',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminClosuresRoute = AdminClosuresRouteImport.update({
+  id: '/closures',
+  path: '/closures',
+  getParentRoute: () => AdminRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/admin': typeof AdminRouteWithChildren
   '/cart': typeof CartRoute
   '/checkout': typeof CheckoutRoute
+  '/dispatch': typeof DispatchRoute
   '/menu': typeof MenuRoute
   '/order-type': typeof OrderTypeRoute
   '/tablet': typeof TabletRoute
+  '/admin/closures': typeof AdminClosuresRoute
+  '/admin/drivers': typeof AdminDriversRoute
+  '/admin/hours': typeof AdminHoursRoute
+  '/admin/staff': typeof AdminStaffRoute
+  '/admin/throttle': typeof AdminThrottleRoute
+  '/admin/zones': typeof AdminZonesRoute
   '/confirmation/$orderId': typeof ConfirmationOrderIdRoute
   '/item/$itemId': typeof ItemItemIdRoute
   '/staff/login': typeof StaffLoginRoute
+  '/admin/': typeof AdminIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/cart': typeof CartRoute
   '/checkout': typeof CheckoutRoute
+  '/dispatch': typeof DispatchRoute
   '/menu': typeof MenuRoute
   '/order-type': typeof OrderTypeRoute
   '/tablet': typeof TabletRoute
+  '/admin/closures': typeof AdminClosuresRoute
+  '/admin/drivers': typeof AdminDriversRoute
+  '/admin/hours': typeof AdminHoursRoute
+  '/admin/staff': typeof AdminStaffRoute
+  '/admin/throttle': typeof AdminThrottleRoute
+  '/admin/zones': typeof AdminZonesRoute
   '/confirmation/$orderId': typeof ConfirmationOrderIdRoute
   '/item/$itemId': typeof ItemItemIdRoute
   '/staff/login': typeof StaffLoginRoute
+  '/admin': typeof AdminIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/admin': typeof AdminRouteWithChildren
   '/cart': typeof CartRoute
   '/checkout': typeof CheckoutRoute
+  '/dispatch': typeof DispatchRoute
   '/menu': typeof MenuRoute
   '/order-type': typeof OrderTypeRoute
   '/tablet': typeof TabletRoute
+  '/admin/closures': typeof AdminClosuresRoute
+  '/admin/drivers': typeof AdminDriversRoute
+  '/admin/hours': typeof AdminHoursRoute
+  '/admin/staff': typeof AdminStaffRoute
+  '/admin/throttle': typeof AdminThrottleRoute
+  '/admin/zones': typeof AdminZonesRoute
   '/confirmation/$orderId': typeof ConfirmationOrderIdRoute
   '/item/$itemId': typeof ItemItemIdRoute
   '/staff/login': typeof StaffLoginRoute
+  '/admin/': typeof AdminIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/admin'
     | '/cart'
     | '/checkout'
+    | '/dispatch'
     | '/menu'
     | '/order-type'
     | '/tablet'
+    | '/admin/closures'
+    | '/admin/drivers'
+    | '/admin/hours'
+    | '/admin/staff'
+    | '/admin/throttle'
+    | '/admin/zones'
     | '/confirmation/$orderId'
     | '/item/$itemId'
     | '/staff/login'
+    | '/admin/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/cart'
     | '/checkout'
+    | '/dispatch'
     | '/menu'
     | '/order-type'
     | '/tablet'
+    | '/admin/closures'
+    | '/admin/drivers'
+    | '/admin/hours'
+    | '/admin/staff'
+    | '/admin/throttle'
+    | '/admin/zones'
     | '/confirmation/$orderId'
     | '/item/$itemId'
     | '/staff/login'
+    | '/admin'
   id:
     | '__root__'
     | '/'
+    | '/admin'
     | '/cart'
     | '/checkout'
+    | '/dispatch'
     | '/menu'
     | '/order-type'
     | '/tablet'
+    | '/admin/closures'
+    | '/admin/drivers'
+    | '/admin/hours'
+    | '/admin/staff'
+    | '/admin/throttle'
+    | '/admin/zones'
     | '/confirmation/$orderId'
     | '/item/$itemId'
     | '/staff/login'
+    | '/admin/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AdminRoute: typeof AdminRouteWithChildren
   CartRoute: typeof CartRoute
   CheckoutRoute: typeof CheckoutRoute
+  DispatchRoute: typeof DispatchRoute
   MenuRoute: typeof MenuRoute
   OrderTypeRoute: typeof OrderTypeRoute
   TabletRoute: typeof TabletRoute
@@ -170,6 +278,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof MenuRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/dispatch': {
+      id: '/dispatch'
+      path: '/dispatch'
+      fullPath: '/dispatch'
+      preLoaderRoute: typeof DispatchRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/checkout': {
       id: '/checkout'
       path: '/checkout'
@@ -184,12 +299,26 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CartRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin': {
+      id: '/admin'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof AdminRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/admin/': {
+      id: '/admin/'
+      path: '/'
+      fullPath: '/admin/'
+      preLoaderRoute: typeof AdminIndexRouteImport
+      parentRoute: typeof AdminRoute
     }
     '/staff/login': {
       id: '/staff/login'
@@ -212,13 +341,79 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ConfirmationOrderIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/zones': {
+      id: '/admin/zones'
+      path: '/zones'
+      fullPath: '/admin/zones'
+      preLoaderRoute: typeof AdminZonesRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/throttle': {
+      id: '/admin/throttle'
+      path: '/throttle'
+      fullPath: '/admin/throttle'
+      preLoaderRoute: typeof AdminThrottleRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/staff': {
+      id: '/admin/staff'
+      path: '/staff'
+      fullPath: '/admin/staff'
+      preLoaderRoute: typeof AdminStaffRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/hours': {
+      id: '/admin/hours'
+      path: '/hours'
+      fullPath: '/admin/hours'
+      preLoaderRoute: typeof AdminHoursRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/drivers': {
+      id: '/admin/drivers'
+      path: '/drivers'
+      fullPath: '/admin/drivers'
+      preLoaderRoute: typeof AdminDriversRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/closures': {
+      id: '/admin/closures'
+      path: '/closures'
+      fullPath: '/admin/closures'
+      preLoaderRoute: typeof AdminClosuresRouteImport
+      parentRoute: typeof AdminRoute
+    }
   }
 }
 
+interface AdminRouteChildren {
+  AdminClosuresRoute: typeof AdminClosuresRoute
+  AdminDriversRoute: typeof AdminDriversRoute
+  AdminHoursRoute: typeof AdminHoursRoute
+  AdminStaffRoute: typeof AdminStaffRoute
+  AdminThrottleRoute: typeof AdminThrottleRoute
+  AdminZonesRoute: typeof AdminZonesRoute
+  AdminIndexRoute: typeof AdminIndexRoute
+}
+
+const AdminRouteChildren: AdminRouteChildren = {
+  AdminClosuresRoute: AdminClosuresRoute,
+  AdminDriversRoute: AdminDriversRoute,
+  AdminHoursRoute: AdminHoursRoute,
+  AdminStaffRoute: AdminStaffRoute,
+  AdminThrottleRoute: AdminThrottleRoute,
+  AdminZonesRoute: AdminZonesRoute,
+  AdminIndexRoute: AdminIndexRoute,
+}
+
+const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AdminRoute: AdminRouteWithChildren,
   CartRoute: CartRoute,
   CheckoutRoute: CheckoutRoute,
+  DispatchRoute: DispatchRoute,
   MenuRoute: MenuRoute,
   OrderTypeRoute: OrderTypeRoute,
   TabletRoute: TabletRoute,

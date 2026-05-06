@@ -15,7 +15,7 @@ function DriversPage() {
   const [list, setList] = useState<Driver[]>([]);
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
-  const [loc, setLoc] = useState(LOCATIONS[0].id);
+  const [loc, setLoc] = useState<string>(LOCATIONS[0].id);
 
   const load = async () => {
     const { data } = await supabase.from("drivers").select("*").order("name");

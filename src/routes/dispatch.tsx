@@ -84,8 +84,8 @@ function DispatchPage() {
       .on("postgres_changes", { event: "*", schema: "public", table: "orders" }, (p) => {
         setOrders((prev) => {
           if (p.eventType === "INSERT") {
-            const n = p.new as Order;
-            if (!allowed.includes(n.location_id) || n.order_type !== ("delivery" as unknown as string)) return prev;
+            const n = p.new as Order & { order_type?: string };
+            if (!allowed.includes(n.location_id) || n.order_type !== "delivery") return prev;
             return [n, ...prev];
           }
           if (p.eventType === "UPDATE") {
@@ -106,15 +106,19 @@ function DispatchPage() {
   }, [orders, locFilter]);
 
   const assignDriver = async (orderId: string, driverId: string | null) => {
-    const patch: Partial<Order> = {
-      driver_id: driverId,
-      delivery_status: driverId ? "assigned" : "unassigned",
-    };
-    const { error } = await supabase.from("orders").update(patch).eq("id", orderId);
+    const { error } = await supabase
+      .from("orders")
+      .update({ driver_id: driverId, delivery_status: driverId ? "assigned" : "unassigned" })
+      .eq("id", orderId);
     if (error) toast.error("Could not assign driver");
   };
   const setStatus = async (orderId: string, status: DStatus) => {
-    const patch: Record<string, unknown> = { delivery_status: status };
+    const patch: {
+      delivery_status: DStatus;
+      dispatched_at?: string;
+      delivered_at?: string;
+      status?: "completed";
+    } = { delivery_status: status };
     if (status === "out_for_delivery") patch.dispatched_at = new Date().toISOString();
     if (status === "delivered") {
       patch.delivered_at = new Date().toISOString();
