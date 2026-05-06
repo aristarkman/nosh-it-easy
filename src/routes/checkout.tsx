@@ -146,6 +146,15 @@ function CheckoutPage() {
       </Link>
       <h1 className="mt-4 font-display text-4xl font-black sm:text-5xl">Checkout</h1>
 
+      {closedToday && (
+        <div className="mt-4 flex items-start gap-2 rounded-xl border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
+          <AlertTriangle className="mt-0.5 size-4" />
+          <div>
+            <strong>{loc?.name} is closed today.</strong> {closedToday}. Online ordering is paused.
+          </div>
+        </div>
+      )}
+
       <form onSubmit={submit} className="mt-6 grid gap-6 lg:grid-cols-[1fr_360px] lg:items-start">
         <div className="space-y-6">
           <Section title="Contact">
@@ -162,12 +171,31 @@ function CheckoutPage() {
                 label="Street address"
                 value={address}
                 onChange={setAddress}
-                placeholder="123 Main St, Apt 4, Glen Rock NJ"
+                placeholder="123 Main St, Apt 4"
                 required
               />
-              <p className="text-xs text-muted-foreground">
-                Within ~9 mi of {loc?.name}. Delivery is prepaid online.
-              </p>
+              <Field
+                label="ZIP code"
+                value={zip}
+                onChange={(v) => setZip(v.replace(/\D/g, "").slice(0, 5))}
+                placeholder="07452"
+                required
+              />
+              {zip.length === 5 && !matchedZone && (
+                <p className="text-xs text-destructive">
+                  Sorry — we don't deliver to {zip} from {loc?.name}. Try pickup instead.
+                </p>
+              )}
+              {matchedZone && !zoneOk && (
+                <p className="text-xs text-destructive">
+                  ${minShortfall.toFixed(2)} below the {fmt(matchedZone.minimum)} delivery minimum for this ZIP.
+                </p>
+              )}
+              {matchedZone && zoneOk && (
+                <p className="text-xs text-muted-foreground">
+                  Delivery to {zip}: {fmt(matchedZone.fee)} fee · {fmt(matchedZone.minimum)} minimum.
+                </p>
+              )}
             </Section>
           ) : (
             <Section title="Pickup time">
