@@ -54,18 +54,15 @@ export function SiteHeader() {
                 <span className="text-muted-foreground">· change</span>
               </Link>
             )}
-            <Link
-              to="/cart"
+            <a
+              href="https://catering.koshernosh.com"
+              target="_blank"
+              rel="noopener noreferrer"
               className="relative inline-flex items-center gap-2 rounded-full bg-primary px-4 py-2.5 text-xs font-black uppercase tracking-wider text-primary-foreground shadow-sm transition hover:opacity-90 sm:text-sm"
             >
               <ShoppingBag className="size-4" />
-              <span>Order Pickup/Delivery</span>
-              {totalQty > 0 && (
-                <span className="ml-1 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-primary-foreground px-1.5 text-[11px] font-bold text-primary">
-                  {totalQty}
-                </span>
-              )}
-            </Link>
+              <span>Order Catering</span>
+            </a>
           </div>
         </div>
       </div>
