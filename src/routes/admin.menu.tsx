@@ -261,6 +261,18 @@ function MenuAdmin() {
             </tbody>
           </table>
         )}
+        {!loading && filtered.length > PAGE_SIZE && (
+          <div className="flex items-center justify-between gap-2 border-t border-border p-3 text-xs text-muted-foreground">
+            <span>Showing {page * PAGE_SIZE + 1}–{Math.min(filtered.length, (page + 1) * PAGE_SIZE)} of {filtered.length}</span>
+            <div className="flex gap-2">
+              <button onClick={() => setPage((p) => Math.max(0, p - 1))} disabled={page === 0}
+                className="rounded border border-border px-3 py-1 disabled:opacity-40">Prev</button>
+              <span className="px-2 py-1">Page {page + 1} / {pageCount}</span>
+              <button onClick={() => setPage((p) => Math.min(pageCount - 1, p + 1))} disabled={page >= pageCount - 1}
+                className="rounded border border-border px-3 py-1 disabled:opacity-40">Next</button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
