@@ -235,7 +235,7 @@ function MenuAdmin() {
                         {groups.length === 0 ? (
                           <div className="text-xs text-muted-foreground">No modifier groups yet. <Link to="/admin/modifiers" className="text-primary underline">Create one</Link></div>
                         ) : groups.map((g) => {
-                          const on = assigns.some((a) => a.menu_item_id === it.id && a.modifier_group_id === g.id);
+                          const on = assignsByItem.get(it.id)?.has(g.id) ?? false;
                           return (
                             <label key={g.id} className="flex cursor-pointer items-center gap-2 text-xs">
                               <input type="checkbox" checked={on} onChange={(e) => toggleAssign(it.id, g.id, e.target.checked)} />
