@@ -189,7 +189,7 @@ function MenuAdmin() {
               </tr>
             </thead>
             <tbody>
-              {filtered.map((it) => (
+              {paged.map((it) => (
                 <tr key={it.id} className="border-b border-border last:border-0">
                   <td className="px-4 py-3">
                     <label className="block size-14 cursor-pointer overflow-hidden rounded-lg border border-border bg-muted hover:border-primary">
