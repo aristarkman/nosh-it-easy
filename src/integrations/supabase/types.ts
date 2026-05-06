@@ -14,6 +14,84 @@ export type Database = {
   }
   public: {
     Tables: {
+      delivery_zones: {
+        Row: {
+          created_at: string
+          fee: number
+          id: string
+          location_id: string
+          minimum: number
+          zip: string
+        }
+        Insert: {
+          created_at?: string
+          fee?: number
+          id?: string
+          location_id: string
+          minimum?: number
+          zip: string
+        }
+        Update: {
+          created_at?: string
+          fee?: number
+          id?: string
+          location_id?: string
+          minimum?: number
+          zip?: string
+        }
+        Relationships: []
+      }
+      drivers: {
+        Row: {
+          active: boolean
+          created_at: string
+          id: string
+          location_id: string
+          name: string
+          phone: string | null
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          id?: string
+          location_id: string
+          name: string
+          phone?: string | null
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          id?: string
+          location_id?: string
+          name?: string
+          phone?: string | null
+        }
+        Relationships: []
+      }
+      location_throttle: {
+        Row: {
+          delivery_lead_min: number
+          location_id: string
+          max_orders_per_15min: number
+          pickup_lead_min: number
+          updated_at: string
+        }
+        Insert: {
+          delivery_lead_min?: number
+          location_id: string
+          max_orders_per_15min?: number
+          pickup_lead_min?: number
+          updated_at?: string
+        }
+        Update: {
+          delivery_lead_min?: number
+          location_id?: string
+          max_orders_per_15min?: number
+          pickup_lead_min?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       orders: {
         Row: {
           card_fee: number
@@ -21,8 +99,12 @@ export type Database = {
           customer_email: string | null
           customer_name: string
           customer_phone: string
+          delivered_at: string | null
           delivery_address: string | null
           delivery_fee: number
+          delivery_status: Database["public"]["Enums"]["delivery_status"] | null
+          dispatched_at: string | null
+          driver_id: string | null
           id: string
           items: Json
           location_id: string
@@ -44,8 +126,14 @@ export type Database = {
           customer_email?: string | null
           customer_name: string
           customer_phone: string
+          delivered_at?: string | null
           delivery_address?: string | null
           delivery_fee?: number
+          delivery_status?:
+            | Database["public"]["Enums"]["delivery_status"]
+            | null
+          dispatched_at?: string | null
+          driver_id?: string | null
           id?: string
           items: Json
           location_id: string
@@ -67,8 +155,14 @@ export type Database = {
           customer_email?: string | null
           customer_name?: string
           customer_phone?: string
+          delivered_at?: string | null
           delivery_address?: string | null
           delivery_fee?: number
+          delivery_status?:
+            | Database["public"]["Enums"]["delivery_status"]
+            | null
+          dispatched_at?: string | null
+          driver_id?: string | null
           id?: string
           items?: Json
           location_id?: string
@@ -84,7 +178,15 @@ export type Database = {
           updated_at?: string
           when_type?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "orders_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "drivers"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       staff_locations: {
         Row: {
@@ -104,6 +206,66 @@ export type Database = {
           id?: string
           location_id?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      store_closures: {
+        Row: {
+          created_at: string
+          end_date: string
+          id: string
+          location_id: string | null
+          reason: string | null
+          start_date: string
+        }
+        Insert: {
+          created_at?: string
+          end_date: string
+          id?: string
+          location_id?: string | null
+          reason?: string | null
+          start_date: string
+        }
+        Update: {
+          created_at?: string
+          end_date?: string
+          id?: string
+          location_id?: string | null
+          reason?: string | null
+          start_date?: string
+        }
+        Relationships: []
+      }
+      store_hours: {
+        Row: {
+          close_time: string | null
+          created_at: string
+          day_of_week: number
+          id: string
+          is_closed: boolean
+          location_id: string
+          open_time: string | null
+          updated_at: string
+        }
+        Insert: {
+          close_time?: string | null
+          created_at?: string
+          day_of_week: number
+          id?: string
+          is_closed?: boolean
+          location_id: string
+          open_time?: string | null
+          updated_at?: string
+        }
+        Update: {
+          close_time?: string | null
+          created_at?: string
+          day_of_week?: number
+          id?: string
+          is_closed?: boolean
+          location_id?: string
+          open_time?: string | null
+          updated_at?: string
         }
         Relationships: []
       }
@@ -148,6 +310,11 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "staff"
+      delivery_status:
+        | "unassigned"
+        | "assigned"
+        | "out_for_delivery"
+        | "delivered"
       order_status: "new" | "accepted" | "ready" | "completed" | "cancelled"
       order_type: "pickup" | "delivery"
     }
@@ -278,6 +445,12 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "staff"],
+      delivery_status: [
+        "unassigned",
+        "assigned",
+        "out_for_delivery",
+        "delivered",
+      ],
       order_status: ["new", "accepted", "ready", "completed", "cancelled"],
       order_type: ["pickup", "delivery"],
     },
