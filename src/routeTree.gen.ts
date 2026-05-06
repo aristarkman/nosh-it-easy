@@ -15,6 +15,7 @@ import { Route as MenuRouteImport } from './routes/menu'
 import { Route as CheckoutRouteImport } from './routes/checkout'
 import { Route as CartRouteImport } from './routes/cart'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as StaffLoginRouteImport } from './routes/staff.login'
 import { Route as ItemItemIdRouteImport } from './routes/item.$itemId'
 import { Route as ConfirmationOrderIdRouteImport } from './routes/confirmation.$orderId'
 
@@ -48,6 +49,11 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const StaffLoginRoute = StaffLoginRouteImport.update({
+  id: '/staff/login',
+  path: '/staff/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ItemItemIdRoute = ItemItemIdRouteImport.update({
   id: '/item/$itemId',
   path: '/item/$itemId',
@@ -68,6 +74,7 @@ export interface FileRoutesByFullPath {
   '/tablet': typeof TabletRoute
   '/confirmation/$orderId': typeof ConfirmationOrderIdRoute
   '/item/$itemId': typeof ItemItemIdRoute
+  '/staff/login': typeof StaffLoginRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -78,6 +85,7 @@ export interface FileRoutesByTo {
   '/tablet': typeof TabletRoute
   '/confirmation/$orderId': typeof ConfirmationOrderIdRoute
   '/item/$itemId': typeof ItemItemIdRoute
+  '/staff/login': typeof StaffLoginRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -89,6 +97,7 @@ export interface FileRoutesById {
   '/tablet': typeof TabletRoute
   '/confirmation/$orderId': typeof ConfirmationOrderIdRoute
   '/item/$itemId': typeof ItemItemIdRoute
+  '/staff/login': typeof StaffLoginRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -101,6 +110,7 @@ export interface FileRouteTypes {
     | '/tablet'
     | '/confirmation/$orderId'
     | '/item/$itemId'
+    | '/staff/login'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -111,6 +121,7 @@ export interface FileRouteTypes {
     | '/tablet'
     | '/confirmation/$orderId'
     | '/item/$itemId'
+    | '/staff/login'
   id:
     | '__root__'
     | '/'
@@ -121,6 +132,7 @@ export interface FileRouteTypes {
     | '/tablet'
     | '/confirmation/$orderId'
     | '/item/$itemId'
+    | '/staff/login'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -132,6 +144,7 @@ export interface RootRouteChildren {
   TabletRoute: typeof TabletRoute
   ConfirmationOrderIdRoute: typeof ConfirmationOrderIdRoute
   ItemItemIdRoute: typeof ItemItemIdRoute
+  StaffLoginRoute: typeof StaffLoginRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -178,6 +191,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/staff/login': {
+      id: '/staff/login'
+      path: '/staff/login'
+      fullPath: '/staff/login'
+      preLoaderRoute: typeof StaffLoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/item/$itemId': {
       id: '/item/$itemId'
       path: '/item/$itemId'
@@ -204,7 +224,17 @@ const rootRouteChildren: RootRouteChildren = {
   TabletRoute: TabletRoute,
   ConfirmationOrderIdRoute: ConfirmationOrderIdRoute,
   ItemItemIdRoute: ItemItemIdRoute,
+  StaffLoginRoute: StaffLoginRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { createStart } from '@tanstack/react-start'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+  }
+}
