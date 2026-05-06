@@ -37,22 +37,51 @@ function CheckoutPage() {
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
   const [address, setAddress] = useState("");
+  const [zip, setZip] = useState("");
   const [whenType, setWhenType] = useState<"asap" | "schedule">("asap");
   const [scheduledTime, setScheduledTime] = useState("");
   const [pay, setPay] = useState<"card" | "applepay" | "googlepay" | "in-person">("card");
   const [submitting, setSubmitting] = useState(false);
 
-  const deliveryFee = orderType === "delivery" ? 4.99 : 0;
+  const [zones, setZones] = useState<{ zip: string; fee: number; minimum: number }[]>([]);
+  const [closedToday, setClosedToday] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!location) return;
+    (async () => {
+      const today = new Date().toISOString().slice(0, 10);
+      const [{ data: z }, { data: c }] = await Promise.all([
+        supabase.from("delivery_zones").select("zip,fee,minimum").eq("location_id", location),
+        supabase
+          .from("store_closures")
+          .select("reason,location_id,start_date,end_date")
+          .lte("start_date", today)
+          .gte("end_date", today),
+      ]);
+      setZones((z ?? []).map((x) => ({ zip: x.zip, fee: Number(x.fee), minimum: Number(x.minimum) })));
+      const hit = (c ?? []).find((x) => x.location_id === null || x.location_id === location);
+      setClosedToday(hit ? hit.reason ?? "Closed today" : null);
+    })();
+  }, [location]);
+
+  const matchedZone = useMemo(
+    () => (orderType === "delivery" && zip ? zones.find((z) => z.zip === zip) : undefined),
+    [orderType, zip, zones]
+  );
+  const deliveryFee = orderType === "delivery" ? matchedZone?.fee ?? 0 : 0;
   const tax = +(subtotal * 0.06625).toFixed(2);
   const cardFee = pay === "in-person" ? 0 : +((subtotal + deliveryFee) * 0.03).toFixed(2);
   const total = +(subtotal + deliveryFee + tax + cardFee).toFixed(2);
 
   const canPayInPerson = orderType === "pickup" && subtotal < PAY_IN_PERSON_THRESHOLD;
+  const zoneOk = orderType !== "delivery" || (!!matchedZone && subtotal >= matchedZone.minimum);
+  const minShortfall = orderType === "delivery" && matchedZone ? matchedZone.minimum - subtotal : 0;
 
   const valid =
+    !closedToday &&
     name.trim().length > 1 &&
     /^[\d\s()+-]{7,}$/.test(phone) &&
-    (orderType === "pickup" || address.trim().length > 5);
+    (orderType === "pickup" || (address.trim().length > 5 && zoneOk));
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
