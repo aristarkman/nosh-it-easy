@@ -41,10 +41,47 @@ const STATUS_FLOW: Record<Status, { next?: Status; label?: string; color: string
 };
 
 function TabletPage() {
+  const nav = useNavigate();
   const [orders, setOrders] = useState<Order[]>([]);
   const [locFilter, setLocFilter] = useState<string>("all");
   const [tab, setTab] = useState<Status>("new");
   const [loading, setLoading] = useState(true);
+  const [authChecked, setAuthChecked] = useState(false);
+  const [allowedLocations, setAllowedLocations] = useState<string[]>([]);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [userEmail, setUserEmail] = useState<string>("");
+
+  // Auth gate + load assigned locations
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      const { data: sessionData } = await supabase.auth.getSession();
+      if (!sessionData.session) {
+        nav({ to: "/staff/login" });
+        return;
+      }
+      const userId = sessionData.session.user.id;
+      setUserEmail(sessionData.session.user.email ?? "");
+
+      const [{ data: roles }, { data: locs }] = await Promise.all([
+        supabase.from("user_roles").select("role").eq("user_id", userId),
+        supabase.from("staff_locations").select("location_id").eq("user_id", userId),
+      ]);
+      if (!mounted) return;
+      const admin = (roles ?? []).some((r) => r.role === "admin");
+      setIsAdmin(admin);
+      const assigned = (locs ?? []).map((l) => l.location_id);
+      setAllowedLocations(admin ? LOCATIONS.map((l) => l.id) : assigned);
+      setAuthChecked(true);
+    })();
+    const { data: sub } = supabase.auth.onAuthStateChange((_e, session) => {
+      if (!session) nav({ to: "/staff/login" });
+    });
+    return () => {
+      mounted = false;
+      sub.subscription.unsubscribe();
+    };
+  }, [nav]);
 
   useEffect(() => {
     let mounted = true;
