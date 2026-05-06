@@ -97,7 +97,7 @@ function CheckoutPage() {
         customer_name: name.trim(),
         customer_phone: phone.trim(),
         customer_email: email.trim() || null,
-        delivery_address: orderType === "delivery" ? address.trim() : null,
+        delivery_address: orderType === "delivery" ? `${address.trim()}, ${zip}` : null,
         when_type: whenType,
         scheduled_time: whenType === "schedule" && scheduledTime ? scheduledTime : null,
         payment_method: pay,
