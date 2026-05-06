@@ -1,6 +1,6 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { Clock, MapPin, Phone, User, Truck, ShoppingBag, Check, ChefHat, X } from "lucide-react";
+import { Clock, MapPin, Phone, User, Truck, ShoppingBag, Check, ChefHat, X, LogOut } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { LOCATIONS, fmt, type CartLine } from "@/lib/order-context";
 import { toast } from "sonner";
@@ -41,20 +41,62 @@ const STATUS_FLOW: Record<Status, { next?: Status; label?: string; color: string
 };
 
 function TabletPage() {
+  const nav = useNavigate();
   const [orders, setOrders] = useState<Order[]>([]);
   const [locFilter, setLocFilter] = useState<string>("all");
   const [tab, setTab] = useState<Status>("new");
   const [loading, setLoading] = useState(true);
+  const [authChecked, setAuthChecked] = useState(false);
+  const [allowedLocations, setAllowedLocations] = useState<string[]>([]);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [userEmail, setUserEmail] = useState<string>("");
 
+  // Auth gate + load assigned locations
   useEffect(() => {
     let mounted = true;
     (async () => {
-      const { data, error } = await supabase
+      const { data: sessionData } = await supabase.auth.getSession();
+      if (!sessionData.session) {
+        nav({ to: "/staff/login" });
+        return;
+      }
+      const userId = sessionData.session.user.id;
+      setUserEmail(sessionData.session.user.email ?? "");
+
+      const [{ data: roles }, { data: locs }] = await Promise.all([
+        supabase.from("user_roles").select("role").eq("user_id", userId),
+        supabase.from("staff_locations").select("location_id").eq("user_id", userId),
+      ]);
+      if (!mounted) return;
+      const admin = (roles ?? []).some((r) => r.role === "admin");
+      setIsAdmin(admin);
+      const assigned = (locs ?? []).map((l) => l.location_id);
+      setAllowedLocations(admin ? LOCATIONS.map((l) => l.id) : assigned);
+      setAuthChecked(true);
+    })();
+    const { data: sub } = supabase.auth.onAuthStateChange((_e, session) => {
+      if (!session) nav({ to: "/staff/login" });
+    });
+    return () => {
+      mounted = false;
+      sub.subscription.unsubscribe();
+    };
+  }, [nav]);
+
+  useEffect(() => {
+    if (!authChecked) return;
+    let mounted = true;
+    (async () => {
+      let q = supabase
         .from("orders")
         .select("*")
         .in("status", ["new", "accepted", "ready"])
         .order("created_at", { ascending: false })
         .limit(200);
+      if (!isAdmin && allowedLocations.length > 0) {
+        q = q.in("location_id", allowedLocations);
+      }
+      const { data, error } = await q;
       if (!mounted) return;
       if (error) toast.error("Failed to load orders");
       else setOrders((data ?? []) as unknown as Order[]);
@@ -70,6 +112,7 @@ function TabletPage() {
           setOrders((prev) => {
             if (payload.eventType === "INSERT") {
               const n = payload.new as Order;
+              if (!isAdmin && !allowedLocations.includes(n.location_id)) return prev;
               try {
                 new Audio(
                   "data:audio/wav;base64,UklGRl9vT19XQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA="
@@ -80,6 +123,7 @@ function TabletPage() {
             }
             if (payload.eventType === "UPDATE") {
               const n = payload.new as Order;
+              if (!isAdmin && !allowedLocations.includes(n.location_id)) return prev;
               return prev.map((o) => (o.id === n.id ? n : o));
             }
             if (payload.eventType === "DELETE") {
@@ -96,7 +140,7 @@ function TabletPage() {
       mounted = false;
       supabase.removeChannel(channel);
     };
-  }, []);
+  }, [authChecked, isAdmin, allowedLocations]);
 
   const filtered = useMemo(
     () =>
@@ -127,30 +171,65 @@ function TabletPage() {
     return c;
   }, [orders, locFilter]);
 
+  if (!authChecked) {
+    return <div className="grid min-h-screen place-items-center text-muted-foreground">Loading…</div>;
+  }
+
+  if (allowedLocations.length === 0) {
+    return (
+      <div className="grid min-h-screen place-items-center bg-muted/40 p-6 text-center">
+        <div className="max-w-sm space-y-3">
+          <h1 className="font-display text-2xl">No locations assigned</h1>
+          <p className="text-sm text-muted-foreground">
+            Your account ({userEmail}) is not assigned to any store. Contact your manager.
+          </p>
+          <button
+            onClick={async () => { await supabase.auth.signOut(); nav({ to: "/staff/login" }); }}
+            className="inline-flex items-center gap-1.5 rounded-full border border-border px-4 py-2 text-xs font-bold uppercase tracking-wider"
+          >
+            <LogOut className="size-3.5" /> Sign out
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  const visibleLocations = LOCATIONS.filter((l) => allowedLocations.includes(l.id));
+  const showAllFilter = visibleLocations.length > 1;
+
   return (
     <div className="min-h-screen bg-muted/40">
       <div className="border-b border-border bg-background">
         <div className="mx-auto flex max-w-[1400px] flex-wrap items-center justify-between gap-3 px-4 py-3">
           <div>
             <div className="text-[11px] font-bold uppercase tracking-[0.25em] text-primary">
-              Kitchen Tablet
+              Kitchen Tablet {isAdmin && "· Admin"}
             </div>
             <h1 className="font-display text-2xl tracking-wide">Live Orders</h1>
+            <div className="text-xs text-muted-foreground">{userEmail}</div>
           </div>
-          <div className="flex items-center gap-2">
-            <Filter
-              active={locFilter === "all"}
-              onClick={() => setLocFilter("all")}
-              label="All"
-            />
-            {LOCATIONS.map((l) => (
+          <div className="flex flex-wrap items-center gap-2">
+            {showAllFilter && (
+              <Filter
+                active={locFilter === "all"}
+                onClick={() => setLocFilter("all")}
+                label="All"
+              />
+            )}
+            {visibleLocations.map((l) => (
               <Filter
                 key={l.id}
-                active={locFilter === l.id}
+                active={locFilter === l.id || (!showAllFilter && locFilter === "all")}
                 onClick={() => setLocFilter(l.id)}
                 label={l.name}
               />
             ))}
+            <button
+              onClick={async () => { await supabase.auth.signOut(); nav({ to: "/staff/login" }); }}
+              className="inline-flex items-center gap-1.5 rounded-full border border-border px-3 py-1.5 text-xs font-bold uppercase tracking-wider text-muted-foreground hover:text-foreground"
+            >
+              <LogOut className="size-3.5" /> Sign out
+            </button>
           </div>
         </div>
         <div className="mx-auto flex max-w-[1400px] gap-1 px-4">
