@@ -26,14 +26,30 @@ export function useAdminAuth(): AdminAuth {
 
   useEffect(() => {
     let mounted = true;
+    const setSignedOut = () => {
+      if (mounted) {
+        setState((p) => ({
+          ...p,
+          loading: false,
+          authed: false,
+          isAdmin: false,
+          userId: null,
+          email: "",
+          locations: [],
+        }));
+      }
+    };
+
     const load = async () => {
-      const { data: s } = await supabase.auth.getSession();
-      if (!s.session) {
-        if (mounted)
-          setState((p) => ({ ...p, loading: false, authed: false }));
+      const { data, error } = await supabase.auth.getUser();
+      const user = data.user;
+
+      if (error || !user) {
+        setSignedOut();
         return;
       }
-      const uid = s.session.user.id;
+
+      const uid = user.id;
       const [{ data: roles }, { data: locs }] = await Promise.all([
         supabase.from("user_roles").select("role").eq("user_id", uid),
         supabase.from("staff_locations").select("location_id").eq("user_id", uid),
@@ -45,12 +61,22 @@ export function useAdminAuth(): AdminAuth {
         authed: true,
         isAdmin: (roles ?? []).some((r) => r.role === "admin"),
         userId: uid,
-        email: s.session?.user.email ?? "",
+        email: user.email ?? "",
         locations: (locs ?? []).map((l) => l.location_id),
       }));
     };
     load();
-    const { data: sub } = supabase.auth.onAuthStateChange(() => load());
+
+    const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === "SIGNED_OUT" || !session?.user) {
+        setSignedOut();
+        return;
+      }
+
+      setState((p) => ({ ...p, loading: true }));
+      void load();
+    });
+
     return () => {
       mounted = false;
       sub.subscription.unsubscribe();
