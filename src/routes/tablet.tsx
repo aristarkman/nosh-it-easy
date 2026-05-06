@@ -84,14 +84,19 @@ function TabletPage() {
   }, [nav]);
 
   useEffect(() => {
+    if (!authChecked) return;
     let mounted = true;
     (async () => {
-      const { data, error } = await supabase
+      let q = supabase
         .from("orders")
         .select("*")
         .in("status", ["new", "accepted", "ready"])
         .order("created_at", { ascending: false })
         .limit(200);
+      if (!isAdmin && allowedLocations.length > 0) {
+        q = q.in("location_id", allowedLocations);
+      }
+      const { data, error } = await q;
       if (!mounted) return;
       if (error) toast.error("Failed to load orders");
       else setOrders((data ?? []) as unknown as Order[]);
@@ -107,6 +112,7 @@ function TabletPage() {
           setOrders((prev) => {
             if (payload.eventType === "INSERT") {
               const n = payload.new as Order;
+              if (!isAdmin && !allowedLocations.includes(n.location_id)) return prev;
               try {
                 new Audio(
                   "data:audio/wav;base64,UklGRl9vT19XQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA="
@@ -117,6 +123,7 @@ function TabletPage() {
             }
             if (payload.eventType === "UPDATE") {
               const n = payload.new as Order;
+              if (!isAdmin && !allowedLocations.includes(n.location_id)) return prev;
               return prev.map((o) => (o.id === n.id ? n : o));
             }
             if (payload.eventType === "DELETE") {
@@ -133,7 +140,7 @@ function TabletPage() {
       mounted = false;
       supabase.removeChannel(channel);
     };
-  }, []);
+  }, [authChecked, isAdmin, allowedLocations]);
 
   const filtered = useMemo(
     () =>
