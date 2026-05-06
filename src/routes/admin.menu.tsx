@@ -107,13 +107,22 @@ function MenuAdmin() {
   }
 
   async function toggleAssign(itemId: string, groupId: string, on: boolean) {
+    // optimistic
     if (on) {
+      setAssigns((p) => [...p, { menu_item_id: itemId, modifier_group_id: groupId }]);
       const { error } = await supabase.from("menu_item_modifier_groups").insert({ menu_item_id: itemId, modifier_group_id: groupId });
-      if (!error) setAssigns((p) => [...p, { menu_item_id: itemId, modifier_group_id: groupId }]);
+      if (error) {
+        setAssigns((p) => p.filter((a) => !(a.menu_item_id === itemId && a.modifier_group_id === groupId)));
+        alert(error.message);
+      }
     } else {
+      setAssigns((p) => p.filter((a) => !(a.menu_item_id === itemId && a.modifier_group_id === groupId)));
       const { error } = await supabase.from("menu_item_modifier_groups")
         .delete().eq("menu_item_id", itemId).eq("modifier_group_id", groupId);
-      if (!error) setAssigns((p) => p.filter((a) => !(a.menu_item_id === itemId && a.modifier_group_id === groupId)));
+      if (error) {
+        setAssigns((p) => [...p, { menu_item_id: itemId, modifier_group_id: groupId }]);
+        alert(error.message);
+      }
     }
   }
 
