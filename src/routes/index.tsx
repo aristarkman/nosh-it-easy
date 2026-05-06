@@ -1,7 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { MapPin, Clock, Phone, ArrowRight } from "lucide-react";
 import { LOCATIONS, useOrder, type LocationId } from "@/lib/order-context";
-import heroImg from "@/assets/hero.jpg";
+
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -27,45 +27,6 @@ function LocationPick() {
 
   return (
     <div>
-      {/* Hero — black, bold display, image right (koshernosh.com vibe) */}
-      <section className="relative overflow-hidden bg-[oklch(0.14_0_0)] text-white">
-        <div className="mx-auto grid max-w-6xl gap-8 px-4 py-14 sm:py-20 lg:grid-cols-[1.1fr_1fr] lg:items-center lg:py-24">
-          <div>
-            <h1 className="font-display text-5xl leading-[0.95] tracking-wide text-white sm:text-7xl lg:text-[88px]">
-              Serving the<br />
-              Kosher Way<br />
-              Since <span className="text-primary">1976</span>
-            </h1>
-            <p className="mt-6 max-w-md text-base text-white/75 sm:text-lg">
-              Indulge in authentic Kosher catering and delicatessen. A delightful
-              family dining experience with exceptional catering for homes,
-              hotels, temples, and synagogues.
-            </p>
-            <div className="mt-8 h-px w-24 bg-primary" />
-            <div className="mt-8 flex flex-wrap items-center gap-3 text-[11px] font-semibold uppercase tracking-[0.25em] text-white/60">
-              <span>Step 1 of 3</span>
-              <span className="h-px w-8 bg-white/20" />
-              <span>Choose location</span>
-            </div>
-          </div>
-          <div className="relative">
-            <img
-              src={heroImg}
-              alt="Pastrami sandwich, piled high"
-              width={1536}
-              height={1024}
-              className="h-full w-full rounded-2xl object-cover shadow-[var(--shadow-pop)]"
-            />
-          </div>
-        </div>
-        {/* Red kosher supervision strip */}
-        <div className="bg-primary text-primary-foreground">
-          <div className="mx-auto max-w-6xl px-4 py-3 text-center text-xs font-bold uppercase tracking-[0.2em] sm:text-sm">
-            Under the supervision of Rabbi Dr. Bernhard Rosenberg — BEHR Kosher Supervision
-          </div>
-        </div>
-      </section>
-
       {/* Location chooser */}
       <div className="mx-auto max-w-6xl px-4 pb-20 pt-14">
         <div className="mb-8 text-center">
