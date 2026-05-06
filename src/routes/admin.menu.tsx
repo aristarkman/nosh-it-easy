@@ -14,6 +14,7 @@ type Item = {
   category: string | null;
   active: boolean;
   sort_order: number;
+  photo_url: string | null;
 };
 type Price = { menu_item_id: string; location_id: string; price: number };
 type Loc = { location_id: string; display_name: string | null };
@@ -38,7 +39,7 @@ function MenuAdmin() {
   async function load() {
     setLoading(true);
     const [i, p, l, g, a] = await Promise.all([
-      supabase.from("menu_items").select("id,name,category,active,sort_order").order("category").order("sort_order").order("name"),
+      supabase.from("menu_items").select("id,name,category,active,sort_order,photo_url").order("category").order("sort_order").order("name"),
       supabase.from("menu_item_prices").select("menu_item_id,location_id,price"),
       supabase.from("biyo_locations").select("location_id,display_name").order("location_id"),
       supabase.from("modifier_groups").select("id,name").order("name"),
@@ -88,6 +89,24 @@ function MenuAdmin() {
   }
 
   const [editingMods, setEditingMods] = useState<string | null>(null);
+  const [uploading, setUploading] = useState<string | null>(null);
+
+  async function uploadPhoto(it: Item, file: File) {
+    setUploading(it.id);
+    try {
+      const ext = file.name.split(".").pop() || "jpg";
+      const path = `${it.id}-${Date.now()}.${ext}`;
+      const { error: upErr } = await supabase.storage.from("menu-photos").upload(path, file, { upsert: true, contentType: file.type });
+      if (upErr) { alert(upErr.message); return; }
+      const { data: pub } = supabase.storage.from("menu-photos").getPublicUrl(path);
+      const url = pub.publicUrl;
+      const { error: dbErr } = await supabase.from("menu_items").update({ photo_url: url }).eq("id", it.id);
+      if (dbErr) { alert(dbErr.message); return; }
+      setItems((prev) => prev.map((x) => x.id === it.id ? { ...x, photo_url: url } : x));
+    } finally {
+      setUploading(null);
+    }
+  }
 
   return (
     <div className="space-y-6">
@@ -121,6 +140,7 @@ function MenuAdmin() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-border text-left text-xs uppercase tracking-wider text-muted-foreground">
+                <th className="px-4 py-3">Photo</th>
                 <th className="px-4 py-3">Category</th>
                 <th className="px-4 py-3">Menu item</th>
                 {locs.map((l) => (
@@ -133,6 +153,20 @@ function MenuAdmin() {
             <tbody>
               {filtered.map((it) => (
                 <tr key={it.id} className="border-b border-border last:border-0">
+                  <td className="px-4 py-3">
+                    <label className="block size-14 cursor-pointer overflow-hidden rounded-lg border border-border bg-muted hover:border-primary">
+                      {it.photo_url ? (
+                        <img src={it.photo_url} alt={it.name} className="size-full object-cover" />
+                      ) : (
+                        <span className="grid size-full place-items-center text-[10px] uppercase tracking-wider text-muted-foreground">
+                          {uploading === it.id ? "…" : "Add"}
+                        </span>
+                      )}
+                      <input type="file" accept="image/*" className="hidden"
+                        onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadPhoto(it, f); e.target.value = ""; }}
+                      />
+                    </label>
+                  </td>
                   <td className="px-4 py-3">
                     <input
                       defaultValue={it.category ?? ""}
