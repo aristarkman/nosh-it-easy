@@ -154,6 +154,20 @@ function MenuAdmin() {
               {filtered.map((it) => (
                 <tr key={it.id} className="border-b border-border last:border-0">
                   <td className="px-4 py-3">
+                    <label className="block size-14 cursor-pointer overflow-hidden rounded-lg border border-border bg-muted hover:border-primary">
+                      {it.photo_url ? (
+                        <img src={it.photo_url} alt={it.name} className="size-full object-cover" />
+                      ) : (
+                        <span className="grid size-full place-items-center text-[10px] uppercase tracking-wider text-muted-foreground">
+                          {uploading === it.id ? "…" : "Add"}
+                        </span>
+                      )}
+                      <input type="file" accept="image/*" className="hidden"
+                        onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadPhoto(it, f); e.target.value = ""; }}
+                      />
+                    </label>
+                  </td>
+                  <td className="px-4 py-3">
                     <input
                       defaultValue={it.category ?? ""}
                       onBlur={async (e) => {
