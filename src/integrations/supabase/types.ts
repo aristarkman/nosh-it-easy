@@ -86,14 +86,68 @@ export type Database = {
         }
         Relationships: []
       }
+      staff_locations: {
+        Row: {
+          created_at: string
+          id: string
+          location_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          location_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          location_id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_roles: {
+        Row: {
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      current_user_locations: { Args: never; Returns: string[] }
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
+      user_has_location: {
+        Args: { _location_id: string; _user_id: string }
+        Returns: boolean
+      }
     }
     Enums: {
+      app_role: "admin" | "staff"
       order_status: "new" | "accepted" | "ready" | "completed" | "cancelled"
       order_type: "pickup" | "delivery"
     }
@@ -223,6 +277,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      app_role: ["admin", "staff"],
       order_status: ["new", "accepted", "ready", "completed", "cancelled"],
       order_type: ["pickup", "delivery"],
     },
