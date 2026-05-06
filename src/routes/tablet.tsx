@@ -1,6 +1,6 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { Clock, MapPin, Phone, User, Truck, ShoppingBag, Check, ChefHat, X } from "lucide-react";
+import { Clock, MapPin, Phone, User, Truck, ShoppingBag, Check, ChefHat, X, LogOut } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { LOCATIONS, fmt, type CartLine } from "@/lib/order-context";
 import { toast } from "sonner";
