@@ -27,6 +27,8 @@ import { Route as AdminStaffRouteImport } from './routes/admin.staff'
 import { Route as AdminHoursRouteImport } from './routes/admin.hours'
 import { Route as AdminDriversRouteImport } from './routes/admin.drivers'
 import { Route as AdminClosuresRouteImport } from './routes/admin.closures'
+import { Route as AdminBiyoRouteImport } from './routes/admin.biyo'
+import { Route as ApiPublicHooksSyncBiyoRouteImport } from './routes/api/public/hooks/sync-biyo'
 
 const TabletRoute = TabletRouteImport.update({
   id: '/tablet',
@@ -118,6 +120,16 @@ const AdminClosuresRoute = AdminClosuresRouteImport.update({
   path: '/closures',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminBiyoRoute = AdminBiyoRouteImport.update({
+  id: '/biyo',
+  path: '/biyo',
+  getParentRoute: () => AdminRoute,
+} as any)
+const ApiPublicHooksSyncBiyoRoute = ApiPublicHooksSyncBiyoRouteImport.update({
+  id: '/api/public/hooks/sync-biyo',
+  path: '/api/public/hooks/sync-biyo',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -128,6 +140,7 @@ export interface FileRoutesByFullPath {
   '/menu': typeof MenuRoute
   '/order-type': typeof OrderTypeRoute
   '/tablet': typeof TabletRoute
+  '/admin/biyo': typeof AdminBiyoRoute
   '/admin/closures': typeof AdminClosuresRoute
   '/admin/drivers': typeof AdminDriversRoute
   '/admin/hours': typeof AdminHoursRoute
@@ -138,6 +151,7 @@ export interface FileRoutesByFullPath {
   '/item/$itemId': typeof ItemItemIdRoute
   '/staff/login': typeof StaffLoginRoute
   '/admin/': typeof AdminIndexRoute
+  '/api/public/hooks/sync-biyo': typeof ApiPublicHooksSyncBiyoRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -147,6 +161,7 @@ export interface FileRoutesByTo {
   '/menu': typeof MenuRoute
   '/order-type': typeof OrderTypeRoute
   '/tablet': typeof TabletRoute
+  '/admin/biyo': typeof AdminBiyoRoute
   '/admin/closures': typeof AdminClosuresRoute
   '/admin/drivers': typeof AdminDriversRoute
   '/admin/hours': typeof AdminHoursRoute
@@ -157,6 +172,7 @@ export interface FileRoutesByTo {
   '/item/$itemId': typeof ItemItemIdRoute
   '/staff/login': typeof StaffLoginRoute
   '/admin': typeof AdminIndexRoute
+  '/api/public/hooks/sync-biyo': typeof ApiPublicHooksSyncBiyoRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -168,6 +184,7 @@ export interface FileRoutesById {
   '/menu': typeof MenuRoute
   '/order-type': typeof OrderTypeRoute
   '/tablet': typeof TabletRoute
+  '/admin/biyo': typeof AdminBiyoRoute
   '/admin/closures': typeof AdminClosuresRoute
   '/admin/drivers': typeof AdminDriversRoute
   '/admin/hours': typeof AdminHoursRoute
@@ -178,6 +195,7 @@ export interface FileRoutesById {
   '/item/$itemId': typeof ItemItemIdRoute
   '/staff/login': typeof StaffLoginRoute
   '/admin/': typeof AdminIndexRoute
+  '/api/public/hooks/sync-biyo': typeof ApiPublicHooksSyncBiyoRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -190,6 +208,7 @@ export interface FileRouteTypes {
     | '/menu'
     | '/order-type'
     | '/tablet'
+    | '/admin/biyo'
     | '/admin/closures'
     | '/admin/drivers'
     | '/admin/hours'
@@ -200,6 +219,7 @@ export interface FileRouteTypes {
     | '/item/$itemId'
     | '/staff/login'
     | '/admin/'
+    | '/api/public/hooks/sync-biyo'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -209,6 +229,7 @@ export interface FileRouteTypes {
     | '/menu'
     | '/order-type'
     | '/tablet'
+    | '/admin/biyo'
     | '/admin/closures'
     | '/admin/drivers'
     | '/admin/hours'
@@ -219,6 +240,7 @@ export interface FileRouteTypes {
     | '/item/$itemId'
     | '/staff/login'
     | '/admin'
+    | '/api/public/hooks/sync-biyo'
   id:
     | '__root__'
     | '/'
@@ -229,6 +251,7 @@ export interface FileRouteTypes {
     | '/menu'
     | '/order-type'
     | '/tablet'
+    | '/admin/biyo'
     | '/admin/closures'
     | '/admin/drivers'
     | '/admin/hours'
@@ -239,6 +262,7 @@ export interface FileRouteTypes {
     | '/item/$itemId'
     | '/staff/login'
     | '/admin/'
+    | '/api/public/hooks/sync-biyo'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -253,6 +277,7 @@ export interface RootRouteChildren {
   ConfirmationOrderIdRoute: typeof ConfirmationOrderIdRoute
   ItemItemIdRoute: typeof ItemItemIdRoute
   StaffLoginRoute: typeof StaffLoginRoute
+  ApiPublicHooksSyncBiyoRoute: typeof ApiPublicHooksSyncBiyoRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -383,10 +408,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminClosuresRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/admin/biyo': {
+      id: '/admin/biyo'
+      path: '/biyo'
+      fullPath: '/admin/biyo'
+      preLoaderRoute: typeof AdminBiyoRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/api/public/hooks/sync-biyo': {
+      id: '/api/public/hooks/sync-biyo'
+      path: '/api/public/hooks/sync-biyo'
+      fullPath: '/api/public/hooks/sync-biyo'
+      preLoaderRoute: typeof ApiPublicHooksSyncBiyoRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 interface AdminRouteChildren {
+  AdminBiyoRoute: typeof AdminBiyoRoute
   AdminClosuresRoute: typeof AdminClosuresRoute
   AdminDriversRoute: typeof AdminDriversRoute
   AdminHoursRoute: typeof AdminHoursRoute
@@ -397,6 +437,7 @@ interface AdminRouteChildren {
 }
 
 const AdminRouteChildren: AdminRouteChildren = {
+  AdminBiyoRoute: AdminBiyoRoute,
   AdminClosuresRoute: AdminClosuresRoute,
   AdminDriversRoute: AdminDriversRoute,
   AdminHoursRoute: AdminHoursRoute,
@@ -420,6 +461,7 @@ const rootRouteChildren: RootRouteChildren = {
   ConfirmationOrderIdRoute: ConfirmationOrderIdRoute,
   ItemItemIdRoute: ItemItemIdRoute,
   StaffLoginRoute: StaffLoginRoute,
+  ApiPublicHooksSyncBiyoRoute: ApiPublicHooksSyncBiyoRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
