@@ -67,16 +67,43 @@ function MenuAdmin() {
     });
   }, [items, q, cat]);
 
+  useEffect(() => { setPage(0); }, [q, cat]);
+  const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const paged = useMemo(() => filtered.slice(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE), [filtered, page]);
+
+  const pricesByItem = useMemo(() => {
+    const m = new Map<string, Map<string, number>>();
+    for (const p of prices) {
+      if (!m.has(p.menu_item_id)) m.set(p.menu_item_id, new Map());
+      m.get(p.menu_item_id)!.set(p.location_id, p.price);
+    }
+    return m;
+  }, [prices]);
+
+  const assignsByItem = useMemo(() => {
+    const m = new Map<string, Set<string>>();
+    for (const a of assigns) {
+      if (!m.has(a.menu_item_id)) m.set(a.menu_item_id, new Set());
+      m.get(a.menu_item_id)!.add(a.modifier_group_id);
+    }
+    return m;
+  }, [assigns]);
+
   function priceFor(itemId: string, locId: string) {
-    return prices.find((p) => p.menu_item_id === itemId && p.location_id === locId)?.price;
+    return pricesByItem.get(itemId)?.get(locId);
   }
   function modCount(itemId: string) {
-    return assigns.filter((a) => a.menu_item_id === itemId).length;
+    return assignsByItem.get(itemId)?.size ?? 0;
   }
 
   async function toggleActive(it: Item) {
+    // optimistic
+    setItems((prev) => prev.map((x) => x.id === it.id ? { ...x, active: !x.active } : x));
     const { error } = await supabase.from("menu_items").update({ active: !it.active }).eq("id", it.id);
-    if (!error) setItems((prev) => prev.map((x) => x.id === it.id ? { ...x, active: !x.active } : x));
+    if (error) {
+      setItems((prev) => prev.map((x) => x.id === it.id ? { ...x, active: it.active } : x));
+      alert(error.message);
+    }
   }
 
   async function toggleAssign(itemId: string, groupId: string, on: boolean) {
