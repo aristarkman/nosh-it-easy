@@ -230,7 +230,10 @@ export async function runBiyoSync(): Promise<{
     for (const p of products) {
       const ex = existingMap.get(String(p.id));
       if (!ex) continue;
-      const update: Record<string, any> = { name: p.name, last_synced_at: new Date().toISOString() };
+      const update: { name: string; last_synced_at: string; category?: string } = {
+        name: p.name,
+        last_synced_at: new Date().toISOString(),
+      };
       if (!ex.category) {
         const cat = pickCategory(p.categories);
         if (cat) update.category = cat;
