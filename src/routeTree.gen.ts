@@ -24,6 +24,8 @@ import { Route as ConfirmationOrderIdRouteImport } from './routes/confirmation.$
 import { Route as AdminZonesRouteImport } from './routes/admin.zones'
 import { Route as AdminThrottleRouteImport } from './routes/admin.throttle'
 import { Route as AdminStaffRouteImport } from './routes/admin.staff'
+import { Route as AdminModifiersRouteImport } from './routes/admin.modifiers'
+import { Route as AdminMenuRouteImport } from './routes/admin.menu'
 import { Route as AdminHoursRouteImport } from './routes/admin.hours'
 import { Route as AdminDriversRouteImport } from './routes/admin.drivers'
 import { Route as AdminClosuresRouteImport } from './routes/admin.closures'
@@ -105,6 +107,16 @@ const AdminStaffRoute = AdminStaffRouteImport.update({
   path: '/staff',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminModifiersRoute = AdminModifiersRouteImport.update({
+  id: '/modifiers',
+  path: '/modifiers',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminMenuRoute = AdminMenuRouteImport.update({
+  id: '/menu',
+  path: '/menu',
+  getParentRoute: () => AdminRoute,
+} as any)
 const AdminHoursRoute = AdminHoursRouteImport.update({
   id: '/hours',
   path: '/hours',
@@ -144,6 +156,8 @@ export interface FileRoutesByFullPath {
   '/admin/closures': typeof AdminClosuresRoute
   '/admin/drivers': typeof AdminDriversRoute
   '/admin/hours': typeof AdminHoursRoute
+  '/admin/menu': typeof AdminMenuRoute
+  '/admin/modifiers': typeof AdminModifiersRoute
   '/admin/staff': typeof AdminStaffRoute
   '/admin/throttle': typeof AdminThrottleRoute
   '/admin/zones': typeof AdminZonesRoute
@@ -165,6 +179,8 @@ export interface FileRoutesByTo {
   '/admin/closures': typeof AdminClosuresRoute
   '/admin/drivers': typeof AdminDriversRoute
   '/admin/hours': typeof AdminHoursRoute
+  '/admin/menu': typeof AdminMenuRoute
+  '/admin/modifiers': typeof AdminModifiersRoute
   '/admin/staff': typeof AdminStaffRoute
   '/admin/throttle': typeof AdminThrottleRoute
   '/admin/zones': typeof AdminZonesRoute
@@ -188,6 +204,8 @@ export interface FileRoutesById {
   '/admin/closures': typeof AdminClosuresRoute
   '/admin/drivers': typeof AdminDriversRoute
   '/admin/hours': typeof AdminHoursRoute
+  '/admin/menu': typeof AdminMenuRoute
+  '/admin/modifiers': typeof AdminModifiersRoute
   '/admin/staff': typeof AdminStaffRoute
   '/admin/throttle': typeof AdminThrottleRoute
   '/admin/zones': typeof AdminZonesRoute
@@ -212,6 +230,8 @@ export interface FileRouteTypes {
     | '/admin/closures'
     | '/admin/drivers'
     | '/admin/hours'
+    | '/admin/menu'
+    | '/admin/modifiers'
     | '/admin/staff'
     | '/admin/throttle'
     | '/admin/zones'
@@ -233,6 +253,8 @@ export interface FileRouteTypes {
     | '/admin/closures'
     | '/admin/drivers'
     | '/admin/hours'
+    | '/admin/menu'
+    | '/admin/modifiers'
     | '/admin/staff'
     | '/admin/throttle'
     | '/admin/zones'
@@ -255,6 +277,8 @@ export interface FileRouteTypes {
     | '/admin/closures'
     | '/admin/drivers'
     | '/admin/hours'
+    | '/admin/menu'
+    | '/admin/modifiers'
     | '/admin/staff'
     | '/admin/throttle'
     | '/admin/zones'
@@ -387,6 +411,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminStaffRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/admin/modifiers': {
+      id: '/admin/modifiers'
+      path: '/modifiers'
+      fullPath: '/admin/modifiers'
+      preLoaderRoute: typeof AdminModifiersRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/menu': {
+      id: '/admin/menu'
+      path: '/menu'
+      fullPath: '/admin/menu'
+      preLoaderRoute: typeof AdminMenuRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/admin/hours': {
       id: '/admin/hours'
       path: '/hours'
@@ -430,6 +468,8 @@ interface AdminRouteChildren {
   AdminClosuresRoute: typeof AdminClosuresRoute
   AdminDriversRoute: typeof AdminDriversRoute
   AdminHoursRoute: typeof AdminHoursRoute
+  AdminMenuRoute: typeof AdminMenuRoute
+  AdminModifiersRoute: typeof AdminModifiersRoute
   AdminStaffRoute: typeof AdminStaffRoute
   AdminThrottleRoute: typeof AdminThrottleRoute
   AdminZonesRoute: typeof AdminZonesRoute
@@ -441,6 +481,8 @@ const AdminRouteChildren: AdminRouteChildren = {
   AdminClosuresRoute: AdminClosuresRoute,
   AdminDriversRoute: AdminDriversRoute,
   AdminHoursRoute: AdminHoursRoute,
+  AdminMenuRoute: AdminMenuRoute,
+  AdminModifiersRoute: AdminModifiersRoute,
   AdminStaffRoute: AdminStaffRoute,
   AdminThrottleRoute: AdminThrottleRoute,
   AdminZonesRoute: AdminZonesRoute,

@@ -152,6 +152,32 @@ export type Database = {
           },
         ]
       }
+      menu_item_modifier_groups: {
+        Row: {
+          menu_item_id: string
+          modifier_group_id: string
+          sort_order: number
+        }
+        Insert: {
+          menu_item_id: string
+          modifier_group_id: string
+          sort_order?: number
+        }
+        Update: {
+          menu_item_id?: string
+          modifier_group_id?: string
+          sort_order?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "menu_item_modifier_groups_modifier_group_id_fkey"
+            columns: ["modifier_group_id"]
+            isOneToOne: false
+            referencedRelation: "modifier_groups"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       menu_item_modifiers: {
         Row: {
           groups: Json
@@ -288,6 +314,71 @@ export type Database = {
           status?: string
         }
         Relationships: []
+      }
+      modifier_groups: {
+        Row: {
+          created_at: string
+          id: string
+          max_select: number
+          min_select: number
+          name: string
+          required: boolean
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          max_select?: number
+          min_select?: number
+          name: string
+          required?: boolean
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          max_select?: number
+          min_select?: number
+          name?: string
+          required?: boolean
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      modifier_options: {
+        Row: {
+          created_at: string
+          group_id: string
+          id: string
+          name: string
+          price_delta: number
+          sort_order: number
+        }
+        Insert: {
+          created_at?: string
+          group_id: string
+          id?: string
+          name: string
+          price_delta?: number
+          sort_order?: number
+        }
+        Update: {
+          created_at?: string
+          group_id?: string
+          id?: string
+          name?: string
+          price_delta?: number
+          sort_order?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "modifier_options_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "modifier_groups"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       orders: {
         Row: {
