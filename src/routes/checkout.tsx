@@ -1,11 +1,13 @@
 import { createFileRoute, Link, useNavigate, redirect } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
-import { ArrowLeft, CreditCard, Wallet, Apple, AlertTriangle } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { ArrowLeft, CreditCard, Wallet, Apple, AlertTriangle, Lock } from "lucide-react";
 import { useOrder, fmt, LOCATIONS } from "@/lib/order-context";
 import { supabase } from "@/integrations/supabase/client";
+import { chargeWithToken, getFtdConfig } from "@/server/ipospays.functions";
 import { toast } from "sonner";
 
 const PAY_IN_PERSON_THRESHOLD = 100;
+const TIP_PRESETS = [0.15, 0.18, 0.2];
 
 export const Route = createFileRoute("/checkout")({
   head: () => ({
@@ -28,6 +30,12 @@ export const Route = createFileRoute("/checkout")({
   component: CheckoutPage,
 });
 
+declare global {
+  interface Window {
+    postData?: () => Promise<{ payment_token_id?: string; paymentTokenId?: string } | undefined>;
+  }
+}
+
 function CheckoutPage() {
   const navigate = useNavigate();
   const { cart, subtotal, location, orderType, clearCart } = useOrder();
@@ -43,8 +51,15 @@ function CheckoutPage() {
   const [pay, setPay] = useState<"card" | "applepay" | "googlepay" | "in-person">("card");
   const [submitting, setSubmitting] = useState(false);
 
+  const [tipMode, setTipMode] = useState<"preset" | "custom" | "none">("preset");
+  const [tipPreset, setTipPreset] = useState<number>(0.18);
+  const [tipCustom, setTipCustom] = useState<string>("");
+
   const [zones, setZones] = useState<{ zip: string; fee: number; minimum: number }[]>([]);
   const [closedToday, setClosedToday] = useState<string | null>(null);
+
+  const [ftdReady, setFtdReady] = useState(false);
+  const ftdLoadedRef = useRef(false);
 
   useEffect(() => {
     if (!location) return;
@@ -64,14 +79,47 @@ function CheckoutPage() {
     })();
   }, [location]);
 
+  // Load Freedom-to-Design script when card is selected
+  useEffect(() => {
+    if (pay !== "card" || ftdLoadedRef.current) return;
+    ftdLoadedRef.current = true;
+    (async () => {
+      try {
+        const cfg = await getFtdConfig();
+        const s = document.createElement("script");
+        s.id = "ftd";
+        s.src = cfg.scriptUrl;
+        s.setAttribute("security_key", cfg.authToken);
+        s.setAttribute("data-tpn", cfg.tpn);
+        s.defer = true;
+        s.onload = () => setFtdReady(true);
+        s.onerror = () => toast.error("Could not load secure card form.");
+        document.head.appendChild(s);
+      } catch (e) {
+        console.error(e);
+        toast.error("Card payments are not configured yet.");
+      }
+    })();
+  }, [pay]);
+
   const matchedZone = useMemo(
     () => (orderType === "delivery" && zip ? zones.find((z) => z.zip === zip) : undefined),
     [orderType, zip, zones]
   );
   const deliveryFee = orderType === "delivery" ? matchedZone?.fee ?? 0 : 0;
+
+  const tipAmount = useMemo(() => {
+    if (tipMode === "none") return 0;
+    if (tipMode === "custom") {
+      const n = parseFloat(tipCustom);
+      return isNaN(n) || n < 0 ? 0 : +n.toFixed(2);
+    }
+    return +(subtotal * tipPreset).toFixed(2);
+  }, [tipMode, tipPreset, tipCustom, subtotal]);
+
   const tax = +(subtotal * 0.06625).toFixed(2);
   const cardFee = pay === "in-person" ? 0 : +((subtotal + deliveryFee) * 0.03).toFixed(2);
-  const total = +(subtotal + deliveryFee + tax + cardFee).toFixed(2);
+  const total = +(subtotal + deliveryFee + tax + tipAmount + cardFee).toFixed(2);
 
   const canPayInPerson = orderType === "pickup" && subtotal < PAY_IN_PERSON_THRESHOLD;
   const zoneOk = orderType !== "delivery" || (!!matchedZone && subtotal >= matchedZone.minimum);
@@ -87,7 +135,53 @@ function CheckoutPage() {
     e.preventDefault();
     if (!valid || !location) return;
     setSubmitting(true);
+
     const orderNumber = `KN-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
+    let paymentMeta: Record<string, unknown> = {};
+
+    try {
+      if (pay === "card") {
+        if (!ftdReady || typeof window.postData !== "function") {
+          toast.error("Card form is still loading. Please wait a moment.");
+          setSubmitting(false);
+          return;
+        }
+        const tok = await window.postData();
+        const paymentTokenId = tok?.payment_token_id ?? tok?.paymentTokenId;
+        if (!paymentTokenId) {
+          toast.error("Card details are invalid. Please check and try again.");
+          setSubmitting(false);
+          return;
+        }
+        const res = await chargeWithToken({
+          data: {
+            paymentTokenId,
+            amountCents: Math.round(total * 100),
+            referenceId: orderNumber,
+            invoiceNumber: orderNumber,
+          },
+        });
+        if (!res.ok) {
+          toast.error(res.message || "Payment was declined.");
+          setSubmitting(false);
+          return;
+        }
+        paymentMeta = {
+          processor: "ipospays",
+          rrn: res.rrn,
+          authCode: res.authCode,
+          maskedCard: res.maskedCard,
+          cardType: res.cardType,
+          transactionId: res.transactionId,
+        };
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error("Payment failed. Please try a different card.");
+      setSubmitting(false);
+      return;
+    }
+
     const { data, error } = await supabase
       .from("orders")
       .insert({
@@ -107,13 +201,20 @@ function CheckoutPage() {
         card_fee: cardFee,
         total,
         items: cart,
+        notes: Object.keys(paymentMeta).length
+          ? `tip:${tipAmount.toFixed(2)} | ${JSON.stringify(paymentMeta)}`
+          : `tip:${tipAmount.toFixed(2)}`,
       })
       .select("order_number")
       .single();
 
     if (error || !data) {
       console.error(error);
-      toast.error("Could not place order. Please try again.");
+      toast.error(
+        pay === "card"
+          ? "Payment captured but order could not be saved. Please call us."
+          : "Could not place order. Please try again."
+      );
       setSubmitting(false);
       return;
     }
@@ -129,6 +230,7 @@ function CheckoutPage() {
         scheduledTime,
         pay,
         total,
+        tip: tipAmount,
         items: cart,
       })
     );
@@ -218,6 +320,41 @@ function CheckoutPage() {
             </Section>
           )}
 
+          <Section title="Add a tip">
+            <p className="text-xs text-muted-foreground">
+              100% of tips go to our team.
+            </p>
+            <div className="grid grid-cols-3 gap-2 sm:grid-cols-5">
+              {TIP_PRESETS.map((p) => (
+                <Pill
+                  key={p}
+                  active={tipMode === "preset" && tipPreset === p}
+                  onClick={() => {
+                    setTipMode("preset");
+                    setTipPreset(p);
+                  }}
+                >
+                  {Math.round(p * 100)}%
+                </Pill>
+              ))}
+              <Pill active={tipMode === "custom"} onClick={() => setTipMode("custom")}>
+                Custom
+              </Pill>
+              <Pill active={tipMode === "none"} onClick={() => setTipMode("none")}>
+                No tip
+              </Pill>
+            </div>
+            {tipMode === "custom" && (
+              <input
+                value={tipCustom}
+                onChange={(e) => setTipCustom(e.target.value.replace(/[^\d.]/g, ""))}
+                inputMode="decimal"
+                placeholder="$ amount"
+                className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm outline-none focus:border-primary"
+              />
+            )}
+          </Section>
+
           <Section title="Payment">
             <div className="grid gap-2 sm:grid-cols-2">
               <PayOption icon={<CreditCard className="size-4" />} active={pay === "card"} onClick={() => setPay("card")}>
@@ -240,6 +377,44 @@ function CheckoutPage() {
                 A 3% card processing fee applies on online payments.
               </p>
             )}
+
+            {pay === "card" && (
+              <div className="mt-2 rounded-xl border border-border bg-background p-4">
+                <div className="mb-3 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+                  <Lock className="size-3.5" /> Secure card details
+                </div>
+                <div className="grid gap-3">
+                  <input
+                    id="ccnumber"
+                    placeholder="Card number"
+                    autoComplete="cc-number"
+                    inputMode="numeric"
+                    className="w-full rounded-xl border border-border bg-card px-3 py-2.5 text-sm outline-none focus:border-primary"
+                  />
+                  <div className="grid grid-cols-2 gap-3">
+                    <input
+                      id="ccexpiry"
+                      placeholder="MM / YY"
+                      autoComplete="cc-exp"
+                      className="w-full rounded-xl border border-border bg-card px-3 py-2.5 text-sm outline-none focus:border-primary"
+                    />
+                    <input
+                      id="cccvv"
+                      placeholder="CVV"
+                      autoComplete="cc-csc"
+                      inputMode="numeric"
+                      className="w-full rounded-xl border border-border bg-card px-3 py-2.5 text-sm outline-none focus:border-primary"
+                    />
+                  </div>
+                </div>
+                {!ftdReady && (
+                  <p className="mt-2 text-[11px] text-muted-foreground">Loading secure form…</p>
+                )}
+                <p className="mt-2 text-[11px] text-muted-foreground">
+                  Card data is sent directly to iPOSpays. We never see or store it.
+                </p>
+              </div>
+            )}
           </Section>
         </div>
 
@@ -258,22 +433,26 @@ function CheckoutPage() {
           <div className="my-4 border-t border-border" />
           <Row label="Subtotal" value={fmt(subtotal)} />
           {orderType === "delivery" && <Row label="Delivery fee" value={fmt(deliveryFee)} />}
-          {cardFee > 0 && <Row label="Card processing (3%)" value={fmt(cardFee)} />}
           <Row label="Tax" value={fmt(tax)} />
+          {tipAmount > 0 && <Row label="Tip" value={fmt(tipAmount)} />}
+          {cardFee > 0 && <Row label="Card processing (3%)" value={fmt(cardFee)} />}
           <div className="mt-2 border-t border-border pt-2">
             <Row label="Total" value={fmt(total)} bold />
           </div>
           <button
             type="submit"
-            disabled={!valid || submitting}
+            disabled={!valid || submitting || (pay === "card" && !ftdReady)}
             className="mt-5 w-full rounded-full bg-primary px-5 py-3 text-sm font-semibold text-primary-foreground transition hover:opacity-90 disabled:opacity-40"
           >
-            {submitting ? "Placing order…" : `Place order · ${fmt(total)}`}
+            {submitting ? "Processing…" : `Place order · ${fmt(total)}`}
           </button>
           <p className="mt-3 text-center text-[11px] text-muted-foreground">
             By placing this order you agree to our terms.
           </p>
         </aside>
+
+        {/* iPOSpays FTD requires a submit button with id payButton in scope */}
+        <button id="payButton" type="button" className="hidden" aria-hidden />
       </form>
     </div>
   );
