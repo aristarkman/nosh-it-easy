@@ -1,17 +1,19 @@
 import { createServerFn } from "@tanstack/react-start";
-import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { runBiyoSync } from "./biyo-sync.server";
 
-// Admin-triggered manual sync
+// Admin-triggered manual sync. Client passes the user's access token in `data`.
 export const syncBiyoNow = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
-  .handler(async ({ context }) => {
-    const { supabase, userId } = context;
-    // Verify admin role
-    const { data: roles } = await supabase
+  .inputValidator((data: { accessToken: string }) => data)
+  .handler(async ({ data }) => {
+    const { data: userData, error: userErr } = await supabaseAdmin.auth.getUser(data.accessToken);
+    if (userErr || !userData?.user) {
+      return { ok: false as const, error: "Not authenticated" };
+    }
+    const { data: roles } = await supabaseAdmin
       .from("user_roles")
       .select("role")
-      .eq("user_id", userId);
+      .eq("user_id", userData.user.id);
     const isAdmin = (roles ?? []).some((r) => r.role === "admin");
     if (!isAdmin) {
       return { ok: false as const, error: "Admin only" };

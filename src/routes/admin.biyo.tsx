@@ -54,7 +54,10 @@ function BiyoAdmin() {
   async function runSync() {
     setSyncing(true); setResult(null); setErr(null);
     try {
-      const res = await sync();
+      const { data: sess } = await supabase.auth.getSession();
+      const token = sess.session?.access_token;
+      if (!token) { setErr("Please sign in again."); setSyncing(false); return; }
+      const res = await sync({ data: { accessToken: token } });
       if (res.ok) {
         setResult(`Synced ${res.itemsUpserted} items, ${res.pricesUpserted} prices.`);
       } else {
