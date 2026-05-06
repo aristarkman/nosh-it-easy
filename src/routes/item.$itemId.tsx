@@ -1,7 +1,7 @@
 import { createFileRoute, Link, useNavigate, notFound } from "@tanstack/react-router";
 import { useState } from "react";
 import { ArrowLeft, Minus, Plus } from "lucide-react";
-import { getItem, type ModifierGroup, type ModifierOption } from "@/lib/menu-data";
+import { getItem, type MenuItem, type ModifierGroup, type ModifierOption } from "@/lib/menu-data";
 import { useOrder, fmt, buildLineFromItem } from "@/lib/order-context";
 
 export const Route = createFileRoute("/item/$itemId")({
@@ -36,7 +36,7 @@ export const Route = createFileRoute("/item/$itemId")({
 });
 
 function ItemPage() {
-  const { item } = Route.useLoaderData();
+  const { item } = Route.useLoaderData() as { item: MenuItem };
   const { addToCart } = useOrder();
   const navigate = useNavigate();
 
