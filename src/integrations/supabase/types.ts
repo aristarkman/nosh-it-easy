@@ -14,6 +14,30 @@ export type Database = {
   }
   public: {
     Tables: {
+      biyo_locations: {
+        Row: {
+          biyo_store_id: string
+          created_at: string
+          display_name: string | null
+          location_id: string
+          updated_at: string
+        }
+        Insert: {
+          biyo_store_id: string
+          created_at?: string
+          display_name?: string | null
+          location_id: string
+          updated_at?: string
+        }
+        Update: {
+          biyo_store_id?: string
+          created_at?: string
+          display_name?: string | null
+          location_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       delivery_zones: {
         Row: {
           created_at: string
@@ -89,6 +113,179 @@ export type Database = {
           max_orders_per_15min?: number
           pickup_lead_min?: number
           updated_at?: string
+        }
+        Relationships: []
+      }
+      menu_item_availability: {
+        Row: {
+          location_id: string
+          menu_item_id: string
+          sold_out: boolean
+          updated_at: string
+        }
+        Insert: {
+          location_id: string
+          menu_item_id: string
+          sold_out?: boolean
+          updated_at?: string
+        }
+        Update: {
+          location_id?: string
+          menu_item_id?: string
+          sold_out?: boolean
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "menu_item_availability_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "biyo_locations"
+            referencedColumns: ["location_id"]
+          },
+          {
+            foreignKeyName: "menu_item_availability_menu_item_id_fkey"
+            columns: ["menu_item_id"]
+            isOneToOne: false
+            referencedRelation: "menu_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      menu_item_modifiers: {
+        Row: {
+          groups: Json
+          menu_item_id: string
+          updated_at: string
+        }
+        Insert: {
+          groups?: Json
+          menu_item_id: string
+          updated_at?: string
+        }
+        Update: {
+          groups?: Json
+          menu_item_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "menu_item_modifiers_menu_item_id_fkey"
+            columns: ["menu_item_id"]
+            isOneToOne: true
+            referencedRelation: "menu_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      menu_item_prices: {
+        Row: {
+          location_id: string
+          menu_item_id: string
+          price: number
+          synced_at: string
+        }
+        Insert: {
+          location_id: string
+          menu_item_id: string
+          price?: number
+          synced_at?: string
+        }
+        Update: {
+          location_id?: string
+          menu_item_id?: string
+          price?: number
+          synced_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "menu_item_prices_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "biyo_locations"
+            referencedColumns: ["location_id"]
+          },
+          {
+            foreignKeyName: "menu_item_prices_menu_item_id_fkey"
+            columns: ["menu_item_id"]
+            isOneToOne: false
+            referencedRelation: "menu_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      menu_items: {
+        Row: {
+          active: boolean
+          biyo_product_id: string
+          category: string | null
+          created_at: string
+          description: string | null
+          id: string
+          last_synced_at: string | null
+          name: string
+          photo_url: string | null
+          popular: boolean
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          biyo_product_id: string
+          category?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          last_synced_at?: string | null
+          name: string
+          photo_url?: string | null
+          popular?: boolean
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          biyo_product_id?: string
+          category?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          last_synced_at?: string | null
+          name?: string
+          photo_url?: string | null
+          popular?: boolean
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      menu_sync_log: {
+        Row: {
+          error: string | null
+          finished_at: string | null
+          id: string
+          items_upserted: number | null
+          prices_upserted: number | null
+          started_at: string
+          status: string
+        }
+        Insert: {
+          error?: string | null
+          finished_at?: string | null
+          id?: string
+          items_upserted?: number | null
+          prices_upserted?: number | null
+          started_at?: string
+          status?: string
+        }
+        Update: {
+          error?: string | null
+          finished_at?: string | null
+          id?: string
+          items_upserted?: number | null
+          prices_upserted?: number | null
+          started_at?: string
+          status?: string
         }
         Relationships: []
       }
