@@ -2,6 +2,8 @@ import { createFileRoute, Link, useNavigate, redirect } from "@tanstack/react-ro
 import { useState } from "react";
 import { ArrowLeft, CreditCard, Wallet, Apple } from "lucide-react";
 import { useOrder, fmt, LOCATIONS } from "@/lib/order-context";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 const PAY_IN_PERSON_THRESHOLD = 100;
 
