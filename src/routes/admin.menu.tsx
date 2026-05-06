@@ -35,6 +35,8 @@ function MenuAdmin() {
   const [loading, setLoading] = useState(true);
   const [q, setQ] = useState("");
   const [cat, setCat] = useState<string>("");
+  const [page, setPage] = useState(0);
+  const PAGE_SIZE = 50;
 
   async function load() {
     setLoading(true);
@@ -65,26 +67,62 @@ function MenuAdmin() {
     });
   }, [items, q, cat]);
 
+  useEffect(() => { setPage(0); }, [q, cat]);
+  const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const paged = useMemo(() => filtered.slice(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE), [filtered, page]);
+
+  const pricesByItem = useMemo(() => {
+    const m = new Map<string, Map<string, number>>();
+    for (const p of prices) {
+      if (!m.has(p.menu_item_id)) m.set(p.menu_item_id, new Map());
+      m.get(p.menu_item_id)!.set(p.location_id, p.price);
+    }
+    return m;
+  }, [prices]);
+
+  const assignsByItem = useMemo(() => {
+    const m = new Map<string, Set<string>>();
+    for (const a of assigns) {
+      if (!m.has(a.menu_item_id)) m.set(a.menu_item_id, new Set());
+      m.get(a.menu_item_id)!.add(a.modifier_group_id);
+    }
+    return m;
+  }, [assigns]);
+
   function priceFor(itemId: string, locId: string) {
-    return prices.find((p) => p.menu_item_id === itemId && p.location_id === locId)?.price;
+    return pricesByItem.get(itemId)?.get(locId);
   }
   function modCount(itemId: string) {
-    return assigns.filter((a) => a.menu_item_id === itemId).length;
+    return assignsByItem.get(itemId)?.size ?? 0;
   }
 
   async function toggleActive(it: Item) {
+    // optimistic
+    setItems((prev) => prev.map((x) => x.id === it.id ? { ...x, active: !x.active } : x));
     const { error } = await supabase.from("menu_items").update({ active: !it.active }).eq("id", it.id);
-    if (!error) setItems((prev) => prev.map((x) => x.id === it.id ? { ...x, active: !x.active } : x));
+    if (error) {
+      setItems((prev) => prev.map((x) => x.id === it.id ? { ...x, active: it.active } : x));
+      alert(error.message);
+    }
   }
 
   async function toggleAssign(itemId: string, groupId: string, on: boolean) {
+    // optimistic
     if (on) {
+      setAssigns((p) => [...p, { menu_item_id: itemId, modifier_group_id: groupId }]);
       const { error } = await supabase.from("menu_item_modifier_groups").insert({ menu_item_id: itemId, modifier_group_id: groupId });
-      if (!error) setAssigns((p) => [...p, { menu_item_id: itemId, modifier_group_id: groupId }]);
+      if (error) {
+        setAssigns((p) => p.filter((a) => !(a.menu_item_id === itemId && a.modifier_group_id === groupId)));
+        alert(error.message);
+      }
     } else {
+      setAssigns((p) => p.filter((a) => !(a.menu_item_id === itemId && a.modifier_group_id === groupId)));
       const { error } = await supabase.from("menu_item_modifier_groups")
         .delete().eq("menu_item_id", itemId).eq("modifier_group_id", groupId);
-      if (!error) setAssigns((p) => p.filter((a) => !(a.menu_item_id === itemId && a.modifier_group_id === groupId)));
+      if (error) {
+        setAssigns((p) => [...p, { menu_item_id: itemId, modifier_group_id: groupId }]);
+        alert(error.message);
+      }
     }
   }
 
@@ -151,7 +189,7 @@ function MenuAdmin() {
               </tr>
             </thead>
             <tbody>
-              {filtered.map((it) => (
+              {paged.map((it) => (
                 <tr key={it.id} className="border-b border-border last:border-0">
                   <td className="px-4 py-3">
                     <label className="block size-14 cursor-pointer overflow-hidden rounded-lg border border-border bg-muted hover:border-primary">
@@ -197,7 +235,7 @@ function MenuAdmin() {
                         {groups.length === 0 ? (
                           <div className="text-xs text-muted-foreground">No modifier groups yet. <Link to="/admin/modifiers" className="text-primary underline">Create one</Link></div>
                         ) : groups.map((g) => {
-                          const on = assigns.some((a) => a.menu_item_id === it.id && a.modifier_group_id === g.id);
+                          const on = assignsByItem.get(it.id)?.has(g.id) ?? false;
                           return (
                             <label key={g.id} className="flex cursor-pointer items-center gap-2 text-xs">
                               <input type="checkbox" checked={on} onChange={(e) => toggleAssign(it.id, g.id, e.target.checked)} />
@@ -222,6 +260,18 @@ function MenuAdmin() {
               ))}
             </tbody>
           </table>
+        )}
+        {!loading && filtered.length > PAGE_SIZE && (
+          <div className="flex items-center justify-between gap-2 border-t border-border p-3 text-xs text-muted-foreground">
+            <span>Showing {page * PAGE_SIZE + 1}–{Math.min(filtered.length, (page + 1) * PAGE_SIZE)} of {filtered.length}</span>
+            <div className="flex gap-2">
+              <button onClick={() => setPage((p) => Math.max(0, p - 1))} disabled={page === 0}
+                className="rounded border border-border px-3 py-1 disabled:opacity-40">Prev</button>
+              <span className="px-2 py-1">Page {page + 1} / {pageCount}</span>
+              <button onClick={() => setPage((p) => Math.min(pageCount - 1, p + 1))} disabled={page >= pageCount - 1}
+                className="rounded border border-border px-3 py-1 disabled:opacity-40">Next</button>
+            </div>
+          </div>
         )}
       </div>
     </div>
