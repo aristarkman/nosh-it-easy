@@ -2,6 +2,8 @@ import { createFileRoute, Link, useNavigate, redirect } from "@tanstack/react-ro
 import { useState } from "react";
 import { ArrowLeft, CreditCard, Wallet, Apple } from "lucide-react";
 import { useOrder, fmt, LOCATIONS } from "@/lib/order-context";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 const PAY_IN_PERSON_THRESHOLD = 100;
 
@@ -54,13 +56,43 @@ function CheckoutPage() {
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!valid) return;
+    if (!valid || !location) return;
     setSubmitting(true);
-    const orderId = `KN-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
+    const orderNumber = `KN-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
+    const { data, error } = await supabase
+      .from("orders")
+      .insert({
+        order_number: orderNumber,
+        location_id: location,
+        order_type: orderType ?? "pickup",
+        customer_name: name.trim(),
+        customer_phone: phone.trim(),
+        customer_email: email.trim() || null,
+        delivery_address: orderType === "delivery" ? address.trim() : null,
+        when_type: whenType,
+        scheduled_time: whenType === "schedule" && scheduledTime ? scheduledTime : null,
+        payment_method: pay,
+        subtotal,
+        delivery_fee: deliveryFee,
+        tax,
+        card_fee: cardFee,
+        total,
+        items: cart,
+      })
+      .select("order_number")
+      .single();
+
+    if (error || !data) {
+      console.error(error);
+      toast.error("Could not place order. Please try again.");
+      setSubmitting(false);
+      return;
+    }
+
     sessionStorage.setItem(
       "kn-last-order",
       JSON.stringify({
-        orderId,
+        orderId: data.order_number,
         name,
         location: loc?.name,
         orderType,
@@ -72,9 +104,7 @@ function CheckoutPage() {
       })
     );
     clearCart();
-    setTimeout(() => {
-      navigate({ to: "/confirmation/$orderId", params: { orderId } });
-    }, 400);
+    navigate({ to: "/confirmation/$orderId", params: { orderId: data.order_number } });
   };
 
   return (

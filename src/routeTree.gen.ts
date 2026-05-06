@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as TabletRouteImport } from './routes/tablet'
 import { Route as OrderTypeRouteImport } from './routes/order-type'
 import { Route as MenuRouteImport } from './routes/menu'
 import { Route as CheckoutRouteImport } from './routes/checkout'
@@ -17,6 +18,11 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as ItemItemIdRouteImport } from './routes/item.$itemId'
 import { Route as ConfirmationOrderIdRouteImport } from './routes/confirmation.$orderId'
 
+const TabletRoute = TabletRouteImport.update({
+  id: '/tablet',
+  path: '/tablet',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const OrderTypeRoute = OrderTypeRouteImport.update({
   id: '/order-type',
   path: '/order-type',
@@ -59,6 +65,7 @@ export interface FileRoutesByFullPath {
   '/checkout': typeof CheckoutRoute
   '/menu': typeof MenuRoute
   '/order-type': typeof OrderTypeRoute
+  '/tablet': typeof TabletRoute
   '/confirmation/$orderId': typeof ConfirmationOrderIdRoute
   '/item/$itemId': typeof ItemItemIdRoute
 }
@@ -68,6 +75,7 @@ export interface FileRoutesByTo {
   '/checkout': typeof CheckoutRoute
   '/menu': typeof MenuRoute
   '/order-type': typeof OrderTypeRoute
+  '/tablet': typeof TabletRoute
   '/confirmation/$orderId': typeof ConfirmationOrderIdRoute
   '/item/$itemId': typeof ItemItemIdRoute
 }
@@ -78,6 +86,7 @@ export interface FileRoutesById {
   '/checkout': typeof CheckoutRoute
   '/menu': typeof MenuRoute
   '/order-type': typeof OrderTypeRoute
+  '/tablet': typeof TabletRoute
   '/confirmation/$orderId': typeof ConfirmationOrderIdRoute
   '/item/$itemId': typeof ItemItemIdRoute
 }
@@ -89,6 +98,7 @@ export interface FileRouteTypes {
     | '/checkout'
     | '/menu'
     | '/order-type'
+    | '/tablet'
     | '/confirmation/$orderId'
     | '/item/$itemId'
   fileRoutesByTo: FileRoutesByTo
@@ -98,6 +108,7 @@ export interface FileRouteTypes {
     | '/checkout'
     | '/menu'
     | '/order-type'
+    | '/tablet'
     | '/confirmation/$orderId'
     | '/item/$itemId'
   id:
@@ -107,6 +118,7 @@ export interface FileRouteTypes {
     | '/checkout'
     | '/menu'
     | '/order-type'
+    | '/tablet'
     | '/confirmation/$orderId'
     | '/item/$itemId'
   fileRoutesById: FileRoutesById
@@ -117,12 +129,20 @@ export interface RootRouteChildren {
   CheckoutRoute: typeof CheckoutRoute
   MenuRoute: typeof MenuRoute
   OrderTypeRoute: typeof OrderTypeRoute
+  TabletRoute: typeof TabletRoute
   ConfirmationOrderIdRoute: typeof ConfirmationOrderIdRoute
   ItemItemIdRoute: typeof ItemItemIdRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/tablet': {
+      id: '/tablet'
+      path: '/tablet'
+      fullPath: '/tablet'
+      preLoaderRoute: typeof TabletRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/order-type': {
       id: '/order-type'
       path: '/order-type'
@@ -181,6 +201,7 @@ const rootRouteChildren: RootRouteChildren = {
   CheckoutRoute: CheckoutRoute,
   MenuRoute: MenuRoute,
   OrderTypeRoute: OrderTypeRoute,
+  TabletRoute: TabletRoute,
   ConfirmationOrderIdRoute: ConfirmationOrderIdRoute,
   ItemItemIdRoute: ItemItemIdRoute,
 }
