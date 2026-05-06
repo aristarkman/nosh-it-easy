@@ -28,7 +28,19 @@ function AdminLayout() {
   }, [auth.loading, auth.authed, nav]);
 
   if (auth.loading) {
-    return <div className="grid min-h-screen place-items-center text-muted-foreground">Loading…</div>;
+    return (
+      <div className="grid min-h-screen place-items-center bg-muted/40 p-6 text-center">
+        <div className="space-y-4">
+          <div className="text-muted-foreground">Loading…</div>
+          <button
+            onClick={async () => { await auth.signOut(); nav({ to: "/staff/login" }); }}
+            className="inline-flex items-center gap-1.5 rounded-full border border-border px-4 py-2 text-xs font-bold uppercase tracking-wider"
+          >
+            <LogOut className="size-3.5" /> Sign out
+          </button>
+        </div>
+      </div>
+    );
   }
   if (!auth.authed) return null;
 
