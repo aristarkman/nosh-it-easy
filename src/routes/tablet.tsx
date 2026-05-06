@@ -57,7 +57,7 @@ function TabletPage() {
         .limit(200);
       if (!mounted) return;
       if (error) toast.error("Failed to load orders");
-      else setOrders((data ?? []) as Order[]);
+      else setOrders((data ?? []) as unknown as Order[]);
       setLoading(false);
     })();
 
