@@ -1,7 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { MapPin, Clock, Phone, ArrowRight } from "lucide-react";
 import { LOCATIONS, useOrder, type LocationId } from "@/lib/order-context";
-import heroImg from "@/assets/hero.jpg";
+
 
 export const Route = createFileRoute("/")({
   head: () => ({
