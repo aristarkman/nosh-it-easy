@@ -41,45 +41,45 @@
 :root {
   --radius: 0.75rem;
 
-  /* Kosher Nosh brand: deli red, deli green, cream, ink */
-  --cream: oklch(0.972 0.018 85);              /* warm off-white background */
-  --ink: oklch(0.18 0.02 60);                  /* near-black warm */
-  --mustard: oklch(0.78 0.15 80);              /* deli mustard accent */
+  /* Kosher Nosh brand: bold black + deli red, white surface */
+  --cream: oklch(1 0 0);
+  --ink: oklch(0.14 0 0);
+  --mustard: oklch(0.78 0.15 80);
 
-  --background: oklch(0.972 0.018 85);
-  --foreground: oklch(0.18 0.02 60);
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.14 0 0);
 
   --card: oklch(1 0 0);
   --card-foreground: var(--foreground);
   --popover: oklch(1 0 0);
   --popover-foreground: var(--foreground);
 
-  /* Deli red */
-  --primary: oklch(0.51 0.195 25);
-  --primary-foreground: oklch(0.98 0.01 85);
+  /* Deli red — matches koshernosh.com CTA */
+  --primary: oklch(0.62 0.225 27);
+  --primary-foreground: oklch(1 0 0);
 
-  /* Deli green */
-  --secondary: oklch(0.42 0.115 150);
-  --secondary-foreground: oklch(0.98 0.01 85);
+  /* Bold black secondary (Order Catering button) */
+  --secondary: oklch(0.14 0 0);
+  --secondary-foreground: oklch(1 0 0);
 
-  --muted: oklch(0.94 0.015 85);
-  --muted-foreground: oklch(0.42 0.02 60);
+  --muted: oklch(0.96 0 0);
+  --muted-foreground: oklch(0.42 0 0);
 
-  --accent: oklch(0.42 0.115 150);
-  --accent-foreground: oklch(0.98 0.01 85);
+  --accent: oklch(0.62 0.225 27);
+  --accent-foreground: oklch(1 0 0);
 
   --destructive: oklch(0.55 0.22 28);
-  --destructive-foreground: oklch(0.98 0.01 85);
+  --destructive-foreground: oklch(1 0 0);
 
-  --border: oklch(0.88 0.015 80);
-  --input: oklch(0.88 0.015 80);
-  --ring: oklch(0.51 0.195 25);
+  --border: oklch(0.9 0 0);
+  --input: oklch(0.9 0 0);
+  --ring: oklch(0.62 0.225 27);
 
-  --font-display: "Fraunces", ui-serif, Georgia, serif;
+  --font-display: "Anton", "Oswald", Impact, sans-serif;
   --font-body: "Inter", ui-sans-serif, system-ui, sans-serif;
 
-  --shadow-card: 0 1px 2px oklch(0.18 0.02 60 / 0.06), 0 8px 24px oklch(0.18 0.02 60 / 0.06);
-  --shadow-pop: 0 12px 40px oklch(0.51 0.195 25 / 0.18);
+  --shadow-card: 0 1px 2px oklch(0 0 0 / 0.06), 0 8px 24px oklch(0 0 0 / 0.08);
+  --shadow-pop: 0 16px 48px oklch(0.62 0.225 27 / 0.22);
 }
 
 .dark {
