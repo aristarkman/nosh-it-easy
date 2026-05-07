@@ -228,7 +228,50 @@ function CheckoutPage() {
     () => (orderType === "delivery" && zip ? zones.find((z) => z.zip === zip) : undefined),
     [orderType, zip, zones]
   );
-  const deliveryFee = orderType === "delivery" ? matchedZone?.fee ?? 0 : 0;
+
+  // Live Shipday on-demand quote — falls back to zone fee if unavailable.
+  const [liveQuote, setLiveQuote] = useState<{
+    fee: number;
+    etaMinutes: number | null;
+  } | null>(null);
+  const [quoteError, setQuoteError] = useState<string | null>(null);
+  const [quoteLoading, setQuoteLoading] = useState(false);
+
+  useEffect(() => {
+    if (orderType !== "delivery" || !location || address.trim().length < 5 || zip.length !== 5) {
+      setLiveQuote(null);
+      setQuoteError(null);
+      return;
+    }
+    let cancelled = false;
+    setQuoteLoading(true);
+    setQuoteError(null);
+    const handle = setTimeout(async () => {
+      const r = await quoteShipday({
+        data: {
+          locationId: location,
+          deliveryAddress: `${address.trim()}, ${zip}`,
+          total: subtotal,
+        },
+      }).catch(() => ({ ok: false as const, message: "Could not reach delivery service." }));
+      if (cancelled) return;
+      setQuoteLoading(false);
+      if (r.ok) {
+        setLiveQuote({ fee: r.fee, etaMinutes: r.etaMinutes });
+        setQuoteError(null);
+      } else {
+        setLiveQuote(null);
+        setQuoteError(r.message);
+      }
+    }, 600);
+    return () => {
+      cancelled = true;
+      clearTimeout(handle);
+    };
+  }, [orderType, location, address, zip, subtotal]);
+
+  const deliveryFee =
+    orderType === "delivery" ? liveQuote?.fee ?? matchedZone?.fee ?? 0 : 0;
 
   const tipAmount = useMemo(() => {
     if (tipMode === "none") return 0;
