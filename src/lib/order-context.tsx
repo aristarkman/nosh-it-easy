@@ -1,5 +1,7 @@
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import type { MenuItem, ModifierOption } from "./menu-types";
+import { syncAbandonedCart, track } from "./analytics";
+import { supabase } from "@/integrations/supabase/client";
 
 export type LocationId = "glen-rock" | "cresskill";
 export type OrderType = "pickup" | "delivery";
@@ -50,10 +52,63 @@ export function OrderProvider({ children }: { children: ReactNode }) {
     } catch {}
   }, [state]);
 
+  // Debounced abandoned-cart sync to Supabase
+  const syncTimer = useRef<number | null>(null);
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (syncTimer.current) window.clearTimeout(syncTimer.current);
+    const subtotalNow = state.cart.reduce((sum, l) => sum + l.unitPrice * l.quantity, 0);
+    syncTimer.current = window.setTimeout(async () => {
+      let email: string | null = null;
+      let phone: string | null = null;
+      let name: string | null = null;
+      let optEmail = false;
+      let optSms = false;
+      try {
+        const { data: sess } = await supabase.auth.getSession();
+        const uid = sess.session?.user.id;
+        if (uid) {
+          const { data: p } = await supabase
+            .from("customer_profiles")
+            .select("full_name,email,phone,marketing_email,marketing_sms")
+            .eq("user_id", uid)
+            .maybeSingle();
+          if (p) {
+            email = p.email;
+            phone = p.phone;
+            name = p.full_name;
+            optEmail = !!p.marketing_email;
+            optSms = !!p.marketing_sms;
+          }
+        }
+      } catch {}
+      void syncAbandonedCart({
+        cart: state.cart,
+        subtotal: subtotalNow,
+        locationId: state.location,
+        orderType: state.orderType,
+        customerName: name,
+        email,
+        phone,
+        marketingEmailOptIn: optEmail,
+        marketingSmsOptIn: optSms,
+      });
+    }, 1500);
+    return () => {
+      if (syncTimer.current) window.clearTimeout(syncTimer.current);
+    };
+  }, [state]);
+
   const setLocation = (location: LocationId) => setState((s) => ({ ...s, location }));
   const setOrderType = (orderType: OrderType) => setState((s) => ({ ...s, orderType }));
-  const addToCart = (line: Omit<CartLine, "lineId">) =>
+  const addToCart = (line: Omit<CartLine, "lineId">) => {
     setState((s) => ({ ...s, cart: [...s.cart, { ...line, lineId: crypto.randomUUID() }] }));
+    void track("add_to_cart", {
+      props: { itemId: line.itemId, name: line.name, quantity: line.quantity, unitPrice: line.unitPrice },
+      locationId: state.location,
+      orderType: state.orderType,
+    });
+  };
   const removeLine = (lineId: string) =>
     setState((s) => ({ ...s, cart: s.cart.filter((l) => l.lineId !== lineId) }));
   const updateQty = (lineId: string, qty: number) =>
