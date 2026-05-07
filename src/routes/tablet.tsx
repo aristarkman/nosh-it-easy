@@ -283,6 +283,8 @@ function TabletPage() {
         </div>
       </div>
 
+      <SystemAlertsBanner isAdmin={isAdmin} allowedLocations={allowedLocations} locFilter={locFilter} />
+
       <div className="mx-auto max-w-[1400px] p-4">
         {loading ? (
           <div className="py-20 text-center text-muted-foreground">Loading orders…</div>
