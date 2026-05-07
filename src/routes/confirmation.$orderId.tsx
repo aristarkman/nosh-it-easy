@@ -102,6 +102,34 @@ function Confirmation() {
         )}
       </div>
 
+      {order?.orderType === "delivery" && (tracking.url || tracking.status) && (
+        <div className="mt-6 rounded-2xl border border-primary/30 bg-primary/5 p-5">
+          <div className="flex items-center gap-3">
+            <div className="inline-flex size-10 items-center justify-center rounded-full bg-primary/10 text-primary">
+              <Truck className="size-5" />
+            </div>
+            <div className="flex-1 text-left">
+              <div className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+                Delivery status
+              </div>
+              <div className="font-display text-lg font-bold">
+                {tracking.status ? DELIVERY_LABEL[tracking.status] : "Preparing for dispatch…"}
+              </div>
+            </div>
+            {tracking.url && (
+              <a
+                href={tracking.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="rounded-full bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:opacity-90"
+              >
+                Track driver
+              </a>
+            )}
+          </div>
+        </div>
+      )}
+
       {feedback === "" && (
         <div className="mt-8 rounded-2xl border border-border bg-card p-6 text-center">
           <h2 className="font-display text-xl font-bold">How was your ordering experience?</h2>
