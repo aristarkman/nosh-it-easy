@@ -171,6 +171,58 @@ function CheckoutPage() {
     })();
   }, [pay]);
 
+  // Loyalty: count completed orders & redemptions
+  useEffect(() => {
+    if (!auth.authed || !auth.userId) {
+      setLoyaltyAvailable(0);
+      return;
+    }
+    (async () => {
+      const [{ count: completed }, { count: redeemed }] = await Promise.all([
+        supabase
+          .from("orders")
+          .select("id", { count: "exact", head: true })
+          .eq("user_id", auth.userId!)
+          .in("status", ["ready", "delivered", "completed", "fulfilled"]),
+        supabase
+          .from("loyalty_redemptions")
+          .select("id", { count: "exact", head: true })
+          .eq("user_id", auth.userId!),
+      ]);
+      const earned = Math.floor((completed ?? 0) / 10);
+      setLoyaltyAvailable(Math.max(0, earned - (redeemed ?? 0)));
+    })();
+  }, [auth.authed, auth.userId]);
+
+  const applyPromo = async () => {
+    if (!promoInput.trim()) return;
+    setPromoChecking(true);
+    const itemIds = Array.from(new Set(cart.map((l) => l.itemId)));
+    const { data, error } = await supabase.rpc("validate_promo", {
+      _code: promoInput.trim(),
+      _user_id: auth.userId ?? null,
+      _customer_phone: phone.trim() || null,
+      _subtotal: subtotal,
+      _item_ids: itemIds,
+    });
+    setPromoChecking(false);
+    if (error) return toast.error(error.message);
+    const r = data as { ok: boolean; message?: string } & Record<string, unknown>;
+    if (!r.ok) {
+      setPromo(null);
+      return toast.error(r.message || "Invalid code");
+    }
+    setPromo({
+      id: r.id as string,
+      code: r.code as string,
+      discount_type: r.discount_type as "percent" | "fixed" | "bogo",
+      discount_value: Number(r.discount_value) || 0,
+      bogo_buy_item_id: (r.bogo_buy_item_id as string | null) ?? null,
+      bogo_get_item_id: (r.bogo_get_item_id as string | null) ?? null,
+    });
+    toast.success(`${r.code} applied`);
+  };
+
   const matchedZone = useMemo(
     () => (orderType === "delivery" && zip ? zones.find((z) => z.zip === zip) : undefined),
     [orderType, zip, zones]
