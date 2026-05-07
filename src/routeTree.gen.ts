@@ -39,6 +39,7 @@ import { Route as AdminDriversRouteImport } from './routes/admin.drivers'
 import { Route as AdminClosuresRouteImport } from './routes/admin.closures'
 import { Route as AdminBiyoRouteImport } from './routes/admin.biyo'
 import { Route as ApiPublicHooksSyncBiyoRouteImport } from './routes/api/public/hooks/sync-biyo'
+import { Route as ApiPublicHooksShipdayRouteImport } from './routes/api/public/hooks/shipday'
 
 const TermsRoute = TermsRouteImport.update({
   id: '/terms',
@@ -190,6 +191,11 @@ const ApiPublicHooksSyncBiyoRoute = ApiPublicHooksSyncBiyoRouteImport.update({
   path: '/api/public/hooks/sync-biyo',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicHooksShipdayRoute = ApiPublicHooksShipdayRouteImport.update({
+  id: '/api/public/hooks/shipday',
+  path: '/api/public/hooks/shipday',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -221,6 +227,7 @@ export interface FileRoutesByFullPath {
   '/item/$itemId': typeof ItemItemIdRoute
   '/staff/login': typeof StaffLoginRoute
   '/admin/': typeof AdminIndexRoute
+  '/api/public/hooks/shipday': typeof ApiPublicHooksShipdayRoute
   '/api/public/hooks/sync-biyo': typeof ApiPublicHooksSyncBiyoRoute
 }
 export interface FileRoutesByTo {
@@ -252,6 +259,7 @@ export interface FileRoutesByTo {
   '/item/$itemId': typeof ItemItemIdRoute
   '/staff/login': typeof StaffLoginRoute
   '/admin': typeof AdminIndexRoute
+  '/api/public/hooks/shipday': typeof ApiPublicHooksShipdayRoute
   '/api/public/hooks/sync-biyo': typeof ApiPublicHooksSyncBiyoRoute
 }
 export interface FileRoutesById {
@@ -285,6 +293,7 @@ export interface FileRoutesById {
   '/item/$itemId': typeof ItemItemIdRoute
   '/staff/login': typeof StaffLoginRoute
   '/admin/': typeof AdminIndexRoute
+  '/api/public/hooks/shipday': typeof ApiPublicHooksShipdayRoute
   '/api/public/hooks/sync-biyo': typeof ApiPublicHooksSyncBiyoRoute
 }
 export interface FileRouteTypes {
@@ -319,6 +328,7 @@ export interface FileRouteTypes {
     | '/item/$itemId'
     | '/staff/login'
     | '/admin/'
+    | '/api/public/hooks/shipday'
     | '/api/public/hooks/sync-biyo'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -350,6 +360,7 @@ export interface FileRouteTypes {
     | '/item/$itemId'
     | '/staff/login'
     | '/admin'
+    | '/api/public/hooks/shipday'
     | '/api/public/hooks/sync-biyo'
   id:
     | '__root__'
@@ -382,6 +393,7 @@ export interface FileRouteTypes {
     | '/item/$itemId'
     | '/staff/login'
     | '/admin/'
+    | '/api/public/hooks/shipday'
     | '/api/public/hooks/sync-biyo'
   fileRoutesById: FileRoutesById
 }
@@ -404,6 +416,7 @@ export interface RootRouteChildren {
   ConfirmationOrderIdRoute: typeof ConfirmationOrderIdRoute
   ItemItemIdRoute: typeof ItemItemIdRoute
   StaffLoginRoute: typeof StaffLoginRoute
+  ApiPublicHooksShipdayRoute: typeof ApiPublicHooksShipdayRoute
   ApiPublicHooksSyncBiyoRoute: typeof ApiPublicHooksSyncBiyoRoute
 }
 
@@ -619,6 +632,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicHooksSyncBiyoRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/hooks/shipday': {
+      id: '/api/public/hooks/shipday'
+      path: '/api/public/hooks/shipday'
+      fullPath: '/api/public/hooks/shipday'
+      preLoaderRoute: typeof ApiPublicHooksShipdayRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -671,8 +691,18 @@ const rootRouteChildren: RootRouteChildren = {
   ConfirmationOrderIdRoute: ConfirmationOrderIdRoute,
   ItemItemIdRoute: ItemItemIdRoute,
   StaffLoginRoute: StaffLoginRoute,
+  ApiPublicHooksShipdayRoute: ApiPublicHooksShipdayRoute,
   ApiPublicHooksSyncBiyoRoute: ApiPublicHooksSyncBiyoRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { createStart } from '@tanstack/react-start'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+  }
+}
