@@ -5,6 +5,7 @@ import { useOrder, fmt, LOCATIONS } from "@/lib/order-context";
 import { useCustomerAuth } from "@/lib/customer-auth";
 import { supabase } from "@/integrations/supabase/client";
 import { chargeWithToken, getFtdConfig } from "@/server/ipospays.functions";
+import { sendOrderStatusSms } from "@/server/sms.functions";
 import { toast } from "sonner";
 
 type SavedAddress = {
