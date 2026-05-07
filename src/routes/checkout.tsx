@@ -82,6 +82,8 @@ function CheckoutPage() {
 
   const [zones, setZones] = useState<{ zip: string; fee: number; minimum: number }[]>([]);
   const [closedToday, setClosedToday] = useState<string | null>(null);
+  const [onlineHours, setOnlineHours] = useState<{ day_of_week: number; open_time: string | null; close_time: string | null; is_closed: boolean }[]>([]);
+  const [closures, setClosures] = useState<{ start_date: string; end_date: string }[]>([]);
 
   const [savedAddresses, setSavedAddresses] = useState<SavedAddress[]>([]);
   const [selectedAddrId, setSelectedAddrId] = useState<string>("");
