@@ -240,6 +240,18 @@ function TabletPage() {
               />
             ))}
             <button
+              onClick={enableAlarm}
+              className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-bold uppercase tracking-wider transition ${
+                alarmEnabled
+                  ? "border-primary bg-primary/10 text-primary"
+                  : "border-destructive bg-destructive/10 text-destructive animate-pulse"
+              }`}
+              title={alarmEnabled ? "Sound on" : "Tap to enable order alerts"}
+            >
+              {alarmEnabled ? <Volume2 className="size-3.5" /> : <VolumeX className="size-3.5" />}
+              {alarmEnabled ? "Alerts on" : "Enable alerts"}
+            </button>
+            <button
               onClick={async () => { await supabase.auth.signOut(); nav({ to: "/staff/login" }); }}
               className="inline-flex items-center gap-1.5 rounded-full border border-border px-3 py-1.5 text-xs font-bold uppercase tracking-wider text-muted-foreground hover:text-foreground"
             >
