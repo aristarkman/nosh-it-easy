@@ -9,8 +9,10 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as TermsRouteImport } from './routes/terms'
 import { Route as TabletRouteImport } from './routes/tablet'
 import { Route as SignupRouteImport } from './routes/signup'
+import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as OrderTypeRouteImport } from './routes/order-type'
 import { Route as MenuRouteImport } from './routes/menu'
 import { Route as LoginRouteImport } from './routes/login'
@@ -35,6 +37,11 @@ import { Route as AdminClosuresRouteImport } from './routes/admin.closures'
 import { Route as AdminBiyoRouteImport } from './routes/admin.biyo'
 import { Route as ApiPublicHooksSyncBiyoRouteImport } from './routes/api/public/hooks/sync-biyo'
 
+const TermsRoute = TermsRouteImport.update({
+  id: '/terms',
+  path: '/terms',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const TabletRoute = TabletRouteImport.update({
   id: '/tablet',
   path: '/tablet',
@@ -43,6 +50,11 @@ const TabletRoute = TabletRouteImport.update({
 const SignupRoute = SignupRouteImport.update({
   id: '/signup',
   path: '/signup',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PrivacyRoute = PrivacyRouteImport.update({
+  id: '/privacy',
+  path: '/privacy',
   getParentRoute: () => rootRouteImport,
 } as any)
 const OrderTypeRoute = OrderTypeRouteImport.update({
@@ -171,8 +183,10 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/menu': typeof MenuRoute
   '/order-type': typeof OrderTypeRoute
+  '/privacy': typeof PrivacyRoute
   '/signup': typeof SignupRoute
   '/tablet': typeof TabletRoute
+  '/terms': typeof TermsRoute
   '/admin/biyo': typeof AdminBiyoRoute
   '/admin/closures': typeof AdminClosuresRoute
   '/admin/drivers': typeof AdminDriversRoute
@@ -197,8 +211,10 @@ export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/menu': typeof MenuRoute
   '/order-type': typeof OrderTypeRoute
+  '/privacy': typeof PrivacyRoute
   '/signup': typeof SignupRoute
   '/tablet': typeof TabletRoute
+  '/terms': typeof TermsRoute
   '/admin/biyo': typeof AdminBiyoRoute
   '/admin/closures': typeof AdminClosuresRoute
   '/admin/drivers': typeof AdminDriversRoute
@@ -225,8 +241,10 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/menu': typeof MenuRoute
   '/order-type': typeof OrderTypeRoute
+  '/privacy': typeof PrivacyRoute
   '/signup': typeof SignupRoute
   '/tablet': typeof TabletRoute
+  '/terms': typeof TermsRoute
   '/admin/biyo': typeof AdminBiyoRoute
   '/admin/closures': typeof AdminClosuresRoute
   '/admin/drivers': typeof AdminDriversRoute
@@ -254,8 +272,10 @@ export interface FileRouteTypes {
     | '/login'
     | '/menu'
     | '/order-type'
+    | '/privacy'
     | '/signup'
     | '/tablet'
+    | '/terms'
     | '/admin/biyo'
     | '/admin/closures'
     | '/admin/drivers'
@@ -280,8 +300,10 @@ export interface FileRouteTypes {
     | '/login'
     | '/menu'
     | '/order-type'
+    | '/privacy'
     | '/signup'
     | '/tablet'
+    | '/terms'
     | '/admin/biyo'
     | '/admin/closures'
     | '/admin/drivers'
@@ -307,8 +329,10 @@ export interface FileRouteTypes {
     | '/login'
     | '/menu'
     | '/order-type'
+    | '/privacy'
     | '/signup'
     | '/tablet'
+    | '/terms'
     | '/admin/biyo'
     | '/admin/closures'
     | '/admin/drivers'
@@ -335,8 +359,10 @@ export interface RootRouteChildren {
   LoginRoute: typeof LoginRoute
   MenuRoute: typeof MenuRoute
   OrderTypeRoute: typeof OrderTypeRoute
+  PrivacyRoute: typeof PrivacyRoute
   SignupRoute: typeof SignupRoute
   TabletRoute: typeof TabletRoute
+  TermsRoute: typeof TermsRoute
   ConfirmationOrderIdRoute: typeof ConfirmationOrderIdRoute
   ItemItemIdRoute: typeof ItemItemIdRoute
   StaffLoginRoute: typeof StaffLoginRoute
@@ -345,6 +371,13 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/terms': {
+      id: '/terms'
+      path: '/terms'
+      fullPath: '/terms'
+      preLoaderRoute: typeof TermsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/tablet': {
       id: '/tablet'
       path: '/tablet'
@@ -357,6 +390,13 @@ declare module '@tanstack/react-router' {
       path: '/signup'
       fullPath: '/signup'
       preLoaderRoute: typeof SignupRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/privacy': {
+      id: '/privacy'
+      path: '/privacy'
+      fullPath: '/privacy'
+      preLoaderRoute: typeof PrivacyRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/order-type': {
@@ -561,8 +601,10 @@ const rootRouteChildren: RootRouteChildren = {
   LoginRoute: LoginRoute,
   MenuRoute: MenuRoute,
   OrderTypeRoute: OrderTypeRoute,
+  PrivacyRoute: PrivacyRoute,
   SignupRoute: SignupRoute,
   TabletRoute: TabletRoute,
+  TermsRoute: TermsRoute,
   ConfirmationOrderIdRoute: ConfirmationOrderIdRoute,
   ItemItemIdRoute: ItemItemIdRoute,
   StaffLoginRoute: StaffLoginRoute,
