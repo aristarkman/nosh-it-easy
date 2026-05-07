@@ -1,6 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { MapPin, Clock, Phone, ArrowRight } from "lucide-react";
 import { LOCATIONS, useOrder, type LocationId } from "@/lib/order-context";
+import { useStoreHours } from "@/lib/use-store-hours";
 
 
 export const Route = createFileRoute("/")({
@@ -24,6 +25,7 @@ export const Route = createFileRoute("/")({
 
 function LocationPick() {
   const { setLocation, location } = useOrder();
+  const { todayLabel } = useStoreHours();
   const navigate = useNavigate();
 
   const choose = (id: LocationId) => {
@@ -72,7 +74,7 @@ function LocationPick() {
                     <MapPin className="size-4 text-primary" /> {l.address}
                   </li>
                   <li className="flex items-center gap-2">
-                    <Clock className="size-4 text-primary" /> {l.hours}
+                    <Clock className="size-4 text-primary" /> {todayLabel(l.id) || l.hours}
                   </li>
                   <li className="flex items-center gap-2">
                     <Phone className="size-4 text-primary" /> {l.phone}
