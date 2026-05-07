@@ -238,9 +238,33 @@ function CheckoutPage() {
     return +(subtotal * tipPreset).toFixed(2);
   }, [tipMode, tipPreset, tipCustom, subtotal]);
 
-  const tax = +(subtotal * 0.06625).toFixed(2);
-  const cardFee = pay === "in-person" ? 0 : +((subtotal + deliveryFee) * 0.03).toFixed(2);
-  const total = +(subtotal + deliveryFee + tax + tipAmount + cardFee).toFixed(2);
+  const promoDiscount = useMemo(() => {
+    if (!promo) return 0;
+    if (promo.discount_type === "percent") {
+      return +((subtotal * promo.discount_value) / 100).toFixed(2);
+    }
+    if (promo.discount_type === "fixed") {
+      return +Math.min(subtotal, promo.discount_value).toFixed(2);
+    }
+    if (promo.discount_type === "bogo") {
+      // Find the cheapest unit price among lines matching the "get" item with qty>=1,
+      // requires at least one of the buy item in cart.
+      const hasBuy = cart.some((l) => l.itemId === promo.bogo_buy_item_id && l.quantity >= 1);
+      if (!hasBuy) return 0;
+      const getLines = cart.filter((l) => l.itemId === promo.bogo_get_item_id && l.quantity >= 1);
+      if (!getLines.length) return 0;
+      const cheapest = Math.min(...getLines.map((l) => l.unitPrice));
+      return +cheapest.toFixed(2);
+    }
+    return 0;
+  }, [promo, cart, subtotal]);
+
+  const loyaltyDiscount = useLoyalty && loyaltyAvailable > 0 ? 5 : 0;
+  const discounts = +Math.min(subtotal, promoDiscount + loyaltyDiscount).toFixed(2);
+  const discountedSubtotal = +(subtotal - discounts).toFixed(2);
+  const tax = +(discountedSubtotal * 0.06625).toFixed(2);
+  const cardFee = pay === "in-person" ? 0 : +((discountedSubtotal + deliveryFee) * 0.03).toFixed(2);
+  const total = +(discountedSubtotal + deliveryFee + tax + tipAmount + cardFee).toFixed(2);
 
   const canPayInPerson = orderType === "pickup" && subtotal < PAY_IN_PERSON_THRESHOLD;
   const zoneOk = orderType !== "delivery" || (!!matchedZone && subtotal >= matchedZone.minimum);
