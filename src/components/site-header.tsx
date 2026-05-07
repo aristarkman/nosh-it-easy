@@ -2,7 +2,7 @@ import { Link, useLocation } from "@tanstack/react-router";
 import { ShoppingBag, MapPin, Phone, User } from "lucide-react";
 import { useOrder, LOCATIONS } from "@/lib/order-context";
 import { useCustomerAuth } from "@/lib/customer-auth";
-import noshLogo from "@/assets/nosh-logo.png";
+
 
 export function SiteHeader() {
   const { location, totalQty } = useOrder();
@@ -23,12 +23,10 @@ export function SiteHeader() {
 
       <div className="border-b border-border">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3">
-          <Link to="/" className="flex items-center gap-2">
-            <img
-              src={noshLogo}
-              alt="The Famous Kosher Nosh"
-              className="h-28 w-auto sm:h-36 md:h-44"
-            />
+          <Link to="/" className="flex items-center">
+            <span className="font-display text-2xl font-black uppercase tracking-tight text-foreground sm:text-3xl md:text-4xl">
+              The Famous <span className="text-primary">Kosher Nosh</span>
+            </span>
           </Link>
 
           <div className="hidden items-center gap-6 md:flex">
