@@ -63,6 +63,33 @@ function buildMessage(input: z.infer<typeof Schema>): string {
   }
 }
 
+const RefundSchema = z.object({
+  to: z.string().min(7).max(20),
+  orderNumber: z.string().min(1).max(40),
+  amount: z.number().nonnegative(),
+  customerName: z.string().min(1).max(80).optional(),
+  isVoid: z.boolean().optional(),
+});
+
+export const sendRefundIssuedSms = createServerFn({ method: "POST" })
+  .inputValidator((input: unknown) => RefundSchema.parse(input))
+  .handler(async ({ data }) => {
+    const to = normalizePhone(data.to);
+    if (!to) return { ok: false, error: "Invalid phone number" };
+    const name = data.customerName ? `, ${data.customerName.split(" ")[0]}` : "";
+    const amt = `$${data.amount.toFixed(2)}`;
+    const body = data.isVoid
+      ? `The Kosher Nosh: Order #${data.orderNumber} was voided${name}. The ${amt} hold will drop off your card within 1-3 days. Reply STOP to opt out.`
+      : `The Kosher Nosh: A refund of ${amt} has been issued for order #${data.orderNumber}${name}. It will appear on your card in 3-5 business days. Reply STOP to opt out.`;
+    try {
+      const result = await sendSms(to, body);
+      return { ok: true, sid: result.sid as string };
+    } catch (err) {
+      console.error("sendRefundIssuedSms failed:", err);
+      return { ok: false, error: err instanceof Error ? err.message : "Send failed" };
+    }
+  });
+
 export const sendOrderStatusSms = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => Schema.parse(input))
   .handler(async ({ data }) => {
