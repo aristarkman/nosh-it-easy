@@ -68,7 +68,7 @@ export const Route = createFileRoute("/api/public/hooks/shipday")({
         const update: {
           delivery_status?: DeliveryStatus;
           shipday_tracking_url?: string;
-          status?: string;
+          status?: "new" | "accepted" | "ready" | "completed" | "cancelled";
         } = {};
         if (status) update.delivery_status = status;
         if (trackingUrl) update.shipday_tracking_url = trackingUrl;
