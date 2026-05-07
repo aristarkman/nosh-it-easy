@@ -2,9 +2,21 @@ import { createFileRoute, Link, useNavigate, redirect } from "@tanstack/react-ro
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowLeft, CreditCard, Wallet, Apple, AlertTriangle, Lock } from "lucide-react";
 import { useOrder, fmt, LOCATIONS } from "@/lib/order-context";
+import { useCustomerAuth } from "@/lib/customer-auth";
 import { supabase } from "@/integrations/supabase/client";
 import { chargeWithToken, getFtdConfig } from "@/server/ipospays.functions";
 import { toast } from "sonner";
+
+type SavedAddress = {
+  id: string;
+  label: string;
+  address_line1: string;
+  address_line2: string | null;
+  city: string;
+  state: string;
+  zip: string;
+  is_default: boolean;
+};
 
 const PAY_IN_PERSON_THRESHOLD = 100;
 const TIP_PRESETS = [0.15, 0.18, 0.2];

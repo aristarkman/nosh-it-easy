@@ -10,12 +10,15 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as TabletRouteImport } from './routes/tablet'
+import { Route as SignupRouteImport } from './routes/signup'
 import { Route as OrderTypeRouteImport } from './routes/order-type'
 import { Route as MenuRouteImport } from './routes/menu'
+import { Route as LoginRouteImport } from './routes/login'
 import { Route as DispatchRouteImport } from './routes/dispatch'
 import { Route as CheckoutRouteImport } from './routes/checkout'
 import { Route as CartRouteImport } from './routes/cart'
 import { Route as AdminRouteImport } from './routes/admin'
+import { Route as AccountRouteImport } from './routes/account'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AdminIndexRouteImport } from './routes/admin.index'
 import { Route as StaffLoginRouteImport } from './routes/staff.login'
@@ -37,6 +40,11 @@ const TabletRoute = TabletRouteImport.update({
   path: '/tablet',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SignupRoute = SignupRouteImport.update({
+  id: '/signup',
+  path: '/signup',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const OrderTypeRoute = OrderTypeRouteImport.update({
   id: '/order-type',
   path: '/order-type',
@@ -45,6 +53,11 @@ const OrderTypeRoute = OrderTypeRouteImport.update({
 const MenuRoute = MenuRouteImport.update({
   id: '/menu',
   path: '/menu',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DispatchRoute = DispatchRouteImport.update({
@@ -65,6 +78,11 @@ const CartRoute = CartRouteImport.update({
 const AdminRoute = AdminRouteImport.update({
   id: '/admin',
   path: '/admin',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AccountRoute = AccountRouteImport.update({
+  id: '/account',
+  path: '/account',
   getParentRoute: () => rootRouteImport,
 } as any)
 const IndexRoute = IndexRouteImport.update({
@@ -145,12 +163,15 @@ const ApiPublicHooksSyncBiyoRoute = ApiPublicHooksSyncBiyoRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/account': typeof AccountRoute
   '/admin': typeof AdminRouteWithChildren
   '/cart': typeof CartRoute
   '/checkout': typeof CheckoutRoute
   '/dispatch': typeof DispatchRoute
+  '/login': typeof LoginRoute
   '/menu': typeof MenuRoute
   '/order-type': typeof OrderTypeRoute
+  '/signup': typeof SignupRoute
   '/tablet': typeof TabletRoute
   '/admin/biyo': typeof AdminBiyoRoute
   '/admin/closures': typeof AdminClosuresRoute
@@ -169,11 +190,14 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/account': typeof AccountRoute
   '/cart': typeof CartRoute
   '/checkout': typeof CheckoutRoute
   '/dispatch': typeof DispatchRoute
+  '/login': typeof LoginRoute
   '/menu': typeof MenuRoute
   '/order-type': typeof OrderTypeRoute
+  '/signup': typeof SignupRoute
   '/tablet': typeof TabletRoute
   '/admin/biyo': typeof AdminBiyoRoute
   '/admin/closures': typeof AdminClosuresRoute
@@ -193,12 +217,15 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/account': typeof AccountRoute
   '/admin': typeof AdminRouteWithChildren
   '/cart': typeof CartRoute
   '/checkout': typeof CheckoutRoute
   '/dispatch': typeof DispatchRoute
+  '/login': typeof LoginRoute
   '/menu': typeof MenuRoute
   '/order-type': typeof OrderTypeRoute
+  '/signup': typeof SignupRoute
   '/tablet': typeof TabletRoute
   '/admin/biyo': typeof AdminBiyoRoute
   '/admin/closures': typeof AdminClosuresRoute
@@ -219,12 +246,15 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/account'
     | '/admin'
     | '/cart'
     | '/checkout'
     | '/dispatch'
+    | '/login'
     | '/menu'
     | '/order-type'
+    | '/signup'
     | '/tablet'
     | '/admin/biyo'
     | '/admin/closures'
@@ -243,11 +273,14 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/account'
     | '/cart'
     | '/checkout'
     | '/dispatch'
+    | '/login'
     | '/menu'
     | '/order-type'
+    | '/signup'
     | '/tablet'
     | '/admin/biyo'
     | '/admin/closures'
@@ -266,12 +299,15 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/account'
     | '/admin'
     | '/cart'
     | '/checkout'
     | '/dispatch'
+    | '/login'
     | '/menu'
     | '/order-type'
+    | '/signup'
     | '/tablet'
     | '/admin/biyo'
     | '/admin/closures'
@@ -291,12 +327,15 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AccountRoute: typeof AccountRoute
   AdminRoute: typeof AdminRouteWithChildren
   CartRoute: typeof CartRoute
   CheckoutRoute: typeof CheckoutRoute
   DispatchRoute: typeof DispatchRoute
+  LoginRoute: typeof LoginRoute
   MenuRoute: typeof MenuRoute
   OrderTypeRoute: typeof OrderTypeRoute
+  SignupRoute: typeof SignupRoute
   TabletRoute: typeof TabletRoute
   ConfirmationOrderIdRoute: typeof ConfirmationOrderIdRoute
   ItemItemIdRoute: typeof ItemItemIdRoute
@@ -313,6 +352,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TabletRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/signup': {
+      id: '/signup'
+      path: '/signup'
+      fullPath: '/signup'
+      preLoaderRoute: typeof SignupRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/order-type': {
       id: '/order-type'
       path: '/order-type'
@@ -325,6 +371,13 @@ declare module '@tanstack/react-router' {
       path: '/menu'
       fullPath: '/menu'
       preLoaderRoute: typeof MenuRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/dispatch': {
@@ -353,6 +406,13 @@ declare module '@tanstack/react-router' {
       path: '/admin'
       fullPath: '/admin'
       preLoaderRoute: typeof AdminRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/account': {
+      id: '/account'
+      path: '/account'
+      fullPath: '/account'
+      preLoaderRoute: typeof AccountRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/': {
@@ -493,12 +553,15 @@ const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AccountRoute: AccountRoute,
   AdminRoute: AdminRouteWithChildren,
   CartRoute: CartRoute,
   CheckoutRoute: CheckoutRoute,
   DispatchRoute: DispatchRoute,
+  LoginRoute: LoginRoute,
   MenuRoute: MenuRoute,
   OrderTypeRoute: OrderTypeRoute,
+  SignupRoute: SignupRoute,
   TabletRoute: TabletRoute,
   ConfirmationOrderIdRoute: ConfirmationOrderIdRoute,
   ItemItemIdRoute: ItemItemIdRoute,
@@ -508,12 +571,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { createStart } from '@tanstack/react-start'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-  }
-}
