@@ -322,6 +322,33 @@ function CheckoutPage() {
 
           {orderType === "delivery" ? (
             <Section title="Delivery address">
+              {savedAddresses.length > 0 && (
+                <div className="space-y-2">
+                  <div className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+                    Saved addresses
+                  </div>
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    {savedAddresses.map((a) => (
+                      <button
+                        key={a.id}
+                        type="button"
+                        onClick={() => {
+                          setSelectedAddrId(a.id);
+                          setAddress(`${a.address_line1}${a.address_line2 ? `, ${a.address_line2}` : ""}, ${a.city}, ${a.state}`);
+                          setZip(a.zip);
+                        }}
+                        className={`rounded-xl border px-3 py-2 text-left text-xs transition ${
+                          selectedAddrId === a.id ? "border-primary bg-primary/5" : "border-border bg-card hover:border-primary"
+                        }`}
+                      >
+                        <div className="font-semibold">{a.label}</div>
+                        <div className="text-muted-foreground">{a.address_line1}, {a.city} {a.zip}</div>
+                      </button>
+                    ))}
+                  </div>
+                  <div className="text-[11px] text-muted-foreground">Or enter a new address below.</div>
+                </div>
+              )}
               <Field
                 label="Street address"
                 value={address}
