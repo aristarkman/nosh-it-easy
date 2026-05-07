@@ -87,7 +87,7 @@ export const LOCATIONS: { id: LocationId; name: string; address: string; phone: 
   {
     id: "glen-rock",
     name: "Glen Rock",
-    address: "(201) 331-0000",
+    address: "230 Rock Rd, Glen Rock, NJ",
     phone: "(201) 331-0000",
     hours: "Open today · 7am – 8pm",
   },
