@@ -313,7 +313,9 @@ function CheckoutPage() {
     return 0;
   }, [promo, cart, subtotal]);
 
-  const loyaltyDiscount = useLoyalty && loyaltyAvailable > 0 ? 5 : 0;
+  const maxRewards = maxRewardsRedeemable(loyaltyBalance, subtotal);
+  const effectiveRewards = Math.min(rewardsToUse, maxRewards);
+  const loyaltyDiscount = discountForRewards(effectiveRewards);
   const discounts = +Math.min(subtotal, promoDiscount + loyaltyDiscount).toFixed(2);
   const discountedSubtotal = +(subtotal - discounts).toFixed(2);
   const tax = +(discountedSubtotal * 0.06625).toFixed(2);
