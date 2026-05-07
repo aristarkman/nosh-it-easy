@@ -1,13 +1,16 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { ArrowLeft, Minus, Plus, Trash2, Sparkles } from "lucide-react";
+import { useEffect, useState } from "react";
+import { ArrowLeft, Minus, Plus, Trash2, Sparkles, Star } from "lucide-react";
 import { useOrder, fmt, LOCATIONS } from "@/lib/order-context";
 import { ITEMS, UPSELLS, getItem } from "@/lib/menu-data";
 import { buildLineFromItem } from "@/lib/order-context";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/cart")({
   head: () => ({
     meta: [
-      { title: "Your cart — The Kosher Nosh" },
+      { title: "Your cart — The Famous Kosher Nosh" },
       { name: "description", content: "Review your order before checkout." },
     ],
   }),
