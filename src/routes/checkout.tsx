@@ -347,9 +347,12 @@ function CheckoutPage() {
         card_fee: cardFee,
         total,
         items: cart,
-        notes: Object.keys(paymentMeta).length
-          ? `tip:${tipAmount.toFixed(2)} | ${JSON.stringify(paymentMeta)}`
-          : `tip:${tipAmount.toFixed(2)}`,
+        notes: [
+          `tip:${tipAmount.toFixed(2)}`,
+          promo ? `promo:${promo.code}(-${promoDiscount.toFixed(2)})` : null,
+          loyaltyDiscount ? `loyalty:-${loyaltyDiscount.toFixed(2)}` : null,
+          Object.keys(paymentMeta).length ? JSON.stringify(paymentMeta) : null,
+        ].filter(Boolean).join(" | "),
       })
       .select("id,order_number")
       .single();
