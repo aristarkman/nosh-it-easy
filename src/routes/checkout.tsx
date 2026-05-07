@@ -147,17 +147,24 @@ function CheckoutPage() {
     if (!location) return;
     (async () => {
       const today = new Date().toISOString().slice(0, 10);
-      const [{ data: z }, { data: c }] = await Promise.all([
+      const [{ data: z }, { data: c }, { data: h }] = await Promise.all([
         supabase.from("delivery_zones").select("zip,fee,minimum").eq("location_id", location),
         supabase
           .from("store_closures")
           .select("reason,location_id,start_date,end_date")
-          .lte("start_date", today)
           .gte("end_date", today),
+        supabase
+          .from("store_hours")
+          .select("day_of_week,open_time,close_time,is_closed,hours_kind,location_id")
+          .eq("location_id", location)
+          .eq("hours_kind", "online"),
       ]);
       setZones((z ?? []).map((x) => ({ zip: x.zip, fee: Number(x.fee), minimum: Number(x.minimum) })));
-      const hit = (c ?? []).find((x) => x.location_id === null || x.location_id === location);
-      setClosedToday(hit ? hit.reason ?? "Closed today" : null);
+      const allClosures = (c ?? []).filter((x) => x.location_id === null || x.location_id === location);
+      setClosures(allClosures.map((x) => ({ start_date: x.start_date, end_date: x.end_date })));
+      const hitToday = allClosures.find((x) => x.start_date <= today && x.end_date >= today);
+      setClosedToday(hitToday ? hitToday.reason ?? "Closed today" : null);
+      setOnlineHours((h ?? []) as typeof onlineHours);
     })();
   }, [location]);
 
