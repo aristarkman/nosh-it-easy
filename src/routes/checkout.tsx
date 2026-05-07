@@ -566,7 +566,7 @@ function CheckoutPage() {
                 </Pill>
               ))}
               <Pill active={tipMode === "custom"} onClick={() => setTipMode("custom")}>
-                ​Cust-\num
+                Custom
               </Pill>
               <Pill active={tipMode === "none"} onClick={() => setTipMode("none")}>
                 No tip
@@ -817,7 +817,7 @@ function Pill({ active, onClick, children }: { active: boolean; onClick: () => v
     <button
       type="button"
       onClick={onClick}
-      className={`rounded-xl border px-3 py-2.5 text-sm font-semibold transition text-center ${
+      className={`rounded-xl border py-2.5 font-semibold transition border-primary bg-primary/5 text-primary text-left text-sm mx-0 px-0 ${
         active ? "border-primary bg-primary/5 text-primary" : "border-border text-foreground hover:border-primary/50"
       }`}
     >
