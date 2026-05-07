@@ -33,6 +33,8 @@ type Order = {
   items: CartLine[];
   notes: string | null;
   created_at: string;
+  refunded_total: number;
+  refund_status: "none" | "partial" | "full" | "voided";
 };
 
 const STATUS_FLOW: Record<Status, { next?: Status; label?: string; color: string }> = {
