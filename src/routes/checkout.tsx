@@ -607,10 +607,21 @@ function CheckoutPage() {
                   ${minShortfall.toFixed(2)} below the {fmt(matchedZone.minimum)} delivery minimum for this ZIP.
                 </p>
               )}
-              {matchedZone && zoneOk && (
+              {matchedZone && zoneOk && !liveQuote && !quoteError && (
                 <p className="text-xs text-muted-foreground">
-                  Delivery to {zip}: {fmt(matchedZone.fee)} fee · {fmt(matchedZone.minimum)} minimum.
+                  {quoteLoading
+                    ? "Getting a live delivery quote…"
+                    : `Delivery to ${zip}: ${fmt(matchedZone.fee)} fee · ${fmt(matchedZone.minimum)} minimum.`}
                 </p>
+              )}
+              {liveQuote && (
+                <p className="text-xs text-secondary">
+                  Live quote: {fmt(liveQuote.fee)} fee
+                  {liveQuote.etaMinutes ? ` · ~${liveQuote.etaMinutes} min` : ""}
+                </p>
+              )}
+              {quoteError && address.trim().length >= 5 && zip.length === 5 && (
+                <p className="text-xs text-destructive">{quoteError}</p>
               )}
             </Section>
           ) : (
