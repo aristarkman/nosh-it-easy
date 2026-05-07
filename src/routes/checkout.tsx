@@ -318,7 +318,7 @@ function CheckoutPage() {
     !closedToday &&
     name.trim().length > 1 &&
     /^[\d\s()+-]{7,}$/.test(phone) &&
-    (orderType === "pickup" || (address.trim().length > 5 && zoneOk));
+    (orderType === "pickup" || (address.trim().length > 5 && zoneOk && !quoteError));
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
