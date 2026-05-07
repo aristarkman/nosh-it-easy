@@ -183,6 +183,23 @@ function CartPage() {
         >
           Continue to checkout · {fmt(total)}
         </Link>
+        {authed ? (
+          <button
+            onClick={saveAsFavorite}
+            disabled={saving}
+            className="mt-2 flex w-full items-center justify-center gap-1.5 rounded-full border border-border bg-card px-5 py-2.5 text-xs font-semibold uppercase tracking-wider hover:border-primary disabled:opacity-50"
+          >
+            <Star className="size-3.5 text-primary" />
+            {saving ? "Saving…" : "Save cart as favorite"}
+          </button>
+        ) : (
+          <Link
+            to="/login"
+            className="mt-2 block text-center text-xs text-muted-foreground hover:text-primary"
+          >
+            Sign in to save this as a favorite
+          </Link>
+        )}
       </section>
     </div>
   );
