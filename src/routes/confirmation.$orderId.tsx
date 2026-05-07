@@ -1,8 +1,9 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { CheckCircle2, MapPin, Star } from "lucide-react";
+import { CheckCircle2, MapPin, Star, Truck } from "lucide-react";
 import { fmt } from "@/lib/order-context";
 import type { CartLine } from "@/lib/order-context";
+import { supabase } from "@/integrations/supabase/client";
 
 type LastOrder = {
   orderId: string;
@@ -14,6 +15,15 @@ type LastOrder = {
   pay: string;
   total: number;
   items: CartLine[];
+};
+
+type DeliveryStatus = "unassigned" | "assigned" | "out_for_delivery" | "delivered";
+
+const DELIVERY_LABEL: Record<DeliveryStatus, string> = {
+  unassigned: "Finding a driver…",
+  assigned: "Driver assigned",
+  out_for_delivery: "Out for delivery",
+  delivered: "Delivered",
 };
 
 export const Route = createFileRoute("/confirmation/$orderId")({
@@ -31,11 +41,39 @@ function Confirmation() {
   const [order, setOrder] = useState<LastOrder | null>(null);
   const [feedback, setFeedback] = useState<"" | "happy" | "unhappy">("");
   const [feedbackText, setFeedbackText] = useState("");
+  const [tracking, setTracking] = useState<{
+    url: string | null;
+    status: DeliveryStatus | null;
+  }>({ url: null, status: null });
 
   useEffect(() => {
     const raw = sessionStorage.getItem("kn-last-order");
     if (raw) setOrder(JSON.parse(raw));
   }, []);
+
+  // Poll Shipday tracking info for delivery orders
+  useEffect(() => {
+    if (!orderId) return;
+    let cancelled = false;
+    const fetchTracking = async () => {
+      const { data } = await supabase
+        .from("orders")
+        .select("order_type,shipday_tracking_url,delivery_status")
+        .eq("order_number", orderId)
+        .maybeSingle();
+      if (cancelled || !data || data.order_type !== "delivery") return;
+      setTracking({
+        url: data.shipday_tracking_url ?? null,
+        status: (data.delivery_status as DeliveryStatus | null) ?? null,
+      });
+    };
+    fetchTracking();
+    const t = setInterval(fetchTracking, 15000);
+    return () => {
+      cancelled = true;
+      clearInterval(t);
+    };
+  }, [orderId]);
 
   return (
     <div className="mx-auto max-w-2xl px-4 pb-16 pt-10">
