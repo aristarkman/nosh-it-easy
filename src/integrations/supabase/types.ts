@@ -963,6 +963,7 @@ export type Database = {
           close_time: string | null
           created_at: string
           day_of_week: number
+          hours_kind: string
           id: string
           is_closed: boolean
           location_id: string
@@ -973,6 +974,7 @@ export type Database = {
           close_time?: string | null
           created_at?: string
           day_of_week: number
+          hours_kind?: string
           id?: string
           is_closed?: boolean
           location_id: string
@@ -983,6 +985,7 @@ export type Database = {
           close_time?: string | null
           created_at?: string
           day_of_week?: number
+          hours_kind?: string
           id?: string
           is_closed?: boolean
           location_id?: string
