@@ -6,6 +6,7 @@ import { useCustomerAuth } from "@/lib/customer-auth";
 import { supabase } from "@/integrations/supabase/client";
 import { chargeWithToken, getFtdConfig } from "@/server/ipospays.functions";
 import { sendOrderStatusSms, sendStaffNewOrderAlert } from "@/server/sms.functions";
+import { dispatchShipday } from "@/server/shipday.functions";
 import { toast } from "sonner";
 
 type SavedAddress = {
@@ -436,6 +437,48 @@ function CheckoutPage() {
         itemCount: cart.reduce((n, l) => n + l.quantity, 0),
       },
     }).catch((e) => console.error("Staff alert failed:", e));
+
+    // Dispatch to Shipday for delivery orders (fire-and-forget; persist tracking on response)
+    if (orderType === "delivery") {
+      dispatchShipday({
+        data: {
+          orderNumber: data.order_number,
+          locationId: location,
+          customerName: name.trim(),
+          customerPhone: phone.trim(),
+          customerEmail: email.trim() || null,
+          deliveryAddress: `${address.trim()}, ${zip}`,
+          total,
+          subtotal,
+          tax,
+          tip: tipAmount,
+          deliveryFee,
+          notes: null,
+          items: cart.map((l) => ({
+            name: l.name,
+            quantity: l.quantity,
+            unitPrice: l.unitPrice,
+          })),
+        },
+      })
+        .then((r) => {
+          if (r.ok) {
+            supabase
+              .from("orders")
+              .update({
+                shipday_order_id: r.shipdayOrderId,
+                shipday_tracking_url: r.trackingUrl,
+                quoted_delivery_fee: deliveryFee,
+              })
+              .eq("id", data.id)
+              .then(({ error: e }) => e && console.error("Shipday persist failed:", e));
+          } else {
+            console.error("Shipday dispatch failed:", r.message);
+          }
+        })
+        .catch((e) => console.error("Shipday dispatch error:", e));
+    }
+
     navigate({ to: "/confirmation/$orderId", params: { orderId: data.order_number } });
   };
 

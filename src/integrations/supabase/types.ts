@@ -538,7 +538,10 @@ export type Database = {
           order_number: string
           order_type: Database["public"]["Enums"]["order_type"]
           payment_method: string
+          quoted_delivery_fee: number | null
           scheduled_time: string | null
+          shipday_order_id: string | null
+          shipday_tracking_url: string | null
           status: Database["public"]["Enums"]["order_status"]
           subtotal: number
           tax: number
@@ -568,7 +571,10 @@ export type Database = {
           order_number: string
           order_type: Database["public"]["Enums"]["order_type"]
           payment_method: string
+          quoted_delivery_fee?: number | null
           scheduled_time?: string | null
+          shipday_order_id?: string | null
+          shipday_tracking_url?: string | null
           status?: Database["public"]["Enums"]["order_status"]
           subtotal: number
           tax?: number
@@ -598,7 +604,10 @@ export type Database = {
           order_number?: string
           order_type?: Database["public"]["Enums"]["order_type"]
           payment_method?: string
+          quoted_delivery_fee?: number | null
           scheduled_time?: string | null
+          shipday_order_id?: string | null
+          shipday_tracking_url?: string | null
           status?: Database["public"]["Enums"]["order_status"]
           subtotal?: number
           tax?: number
