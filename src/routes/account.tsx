@@ -588,5 +588,67 @@ function Toggle({ label, checked, onChange }: { label: string; checked: boolean;
   );
 }
 
+function RewardsCard({ userId }: { userId: string }) {
+  const [completed, setCompleted] = useState(0);
+  const [redeemed, setRedeemed] = useState(0);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    (async () => {
+      const [{ count: c }, { count: r }] = await Promise.all([
+        supabase
+          .from("orders")
+          .select("id", { count: "exact", head: true })
+          .eq("user_id", userId)
+          .in("status", ["ready", "completed"]),
+        supabase
+          .from("loyalty_redemptions")
+          .select("id", { count: "exact", head: true })
+          .eq("user_id", userId),
+      ]);
+      setCompleted(c ?? 0);
+      setRedeemed(r ?? 0);
+      setLoading(false);
+    })();
+  }, [userId]);
+
+  const earned = Math.floor(completed / 10);
+  const available = Math.max(0, earned - redeemed);
+  const progress = completed % 10;
+
+  return (
+    <Card title="Loyalty rewards">
+      {loading ? (
+        <p className="text-sm text-muted-foreground">Loading…</p>
+      ) : (
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="text-2xl font-black">${(available * 5).toFixed(0)}</div>
+              <div className="text-xs text-muted-foreground">
+                available · {available} reward{available === 1 ? "" : "s"}
+              </div>
+            </div>
+            <div className="text-right">
+              <div className="text-sm font-semibold">{progress} / 10</div>
+              <div className="text-xs text-muted-foreground">orders to next $5</div>
+            </div>
+          </div>
+          <div className="h-2 overflow-hidden rounded-full bg-muted">
+            <div
+              className="h-full bg-primary transition-all"
+              style={{ width: `${(progress / 10) * 100}%` }}
+            />
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Earn $5 off for every 10 completed orders. Apply at checkout.
+          </p>
+        </div>
+      )}
+    </Card>
+  );
+}
+
 // Add a placeholder Link import alias guard so unused imports don't break build
 void Link;
+
