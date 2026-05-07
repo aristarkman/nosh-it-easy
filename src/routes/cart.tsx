@@ -1,7 +1,11 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useServerFn } from "@tanstack/react-start";
+import { useEffect, useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, Minus, Plus, Trash2, Star } from "lucide-react";
 import { useOrder, fmt, LOCATIONS } from "@/lib/order-context";
+import { getMenu } from "@/lib/menu.functions";
+import type { MenuItem } from "@/lib/menu-types";
 
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -17,10 +21,26 @@ export const Route = createFileRoute("/cart")({
 });
 
 function CartPage() {
-  const { cart, subtotal, removeLine, updateQty, location, orderType } = useOrder();
+  const { cart, subtotal, removeLine, updateQty, addToCart, location, orderType } = useOrder();
   const loc = LOCATIONS.find((l) => l.id === location);
   const [authed, setAuthed] = useState(false);
   const [saving, setSaving] = useState(false);
+
+  const fetchMenu = useServerFn(getMenu);
+  const { data: menuData } = useQuery({
+    queryKey: ["menu"],
+    queryFn: () => fetchMenu(),
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const upsells = useMemo<MenuItem[]>(() => {
+    const items = menuData?.items ?? [];
+    const inCart = new Set(cart.map((l) => l.itemId));
+    return items
+      .filter((i) => !i.soldOut && !inCart.has(i.id))
+      .sort((a, b) => Number(b.popular) - Number(a.popular))
+      .slice(0, 4);
+  }, [menuData, cart]);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => setAuthed(!!data.session));
@@ -139,6 +159,61 @@ function CartPage() {
         ))}
       </ul>
 
+      {upsells.length > 0 && (
+        <section className="mt-8">
+          <h2 className="font-display text-xl font-bold">People also added</h2>
+          <ul className="mt-3 grid gap-3 sm:grid-cols-2">
+            {upsells.map((u) => {
+              const hasRequired = (u.modifierGroups ?? []).some((g) => g.required);
+              return (
+                <li
+                  key={u.id}
+                  className="flex items-center gap-3 rounded-2xl border border-border bg-card p-3"
+                >
+                  {u.image ? (
+                    <img
+                      src={u.image}
+                      alt={u.name}
+                      className="size-16 flex-none rounded-xl object-cover"
+                    />
+                  ) : (
+                    <div className="size-16 flex-none rounded-xl bg-muted" />
+                  )}
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate font-display text-sm font-bold">{u.name}</div>
+                    <div className="text-xs text-muted-foreground">{fmt(u.price)}</div>
+                  </div>
+                  {hasRequired ? (
+                    <Link
+                      to="/item/$itemId"
+                      params={{ itemId: u.id }}
+                      className="rounded-full border border-border px-3 py-1.5 text-xs font-semibold hover:border-primary"
+                    >
+                      Add
+                    </Link>
+                  ) : (
+                    <button
+                      onClick={() =>
+                        addToCart({
+                          itemId: u.id,
+                          name: u.name,
+                          basePrice: u.price,
+                          quantity: 1,
+                          modifiers: [],
+                          unitPrice: u.price,
+                        })
+                      }
+                      className="rounded-full bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground hover:opacity-90"
+                    >
+                      <Plus className="inline size-3.5" /> Add
+                    </button>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+        </section>
+      )}
 
       <section className="mt-8 rounded-2xl border border-border bg-card p-5">
         <Row label="Subtotal" value={fmt(subtotal)} />
