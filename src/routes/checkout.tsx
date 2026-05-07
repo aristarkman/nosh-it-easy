@@ -385,6 +385,30 @@ function CheckoutPage() {
     );
     clearCart();
 
+    // Record promo redemption (best-effort)
+    if (promo) {
+      supabase
+        .from("promo_redemptions")
+        .insert({
+          promo_code_id: promo.id,
+          user_id: auth.userId ?? null,
+          customer_phone: phone.trim() || null,
+          order_id: data.id,
+          discount_amount: promoDiscount,
+        })
+        .then(({ error: e }) => e && console.error("Promo redemption save failed:", e));
+    }
+    if (loyaltyDiscount && auth.userId) {
+      supabase
+        .from("loyalty_redemptions")
+        .insert({
+          user_id: auth.userId,
+          order_id: data.id,
+          amount: loyaltyDiscount,
+        })
+        .then(({ error: e }) => e && console.error("Loyalty save failed:", e));
+    }
+
     // Fire-and-forget SMS confirmation to the customer
     if (phone.trim()) {
       sendOrderStatusSms({
