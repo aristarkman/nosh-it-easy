@@ -29,7 +29,7 @@ export async function track(
       kind,
       location_id: opts.locationId ?? null,
       order_type: opts.orderType ?? null,
-      properties: opts.props ?? {},
+      properties: (opts.props ?? {}) as never,
     });
   } catch (e) {
     console.warn("[analytics] track failed", e);
