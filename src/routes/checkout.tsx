@@ -425,6 +425,16 @@ function CheckoutPage() {
           ? "Payment captured but order could not be saved. Please call us."
           : "Could not place order. Please try again."
       );
+      void reportSystemAlert({
+        kind: "order_save_failed",
+        message:
+          (pay === "card" ? "Card was charged but order DB insert failed: " : "Order DB insert failed: ") +
+          (error?.message ?? "unknown"),
+        locationId: location,
+        locationName: loc?.name,
+        orderNumber,
+        details: { customer: name.trim(), phone: phone.trim(), total },
+      });
       setSubmitting(false);
       return;
     }
@@ -534,9 +544,27 @@ function CheckoutPage() {
               .then(({ error: e }) => e && console.error("Shipday persist failed:", e));
           } else {
             console.error("Shipday dispatch failed:", r.message);
+            void reportSystemAlert({
+              kind: "shipday_dispatch_failed",
+              message: r.message || "Shipday dispatch returned not-ok",
+              locationId: location,
+              locationName: loc?.name,
+              orderNumber: data.order_number,
+              orderId: data.id,
+            });
           }
         })
-        .catch((e) => console.error("Shipday dispatch error:", e));
+        .catch((e) => {
+          console.error("Shipday dispatch error:", e);
+          void reportSystemAlert({
+            kind: "shipday_dispatch_failed",
+            message: e instanceof Error ? e.message : "Shipday dispatch threw",
+            locationId: location,
+            locationName: loc?.name,
+            orderNumber: data.order_number,
+            orderId: data.id,
+          });
+        });
     }
 
     navigate({ to: "/confirmation/$orderId", params: { orderId: data.order_number } });
