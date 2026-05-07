@@ -292,11 +292,28 @@ function TabletPage() {
         ) : (
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {filtered.map((o) => (
-              <OrderCard key={o.id} o={o} onAdvance={() => advance(o)} onCancel={() => cancel(o)} />
+              <OrderCard
+                key={o.id}
+                o={o}
+                onAdvance={() => advance(o)}
+                onCancel={() => cancel(o)}
+                onRefund={() => setRefundOrder(o)}
+              />
             ))}
           </div>
         )}
       </div>
+
+      {refundOrder && (
+        <RefundDialog
+          open={!!refundOrder}
+          onClose={() => setRefundOrder(null)}
+          order={refundOrder}
+          onRefunded={() => {
+            // realtime UPDATE will refresh totals; nothing else to do
+          }}
+        />
+      )}
     </div>
   );
 }
