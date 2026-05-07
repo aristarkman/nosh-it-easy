@@ -71,9 +71,6 @@ function CartPage() {
   const tax = +(subtotal * 0.06625).toFixed(2);
   const total = +(subtotal + deliveryFee + tax).toFixed(2);
 
-  const upsellItems = UPSELLS.map((u) => getItem(u.id))
-    .filter((i): i is NonNullable<typeof i> => !!i)
-    .filter((i) => !cart.some((l) => l.itemId === i.id));
 
   return (
     <div className="mx-auto max-w-3xl px-4 pb-16 pt-6">
