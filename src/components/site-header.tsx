@@ -1,12 +1,15 @@
 import { Link, useLocation } from "@tanstack/react-router";
-import { ShoppingBag, MapPin, Phone } from "lucide-react";
+import { ShoppingBag, MapPin, Phone, User } from "lucide-react";
 import { useOrder, LOCATIONS } from "@/lib/order-context";
+import { useCustomerAuth } from "@/lib/customer-auth";
 
 export function SiteHeader() {
   const { location, totalQty } = useOrder();
   const path = useLocation({ select: (l) => l.pathname });
   const loc = LOCATIONS.find((l) => l.id === location);
   const hideOnLanding = path === "/";
+  const auth = useCustomerAuth();
+  void totalQty;
 
   return (
     <header className="sticky top-0 z-40 bg-background">
@@ -54,6 +57,13 @@ export function SiteHeader() {
                 <span className="text-muted-foreground">· change</span>
               </Link>
             )}
+            <Link
+              to={auth.authed ? "/account" : "/login"}
+              className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-2 text-xs font-semibold transition hover:border-primary"
+            >
+              <User className="size-3.5" />
+              <span className="hidden sm:inline">{auth.authed ? "Account" : "Sign in"}</span>
+            </Link>
             <a
               href="https://catering.koshernosh.com"
               target="_blank"
