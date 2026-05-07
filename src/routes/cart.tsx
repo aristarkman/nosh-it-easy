@@ -20,6 +20,38 @@ export const Route = createFileRoute("/cart")({
 function CartPage() {
   const { cart, subtotal, removeLine, updateQty, location, orderType, addToCart } = useOrder();
   const loc = LOCATIONS.find((l) => l.id === location);
+  const [authed, setAuthed] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => setAuthed(!!data.session));
+    const { data: sub } = supabase.auth.onAuthStateChange((_e, s) => setAuthed(!!s));
+    return () => sub.subscription.unsubscribe();
+  }, []);
+
+  const saveAsFavorite = async () => {
+    if (!location || !orderType || cart.length === 0) return;
+    const name = window.prompt("Name this favorite (e.g. \"My usual\")", "My usual");
+    if (!name) return;
+    setSaving(true);
+    const { data: sess } = await supabase.auth.getSession();
+    const userId = sess.session?.user.id;
+    if (!userId) {
+      setSaving(false);
+      toast.error("Please sign in to save favorites");
+      return;
+    }
+    const { error } = await supabase.from("customer_favorites").insert({
+      user_id: userId,
+      name: name.trim().slice(0, 60),
+      location_id: location,
+      order_type: orderType,
+      items: cart as unknown as never,
+    });
+    setSaving(false);
+    if (error) toast.error(error.message);
+    else toast.success("Saved to favorites");
+  };
 
   if (!cart.length) {
     return (
