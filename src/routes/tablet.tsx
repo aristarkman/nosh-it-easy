@@ -95,7 +95,7 @@ function TabletPage() {
       let q = supabase
         .from("orders")
         .select("*")
-        .in("status", ["new", "accepted", "ready"])
+        .in("status", ["new", "accepted", "ready", "completed"])
         .order("created_at", { ascending: false })
         .limit(200);
       if (!isAdmin && allowedLocations.length > 0) {
