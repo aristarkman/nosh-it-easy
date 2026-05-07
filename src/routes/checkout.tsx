@@ -761,6 +761,12 @@ function CheckoutPage() {
                   className="w-full rounded-xl border border-border bg-card px-3 py-2.5 text-sm outline-none focus:border-primary"
                 />
               )}
+              {whenType === "asap" && !asapCheck.ok && (
+                <p className="text-xs text-destructive">{asapCheck.reason} Pick "Schedule" to order for later.</p>
+              )}
+              {whenType === "schedule" && scheduledTime && !scheduleCheck.ok && (
+                <p className="text-xs text-destructive">{scheduleCheck.reason}</p>
+              )}
             </Section>
           )}
 
