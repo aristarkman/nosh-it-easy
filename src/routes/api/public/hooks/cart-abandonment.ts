@@ -47,6 +47,8 @@ export const Route = createFileRoute("/api/public/hooks/cart-abandonment")({
               tags: ["abandoned-cart"],
               customFields: [
                 { key: "cart_item_count", field_value: String(c.item_count) },
+                { key: "cart_subtotal", field_value: c.subtotal != null ? `$${Number(c.subtotal).toFixed(2)}` : "" },
+                { key: "cart_url", field_value: "https://nosh-it-easy.lovable.app/cart" },
               ],
             }),
           });
