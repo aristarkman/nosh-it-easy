@@ -5,6 +5,7 @@ import { useOrder, fmt, LOCATIONS } from "@/lib/order-context";
 import { useCustomerAuth } from "@/lib/customer-auth";
 import { supabase } from "@/integrations/supabase/client";
 import { chargeWithToken, getFtdConfig } from "@/server/ipospays.functions";
+import { sendOrderStatusSms } from "@/server/sms.functions";
 import { toast } from "sonner";
 
 type SavedAddress = {
@@ -288,6 +289,20 @@ function CheckoutPage() {
       })
     );
     clearCart();
+
+    // Fire-and-forget SMS confirmation to the customer
+    if (phone.trim()) {
+      sendOrderStatusSms({
+        data: {
+          to: phone.trim(),
+          status: "received",
+          orderNumber: data.order_number,
+          customerName: name.trim(),
+          orderType: orderType ?? "pickup",
+          locationName: loc?.name,
+        },
+      }).catch((e) => console.error("SMS send failed:", e));
+    }
     navigate({ to: "/confirmation/$orderId", params: { orderId: data.order_number } });
   };
 
