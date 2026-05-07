@@ -583,6 +583,87 @@ function CheckoutPage() {
             )}
           </Section>
 
+          <Section title="Promo code & rewards">
+            {promo ? (
+              <div className="flex items-center justify-between rounded-xl border border-primary/40 bg-primary/5 p-3 text-sm">
+                <div className="flex items-center gap-2">
+                  <Tag className="size-4 text-primary" />
+                  <div>
+                    <div className="font-bold">{promo.code} applied</div>
+                    <div className="text-xs text-muted-foreground">
+                      {promo.discount_type === "bogo"
+                        ? "Buy 1, get 1 free"
+                        : promo.discount_type === "percent"
+                        ? `${promo.discount_value}% off`
+                        : `$${promo.discount_value.toFixed(2)} off`}
+                    </div>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPromo(null);
+                    setPromoInput("");
+                  }}
+                  className="text-xs font-bold uppercase tracking-wider text-muted-foreground hover:text-destructive"
+                >
+                  Remove
+                </button>
+              </div>
+            ) : (
+              <div className="flex gap-2">
+                <input
+                  value={promoInput}
+                  onChange={(e) => setPromoInput(e.target.value.toUpperCase())}
+                  placeholder="Enter promo code"
+                  className="flex-1 rounded-xl border border-border bg-background px-3 py-2.5 text-sm uppercase outline-none focus:border-primary"
+                />
+                <button
+                  type="button"
+                  onClick={applyPromo}
+                  disabled={promoChecking || !promoInput.trim()}
+                  className="rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground hover:opacity-90 disabled:opacity-40"
+                >
+                  {promoChecking ? "Checking…" : "Apply"}
+                </button>
+              </div>
+            )}
+
+            {auth.authed && loyaltyAvailable > 0 && (
+              <label className="mt-1 flex cursor-pointer items-start gap-3 rounded-xl border border-border bg-background p-3 text-sm">
+                <input
+                  type="checkbox"
+                  checked={useLoyalty}
+                  onChange={(e) => setUseLoyalty(e.target.checked)}
+                  className="mt-0.5"
+                />
+                <div className="flex-1">
+                  <div className="flex items-center gap-1.5 font-bold">
+                    <Gift className="size-4 text-primary" />
+                    Use $5 loyalty reward
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    You have {loyaltyAvailable} reward{loyaltyAvailable === 1 ? "" : "s"} available
+                    (earn $5 every 10 completed orders).
+                  </div>
+                </div>
+              </label>
+            )}
+            {auth.authed && loyaltyAvailable === 0 && (
+              <p className="text-xs text-muted-foreground">
+                Earn a $5 reward for every 10 completed orders.
+              </p>
+            )}
+            {!auth.authed && (
+              <p className="text-xs text-muted-foreground">
+                <Link to="/login" className="font-semibold text-primary underline">
+                  Sign in
+                </Link>{" "}
+                to earn loyalty rewards ($5 off every 10 orders).
+              </p>
+            )}
+          </Section>
+
           <Section title="Payment">
             <div className="grid gap-2 sm:grid-cols-2">
               <PayOption icon={<CreditCard className="size-4" />} active={pay === "card"} onClick={() => setPay("card")}>
