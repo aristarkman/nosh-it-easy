@@ -645,9 +645,10 @@ function CheckoutPage() {
             </Section>
           )}
 
-          <Section title="Add a tip">
+          {orderType === "delivery" && (
+          <Section title="Tip your driver">
             <p className="text-xs text-muted-foreground">
-              100% of tips go to our team.
+              100% of tips go directly to your delivery driver.
             </p>
             <div className="grid grid-cols-3 gap-2 sm:grid-cols-5">
               {TIP_PRESETS.map((p) => (
