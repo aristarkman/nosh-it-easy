@@ -124,12 +124,7 @@ const DispatchInput = z.object({
 export const dispatchShipday = createServerFn({ method: "POST" })
   .inputValidator((input) => DispatchInput.parse(input))
   .handler(async ({ data }) => {
-    // Per-location API keys (each store has its own Shipday account)
-    const KEYS: Record<string, string | undefined> = {
-      "glen-rock": process.env.SHIPDAY_API_KEY,
-      cresskill: process.env.SHIPDAY_API_KEY_CRESSKILL,
-    };
-    const apiKey = KEYS[data.locationId] ?? process.env.SHIPDAY_API_KEY;
+    const apiKey = getApiKey(data.locationId);
     if (!apiKey) {
       return { ok: false as const, message: `Shipday is not configured for ${data.locationId}.` };
     }
