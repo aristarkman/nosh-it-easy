@@ -428,9 +428,28 @@ function OrderCard({
           <span className="text-muted-foreground">Total</span>{" "}
           <span className="font-bold">{fmt(o.total)}</span>{" "}
           <span className="text-xs text-muted-foreground">· {o.payment_method}</span>
+          {refunded && (
+            <div className="mt-0.5 text-xs font-bold uppercase tracking-wider text-destructive">
+              {o.refund_status === "voided"
+                ? "Voided"
+                : o.refund_status === "full"
+                  ? `Refunded ${fmt(o.refunded_total)}`
+                  : `Partial refund ${fmt(o.refunded_total)}`}
+            </div>
+          )}
         </div>
         <div className="flex gap-1.5">
-          {o.status !== "ready" && (
+          {canRefund && (
+            <button
+              onClick={onRefund}
+              className="grid size-9 place-items-center rounded-full border border-border text-muted-foreground hover:border-destructive hover:text-destructive"
+              aria-label="Refund order"
+              title="Refund / void"
+            >
+              <RotateCcw className="size-4" />
+            </button>
+          )}
+          {o.status !== "ready" && o.status !== "completed" && (
             <button
               onClick={onCancel}
               className="grid size-9 place-items-center rounded-full border border-border text-muted-foreground hover:border-destructive hover:text-destructive"
