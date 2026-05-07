@@ -480,7 +480,7 @@ function OrdersCard({ userId }: { userId: string }) {
       name: name.trim().slice(0, 60),
       location_id: o.location_id,
       order_type: o.order_type,
-      items: o.items as unknown as object,
+      items: o.items as unknown as never,
       source_order_id: o.id,
     });
     setSavingId(null);
