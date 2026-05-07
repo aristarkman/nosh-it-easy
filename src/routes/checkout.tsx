@@ -274,13 +274,14 @@ function CheckoutPage() {
     orderType === "delivery" ? liveQuote?.fee ?? matchedZone?.fee ?? 0 : 0;
 
   const tipAmount = useMemo(() => {
+    if (orderType !== "delivery") return 0;
     if (tipMode === "none") return 0;
     if (tipMode === "custom") {
       const n = parseFloat(tipCustom);
       return isNaN(n) || n < 0 ? 0 : +n.toFixed(2);
     }
     return +(subtotal * tipPreset).toFixed(2);
-  }, [tipMode, tipPreset, tipCustom, subtotal]);
+  }, [orderType, tipMode, tipPreset, tipCustom, subtotal]);
 
   const promoDiscount = useMemo(() => {
     if (!promo) return 0;
@@ -645,9 +646,10 @@ function CheckoutPage() {
             </Section>
           )}
 
-          <Section title="Add a tip">
+          {orderType === "delivery" && (
+          <Section title="Tip your driver">
             <p className="text-xs text-muted-foreground">
-              100% of tips go to our team.
+              100% of tips go directly to your delivery driver.
             </p>
             <div className="grid grid-cols-3 gap-2 sm:grid-cols-5">
               {TIP_PRESETS.map((p) => (
@@ -679,6 +681,7 @@ function CheckoutPage() {
               />
             )}
           </Section>
+          )}
 
           <Section title="Promo code & rewards">
             {promo ? (
