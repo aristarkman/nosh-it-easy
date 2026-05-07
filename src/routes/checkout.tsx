@@ -6,6 +6,7 @@ import { useCustomerAuth } from "@/lib/customer-auth";
 import { supabase } from "@/integrations/supabase/client";
 import { chargeWithToken, getFtdConfig } from "@/server/ipospays.functions";
 import { sendOrderStatusSms, sendStaffNewOrderAlert } from "@/server/sms.functions";
+import { dispatchShipday } from "@/server/shipday.functions";
 import { toast } from "sonner";
 
 type SavedAddress = {
