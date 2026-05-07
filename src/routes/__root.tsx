@@ -40,7 +40,7 @@ const RESTAURANT_JSONLD = {
       image: OG_IMAGE,
       priceRange: "$$",
       servesCuisine: ["Jewish Deli", "Kosher", "American"],
-      telephone: "+1-201-331-0000",
+      telephone: "+1-201-445-1186",
       address: {
         "@type": "PostalAddress",
         streetAddress: "230 Rock Rd",
@@ -68,7 +68,7 @@ const RESTAURANT_JSONLD = {
       image: OG_IMAGE,
       priceRange: "$$",
       servesCuisine: ["Jewish Deli", "Kosher", "American"],
-      telephone: "+1-201-871-3535",
+      telephone: "+1-201-331-0000",
       address: {
         "@type": "PostalAddress",
         streetAddress: "27 Union Ave",
