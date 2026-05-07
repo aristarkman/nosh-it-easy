@@ -2,6 +2,7 @@ import { Link, useLocation } from "@tanstack/react-router";
 import { ShoppingBag, MapPin, Phone, User } from "lucide-react";
 import { useOrder, LOCATIONS } from "@/lib/order-context";
 import { useCustomerAuth } from "@/lib/customer-auth";
+import noshLogo from "@/assets/nosh-logo.png";
 
 export function SiteHeader() {
   const { location, totalQty } = useOrder();
