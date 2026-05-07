@@ -200,11 +200,11 @@ function CheckoutPage() {
     const itemIds = Array.from(new Set(cart.map((l) => l.itemId)));
     const { data, error } = await supabase.rpc("validate_promo", {
       _code: promoInput.trim(),
-      _user_id: auth.userId ?? null,
-      _customer_phone: phone.trim() || null,
+      _user_id: auth.userId ?? undefined,
+      _customer_phone: phone.trim() || undefined,
       _subtotal: subtotal,
       _item_ids: itemIds,
-    });
+    } as never);
     setPromoChecking(false);
     if (error) return toast.error(error.message);
     const r = data as { ok: boolean; message?: string } & Record<string, unknown>;
