@@ -303,6 +303,20 @@ function CheckoutPage() {
         },
       }).catch((e) => console.error("SMS send failed:", e));
     }
+
+    // Fire-and-forget staff alert
+    sendStaffNewOrderAlert({
+      data: {
+        orderNumber: data.order_number,
+        customerName: name.trim(),
+        orderType: orderType ?? "pickup",
+        locationName: loc?.name,
+        total,
+        whenType,
+        scheduledTime: whenType === "schedule" ? scheduledTime : null,
+        itemCount: cart.reduce((n, l) => n + l.qty, 0),
+      },
+    }).catch((e) => console.error("Staff alert failed:", e));
     navigate({ to: "/confirmation/$orderId", params: { orderId: data.order_number } });
   };
 
