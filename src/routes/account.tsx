@@ -276,56 +276,279 @@ function AddressesCard({ userId }: { userId: string }) {
   );
 }
 
-function OrdersCard({ userId }: { userId: string }) {
-  const [orders, setOrders] = useState<Order[]>([]);
-  const { clearCart, addToCart } = useOrder();
+type Favorite = {
+  id: string;
+  name: string;
+  location_id: string;
+  order_type: string;
+  items: CartLine[];
+  source_order_id: string | null;
+  created_at: string;
+};
+
+type ReorderTarget = {
+  items: CartLine[];
+  location_id?: string;
+  order_type?: string;
+  label: string;
+};
+
+function useReorderDialog() {
+  const { cart, clearCart, addToCart, setLocation, setOrderType } = useOrder();
   const navigate = useNavigate();
+  const [pending, setPending] = useState<ReorderTarget | null>(null);
 
-  useEffect(() => {
-    (async () => {
-      const { data } = await supabase
-        .from("orders")
-        .select("id,order_number,created_at,status,total,order_type,items")
-        .eq("user_id", userId)
-        .order("created_at", { ascending: false })
-        .limit(20);
-      setOrders((data ?? []) as Order[]);
-    })();
-  }, [userId]);
-
-  const reorder = (o: Order) => {
-    clearCart();
-    o.items.forEach((line) => {
+  const apply = (target: ReorderTarget, mode: "replace" | "merge") => {
+    if (mode === "replace") clearCart();
+    if (target.location_id) setLocation(target.location_id as LocationId);
+    if (target.order_type) setOrderType(target.order_type as OrderType);
+    target.items.forEach((line) => {
       const { lineId: _omit, ...rest } = line;
       void _omit;
       addToCart(rest);
     });
-    toast.success("Items added to cart");
+    toast.success(mode === "replace" ? "Cart replaced" : "Items added to cart");
     navigate({ to: "/cart" });
+    setPending(null);
+  };
+
+  const start = (target: ReorderTarget) => {
+    if (cart.length === 0) {
+      apply(target, "replace");
+    } else {
+      setPending(target);
+    }
+  };
+
+  const dialog = (
+    <AlertDialog open={!!pending} onOpenChange={(o) => !o && setPending(null)}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>You already have items in your cart</AlertDialogTitle>
+          <AlertDialogDescription>
+            Reordering <strong>{pending?.label}</strong>. Replace your current cart, or merge these
+            items in?
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter className="gap-2 sm:gap-2">
+          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogAction
+            onClick={() => pending && apply(pending, "merge")}
+            className="bg-secondary text-secondary-foreground hover:opacity-90"
+          >
+            Merge
+          </AlertDialogAction>
+          <AlertDialogAction
+            onClick={() => pending && apply(pending, "replace")}
+          >
+            Replace cart
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
+
+  return { start, dialog };
+}
+
+function FavoritesCard({ userId }: { userId: string }) {
+  const [list, setList] = useState<Favorite[]>([]);
+  const [loading, setLoading] = useState(true);
+  const { start: startReorder, dialog } = useReorderDialog();
+
+  const load = async () => {
+    setLoading(true);
+    const { data, error } = await supabase
+      .from("customer_favorites")
+      .select("*")
+      .eq("user_id", userId)
+      .order("created_at", { ascending: false });
+    if (error) toast.error(error.message);
+    setList((data ?? []) as Favorite[]);
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    load();
+  }, [userId]);
+
+  const remove = async (id: string) => {
+    const { error } = await supabase.from("customer_favorites").delete().eq("id", id);
+    if (error) toast.error(error.message);
+    else {
+      setList((prev) => prev.filter((f) => f.id !== id));
+      toast.success("Favorite removed");
+    }
+  };
+
+  return (
+    <Card title="Favorites">
+      {dialog}
+      {loading ? (
+        <p className="text-sm text-muted-foreground">Loading…</p>
+      ) : list.length === 0 ? (
+        <p className="text-sm text-muted-foreground">
+          No favorites yet. Save a past order or your current cart for one-tap reordering.
+        </p>
+      ) : (
+        <ul className="space-y-2">
+          {list.map((f) => {
+            const itemCount = f.items.reduce((s, l) => s + l.quantity, 0);
+            const total = f.items.reduce((s, l) => s + l.unitPrice * l.quantity, 0);
+            return (
+              <li
+                key={f.id}
+                className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-background p-3"
+              >
+                <div className="min-w-0 text-sm">
+                  <div className="flex items-center gap-1.5 font-semibold">
+                    <Star className="size-3.5 fill-primary text-primary" />
+                    {f.name}
+                  </div>
+                  <div className="truncate text-xs text-muted-foreground">
+                    {itemCount} item{itemCount === 1 ? "" : "s"} · {fmt(total)} ·{" "}
+                    {f.order_type} · {f.location_id}
+                  </div>
+                </div>
+                <div className="flex shrink-0 gap-2">
+                  <button
+                    onClick={() =>
+                      startReorder({
+                        items: f.items,
+                        location_id: f.location_id,
+                        order_type: f.order_type,
+                        label: f.name,
+                      })
+                    }
+                    className="inline-flex items-center gap-1.5 rounded-full bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground hover:opacity-90"
+                  >
+                    <RotateCcw className="size-3.5" /> Reorder
+                  </button>
+                  <button
+                    onClick={() => remove(f.id)}
+                    className="text-muted-foreground hover:text-destructive"
+                    aria-label="Remove favorite"
+                  >
+                    <Trash2 className="size-4" />
+                  </button>
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </Card>
+  );
+}
+
+function OrdersCard({ userId }: { userId: string }) {
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [savedSourceIds, setSavedSourceIds] = useState<Set<string>>(new Set());
+  const [savingId, setSavingId] = useState<string | null>(null);
+  const { start: startReorder, dialog } = useReorderDialog();
+
+  useEffect(() => {
+    (async () => {
+      const [{ data: orderRows }, { data: favRows }] = await Promise.all([
+        supabase
+          .from("orders")
+          .select("id,order_number,created_at,status,total,order_type,location_id,items")
+          .eq("user_id", userId)
+          .order("created_at", { ascending: false })
+          .limit(20),
+        supabase
+          .from("customer_favorites")
+          .select("source_order_id")
+          .eq("user_id", userId),
+      ]);
+      setOrders((orderRows ?? []) as unknown as Order[]);
+      setSavedSourceIds(
+        new Set((favRows ?? []).map((r) => r.source_order_id).filter(Boolean) as string[])
+      );
+      setLoading(false);
+    })();
+  }, [userId]);
+
+  const saveAsFavorite = async (o: Order) => {
+    const name = window.prompt("Name this favorite (e.g. \"My usual\")", `Order #${o.order_number}`);
+    if (!name) return;
+    setSavingId(o.id);
+    const { error } = await supabase.from("customer_favorites").insert({
+      user_id: userId,
+      name: name.trim().slice(0, 60),
+      location_id: o.location_id,
+      order_type: o.order_type,
+      items: o.items as unknown as object,
+      source_order_id: o.id,
+    });
+    setSavingId(null);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    setSavedSourceIds((prev) => new Set(prev).add(o.id));
+    toast.success("Saved to favorites");
   };
 
   return (
     <Card title="Order history">
-      {orders.length === 0 ? (
+      {dialog}
+      {loading ? (
+        <p className="text-sm text-muted-foreground">Loading…</p>
+      ) : orders.length === 0 ? (
         <p className="text-sm text-muted-foreground">No orders yet.</p>
       ) : (
         <ul className="space-y-2">
-          {orders.map((o) => (
-            <li key={o.id} className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-background p-3">
-              <div className="text-sm">
-                <div className="font-semibold">#{o.order_number} · {fmt(Number(o.total))}</div>
-                <div className="text-xs text-muted-foreground">
-                  {new Date(o.created_at).toLocaleString()} · {o.order_type} · {o.status}
-                </div>
-              </div>
-              <button
-                onClick={() => reorder(o)}
-                className="inline-flex items-center gap-1.5 rounded-full bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground hover:opacity-90"
+          {orders.map((o) => {
+            const saved = savedSourceIds.has(o.id);
+            return (
+              <li
+                key={o.id}
+                className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-background p-3"
               >
-                <RotateCcw className="size-3.5" /> Reorder
-              </button>
-            </li>
-          ))}
+                <div className="text-sm">
+                  <div className="font-semibold">
+                    #{o.order_number} · {fmt(Number(o.total))}
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    {new Date(o.created_at).toLocaleString()} · {o.order_type} · {o.status}
+                  </div>
+                </div>
+                <div className="flex shrink-0 gap-2">
+                  <button
+                    onClick={() => saveAsFavorite(o)}
+                    disabled={saved || savingId === o.id}
+                    className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-2 text-xs font-semibold hover:border-primary disabled:cursor-default disabled:opacity-50 disabled:hover:border-border"
+                    title={saved ? "Already saved as a favorite" : "Save as favorite"}
+                  >
+                    {saved ? (
+                      <>
+                        <Star className="size-3.5 fill-primary text-primary" /> Saved
+                      </>
+                    ) : (
+                      <>
+                        <StarOff className="size-3.5" /> Favorite
+                      </>
+                    )}
+                  </button>
+                  <button
+                    onClick={() =>
+                      startReorder({
+                        items: o.items,
+                        location_id: o.location_id,
+                        order_type: o.order_type,
+                        label: `#${o.order_number}`,
+                      })
+                    }
+                    className="inline-flex items-center gap-1.5 rounded-full bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground hover:opacity-90"
+                  >
+                    <RotateCcw className="size-3.5" /> Reorder
+                  </button>
+                </div>
+              </li>
+            );
+          })}
         </ul>
       )}
     </Card>
