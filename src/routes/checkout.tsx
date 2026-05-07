@@ -741,6 +741,10 @@ function CheckoutPage() {
           </ul>
           <div className="my-4 border-t border-border" />
           <Row label="Subtotal" value={fmt(subtotal)} />
+          {promoDiscount > 0 && (
+            <Row label={`Promo (${promo?.code})`} value={`−${fmt(promoDiscount)}`} />
+          )}
+          {loyaltyDiscount > 0 && <Row label="Loyalty reward" value={`−${fmt(loyaltyDiscount)}`} />}
           {orderType === "delivery" && <Row label="Delivery fee" value={fmt(deliveryFee)} />}
           <Row label="Tax" value={fmt(tax)} />
           {tipAmount > 0 && <Row label="Tip" value={fmt(tipAmount)} />}
