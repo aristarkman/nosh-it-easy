@@ -1,10 +1,11 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { Clock, MapPin, Phone, User, Truck, ShoppingBag, Check, ChefHat, X, LogOut, Volume2, VolumeX } from "lucide-react";
+import { Clock, MapPin, Phone, User, Truck, ShoppingBag, Check, ChefHat, X, LogOut, Volume2, VolumeX, RotateCcw } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { LOCATIONS, fmt, type CartLine } from "@/lib/order-context";
 import { sendOrderStatusSms } from "@/server/sms.functions";
 import { useNewOrderAlarm } from "@/lib/use-new-order-alarm";
+import { RefundDialog } from "@/components/refund-dialog";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/tablet")({
