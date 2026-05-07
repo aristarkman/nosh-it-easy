@@ -155,7 +155,23 @@ function TabletPage() {
     const next = STATUS_FLOW[o.status].next;
     if (!next) return;
     const { error } = await supabase.from("orders").update({ status: next }).eq("id", o.id);
-    if (error) toast.error("Update failed");
+    if (error) {
+      toast.error("Update failed");
+      return;
+    }
+    if ((next === "accepted" || next === "ready") && o.customer_phone) {
+      const locName = LOCATIONS.find((l) => l.id === o.location_id)?.name;
+      sendOrderStatusSms({
+        data: {
+          to: o.customer_phone,
+          status: next,
+          orderNumber: o.order_number,
+          customerName: o.customer_name,
+          orderType: o.order_type,
+          locationName: locName,
+        },
+      }).catch((e) => console.error("SMS send failed:", e));
+    }
   };
   const cancel = async (o: Order) => {
     const { error } = await supabase
