@@ -482,3 +482,126 @@ function timeAgo(iso: string) {
   const h = Math.floor(m / 60);
   return `${h}h ${m % 60}m ago`;
 }
+
+type SystemAlert = {
+  id: string;
+  kind: string;
+  severity: string;
+  location_id: string | null;
+  order_number: string | null;
+  message: string;
+  created_at: string;
+  acknowledged_at: string | null;
+};
+
+function SystemAlertsBanner({
+  isAdmin,
+  allowedLocations,
+  locFilter,
+}: {
+  isAdmin: boolean;
+  allowedLocations: string[];
+  locFilter: string;
+}) {
+  const [alerts, setAlerts] = useState<SystemAlert[]>([]);
+
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      let q = supabase
+        .from("system_alerts")
+        .select("id,kind,severity,location_id,order_number,message,created_at,acknowledged_at")
+        .is("acknowledged_at", null)
+        .order("created_at", { ascending: false })
+        .limit(50);
+      if (!isAdmin && allowedLocations.length > 0) {
+        q = q.or(`location_id.is.null,location_id.in.(${allowedLocations.join(",")})`);
+      }
+      const { data } = await q;
+      if (!mounted) return;
+      setAlerts((data ?? []) as SystemAlert[]);
+    })();
+
+    const channel = supabase
+      .channel("system-alerts-tablet")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "system_alerts" },
+        (payload) => {
+          setAlerts((prev) => {
+            if (payload.eventType === "INSERT") {
+              const n = payload.new as SystemAlert;
+              if (!isAdmin && n.location_id && !allowedLocations.includes(n.location_id)) return prev;
+              if (n.acknowledged_at) return prev;
+              toast.error(`⚠️ ${n.kind.replace(/_/g, " ")}`);
+              return [n, ...prev];
+            }
+            if (payload.eventType === "UPDATE") {
+              const n = payload.new as SystemAlert;
+              if (n.acknowledged_at) return prev.filter((a) => a.id !== n.id);
+              return prev.map((a) => (a.id === n.id ? n : a));
+            }
+            return prev;
+          });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      mounted = false;
+      supabase.removeChannel(channel);
+    };
+  }, [isAdmin, allowedLocations]);
+
+  const visible = alerts.filter(
+    (a) => locFilter === "all" || !a.location_id || a.location_id === locFilter
+  );
+
+  if (visible.length === 0) return null;
+
+  const ack = async (id: string) => {
+    const { data: u } = await supabase.auth.getUser();
+    const { error } = await supabase
+      .from("system_alerts")
+      .update({ acknowledged_at: new Date().toISOString(), acknowledged_by: u.user?.id ?? null })
+      .eq("id", id);
+    if (error) toast.error("Could not dismiss alert");
+  };
+
+  return (
+    <div className="border-b border-destructive/40 bg-destructive/10">
+      <div className="mx-auto max-w-[1400px] space-y-2 px-4 py-3">
+        {visible.map((a) => (
+          <div
+            key={a.id}
+            className="flex items-start justify-between gap-3 rounded-lg border border-destructive/40 bg-background p-3"
+          >
+            <div className="flex items-start gap-2 text-sm">
+              <AlertTriangle className="mt-0.5 size-4 shrink-0 text-destructive" />
+              <div>
+                <div className="font-bold uppercase tracking-wider text-destructive">
+                  {a.kind.replace(/_/g, " ")}
+                  {a.order_number && <span className="ml-2 text-foreground">#{a.order_number}</span>}
+                  {a.location_id && (
+                    <span className="ml-2 font-normal normal-case tracking-normal text-muted-foreground">
+                      @ {LOCATIONS.find((l) => l.id === a.location_id)?.name ?? a.location_id}
+                    </span>
+                  )}
+                </div>
+                <div className="text-foreground">{a.message}</div>
+                <div className="text-xs text-muted-foreground">{timeAgo(a.created_at)}</div>
+              </div>
+            </div>
+            <button
+              onClick={() => ack(a.id)}
+              className="shrink-0 rounded-full border border-border bg-card px-3 py-1.5 text-xs font-bold uppercase tracking-wider hover:border-foreground"
+            >
+              Dismiss
+            </button>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
