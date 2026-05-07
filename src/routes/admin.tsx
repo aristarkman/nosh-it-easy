@@ -1,6 +1,6 @@
 import { createFileRoute, Link, Outlet, useNavigate, useLocation } from "@tanstack/react-router";
 import { useEffect } from "react";
-import { LogOut, LayoutDashboard, Clock, CalendarX, Map, Gauge, Truck, Users, Utensils, BookOpen, SlidersHorizontal, Tag } from "lucide-react";
+import { LogOut, LayoutDashboard, Clock, CalendarX, Map, Gauge, Truck, Users, Utensils, BookOpen, SlidersHorizontal, Tag, BarChart3 } from "lucide-react";
 import { useAdminAuth } from "@/lib/admin-auth";
 
 export const Route = createFileRoute("/admin")({
@@ -10,6 +10,7 @@ export const Route = createFileRoute("/admin")({
 
 const NAV = [
   { to: "/admin", label: "Overview", icon: LayoutDashboard, exact: true },
+  { to: "/admin/reports", label: "Reports", icon: BarChart3 },
   { to: "/admin/hours", label: "Hours", icon: Clock },
   { to: "/admin/closures", label: "Closures", icon: CalendarX },
   { to: "/admin/zones", label: "Delivery zones", icon: Map },
