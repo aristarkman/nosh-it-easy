@@ -40,7 +40,7 @@ export const Route = createFileRoute("/menu")({
 });
 
 function MenuPage() {
-  const { items } = Route.useLoaderData();
+  const { items } = Route.useLoaderData() as { items: import("@/lib/menu-types").MenuItem[] };
   const { location, orderType } = useOrder();
   const loc = LOCATIONS.find((l) => l.id === location);
   const [active, setActive] = useState(CATEGORIES[0].id);
