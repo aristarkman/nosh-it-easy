@@ -15,7 +15,7 @@ export const Route = createFileRoute("/api/public/hooks/cart-abandonment")({
         const cutoff = new Date(Date.now() - 60 * 60_000).toISOString();
         const { data: carts } = await supabaseAdmin
           .from("abandoned_carts")
-          .select("id,session_id,phone,email,customer_name,subtotal,item_count,marketing_sms_opt_in,marketing_email_opt_in,reminded_sms_at,reminded_email_at")
+          .select("id,session_id,phone,email,customer_name,subtotal,item_count,items,marketing_sms_opt_in,marketing_email_opt_in,reminded_sms_at,reminded_email_at")
           .eq("recovered", false)
           .gt("item_count", 0)
           .lte("last_activity_at", cutoff)
