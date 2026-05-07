@@ -183,7 +183,7 @@ function CheckoutPage() {
           .from("orders")
           .select("id", { count: "exact", head: true })
           .eq("user_id", auth.userId!)
-          .in("status", ["ready", "delivered", "completed", "fulfilled"]),
+          .in("status", ["ready", "completed"]),
         supabase
           .from("loyalty_redemptions")
           .select("id", { count: "exact", head: true })
