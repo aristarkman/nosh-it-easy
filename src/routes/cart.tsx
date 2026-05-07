@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { ArrowLeft, Minus, Plus, Trash2, Sparkles, Star } from "lucide-react";
+import { ArrowLeft, Minus, Plus, Trash2, Star } from "lucide-react";
 import { useOrder, fmt, LOCATIONS } from "@/lib/order-context";
 
 import { supabase } from "@/integrations/supabase/client";
