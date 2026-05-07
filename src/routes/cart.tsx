@@ -17,7 +17,7 @@ export const Route = createFileRoute("/cart")({
 });
 
 function CartPage() {
-  const { cart, subtotal, removeLine, updateQty, location, orderType, addToCart } = useOrder();
+  const { cart, subtotal, removeLine, updateQty, location, orderType } = useOrder();
   const loc = LOCATIONS.find((l) => l.id === location);
   const [authed, setAuthed] = useState(false);
   const [saving, setSaving] = useState(false);
