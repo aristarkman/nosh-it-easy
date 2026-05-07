@@ -97,7 +97,6 @@ export const dispatchShipday = createServerFn({ method: "POST" })
         return {
           ok: false as const,
           message: `Shipday error (${res.status})`,
-          details: body,
         };
       }
       const id =
