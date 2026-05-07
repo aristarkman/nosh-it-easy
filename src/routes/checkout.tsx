@@ -941,7 +941,7 @@ function PayOption({
     <button
       type="button"
       onClick={onClick}
-      className={`flex items-center gap-2 rounded-xl border px-3 py-2.5 text-left text-sm font-medium transition ${
+      className={`flex items-center gap-2 rounded-xl border px-3 py-2.5 text-sm font-medium transition text-center ${
         active ? "border-primary bg-primary/5 text-primary" : "border-border text-foreground hover:border-primary/50"
       }`}
     >
