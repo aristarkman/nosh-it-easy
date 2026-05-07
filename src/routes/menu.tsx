@@ -7,8 +7,14 @@ import { CATEGORIES, ITEMS } from "@/lib/menu-data";
 export const Route = createFileRoute("/menu")({
   head: () => ({
     meta: [
-      { title: "Menu — The Kosher Nosh" },
-      { name: "description", content: "Pastrami, corned beef, matzo ball soup, knishes, latkes — order online." },
+      { title: "Menu — The Famous Kosher Nosh | Pastrami, Knishes, Matzo Ball Soup" },
+      {
+        name: "description",
+        content:
+          "Browse the full Kosher Nosh menu: pastrami, corned beef, matzo ball soup, knishes, latkes, smoked fish platters, and deli classics. Order pickup or delivery in Glen Rock & Cresskill, NJ.",
+      },
+      { property: "og:title", content: "The Famous Kosher Nosh — Menu" },
+      { property: "og:description", content: "Pastrami, corned beef, matzo ball soup, knishes — order online." },
     ],
   }),
   beforeLoad: () => {
