@@ -45,6 +45,9 @@ export const Route = createFileRoute("/api/public/hooks/cart-abandonment")({
               lastName,
               phone: c.phone || undefined,
               tags: ["abandoned-cart"],
+              customFields: [
+                { key: "cart_item_count", field_value: String(c.item_count) },
+              ],
             }),
           });
           if (!contactRes.ok) throw new Error(`GHL contact upsert ${contactRes.status}: ${await contactRes.text()}`);
@@ -52,14 +55,8 @@ export const Route = createFileRoute("/api/public/hooks/cart-abandonment")({
           const contactId = contactJson?.contact?.id ?? contactJson?.id;
           if (!contactId) throw new Error("GHL contact upsert: no id returned");
 
-          const greeting = firstName ? `Hi ${firstName},` : "Hi there,";
-          const html = `<!doctype html><html><body style="font-family:Arial,sans-serif;color:#222;background:#fff;padding:24px">
-            <h2 style="margin:0 0 12px">You left something behind 🥯</h2>
-            <p style="margin:0 0 12px">${greeting}</p>
-            <p style="margin:0 0 12px">You have <strong>${c.item_count} item(s)</strong> waiting in your cart at <strong>The Famous Kosher Nosh</strong>.</p>
-            <p style="margin:24px 0"><a href="https://nosh-it-easy.lovable.app/cart" style="background:#c9a84c;color:#0d0d0d;padding:12px 20px;text-decoration:none;border-radius:6px;font-weight:600">Finish your order</a></p>
-            <p style="font-size:12px;color:#666;margin-top:32px">The Famous Kosher Nosh — Glen Rock & Cresskill, NJ</p>
-          </body></html>`;
+          const templateId = process.env.GHL_ABANDONMENT_TEMPLATE_ID;
+          if (!templateId) throw new Error("GHL_ABANDONMENT_TEMPLATE_ID not set");
 
           const msgRes = await fetch("https://services.leadconnectorhq.com/conversations/messages", {
             method: "POST",
@@ -73,7 +70,7 @@ export const Route = createFileRoute("/api/public/hooks/cart-abandonment")({
               type: "Email",
               contactId,
               subject: "You left items in your cart at The Famous Kosher Nosh",
-              html,
+              emailTemplateId: templateId,
             }),
           });
           if (!msgRes.ok) throw new Error(`GHL email send ${msgRes.status}: ${await msgRes.text()}`);

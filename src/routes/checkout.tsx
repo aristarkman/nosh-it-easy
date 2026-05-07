@@ -82,6 +82,8 @@ function CheckoutPage() {
 
   const [zones, setZones] = useState<{ zip: string; fee: number; minimum: number }[]>([]);
   const [closedToday, setClosedToday] = useState<string | null>(null);
+  const [onlineHours, setOnlineHours] = useState<{ day_of_week: number; open_time: string | null; close_time: string | null; is_closed: boolean }[]>([]);
+  const [closures, setClosures] = useState<{ start_date: string; end_date: string }[]>([]);
 
   const [savedAddresses, setSavedAddresses] = useState<SavedAddress[]>([]);
   const [selectedAddrId, setSelectedAddrId] = useState<string>("");
@@ -145,17 +147,24 @@ function CheckoutPage() {
     if (!location) return;
     (async () => {
       const today = new Date().toISOString().slice(0, 10);
-      const [{ data: z }, { data: c }] = await Promise.all([
+      const [{ data: z }, { data: c }, { data: h }] = await Promise.all([
         supabase.from("delivery_zones").select("zip,fee,minimum").eq("location_id", location),
         supabase
           .from("store_closures")
           .select("reason,location_id,start_date,end_date")
-          .lte("start_date", today)
           .gte("end_date", today),
+        supabase
+          .from("store_hours")
+          .select("day_of_week,open_time,close_time,is_closed,hours_kind,location_id")
+          .eq("location_id", location)
+          .eq("hours_kind", "online"),
       ]);
       setZones((z ?? []).map((x) => ({ zip: x.zip, fee: Number(x.fee), minimum: Number(x.minimum) })));
-      const hit = (c ?? []).find((x) => x.location_id === null || x.location_id === location);
-      setClosedToday(hit ? hit.reason ?? "Closed today" : null);
+      const allClosures = (c ?? []).filter((x) => x.location_id === null || x.location_id === location);
+      setClosures(allClosures.map((x) => ({ start_date: x.start_date, end_date: x.end_date })));
+      const hitToday = allClosures.find((x) => x.start_date <= today && x.end_date >= today);
+      setClosedToday(hitToday ? hitToday.reason ?? "Closed today" : null);
+      setOnlineHours((h ?? []) as typeof onlineHours);
     })();
   }, [location]);
 
@@ -326,8 +335,48 @@ function CheckoutPage() {
   const zoneOk = orderType !== "delivery" || (!!matchedZone && subtotal >= matchedZone.minimum);
   const minShortfall = orderType === "delivery" && matchedZone ? matchedZone.minimum - subtotal : 0;
 
+  // Hours validation: ASAP requires online ordering open right now.
+  // Scheduled requires the chosen time to fall inside online ordering hours and outside closure dates.
+  const checkTime = (d: Date): { ok: boolean; reason?: string } => {
+    const ymd = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    const closure = closures.find((c) => c.start_date <= ymd && c.end_date >= ymd);
+    if (closure) return { ok: false, reason: "We're closed on that date." };
+    const row = onlineHours.find((r) => r.day_of_week === d.getDay());
+    if (!row || row.is_closed || !row.open_time || !row.close_time) {
+      return { ok: false, reason: "We're not accepting online orders that day." };
+    }
+    const [oh, om] = row.open_time.split(":").map(Number);
+    const [ch, cm] = row.close_time.split(":").map(Number);
+    const mins = d.getHours() * 60 + d.getMinutes();
+    const openMins = oh * 60 + om;
+    const closeMins = ch * 60 + cm;
+    if (mins < openMins || mins > closeMins) {
+      return { ok: false, reason: `Online ordering for that day runs ${row.open_time.slice(0, 5)}–${row.close_time.slice(0, 5)}.` };
+    }
+    return { ok: true };
+  };
+
+  const scheduleCheck = useMemo(() => {
+    if (whenType !== "schedule") return { ok: true } as { ok: boolean; reason?: string };
+    if (!scheduledTime) return { ok: false, reason: "Pick a date and time." };
+    const d = new Date(scheduledTime);
+    if (isNaN(d.getTime())) return { ok: false, reason: "Invalid time." };
+    if (d.getTime() < Date.now()) return { ok: false, reason: "Pick a future time." };
+    return checkTime(d);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [whenType, scheduledTime, onlineHours, closures]);
+
+  const asapCheck = useMemo(() => {
+    if (whenType !== "asap") return { ok: true } as { ok: boolean; reason?: string };
+    if (onlineHours.length === 0) return { ok: true };
+    return checkTime(new Date());
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [whenType, onlineHours, closures]);
+
   const valid =
     !closedToday &&
+    asapCheck.ok &&
+    scheduleCheck.ok &&
     name.trim().length > 1 &&
     /^[\d\s()+-]{7,}$/.test(phone) &&
     (orderType === "pickup" || (address.trim().length > 5 && zoneOk && !quoteError));
@@ -711,6 +760,12 @@ function CheckoutPage() {
                   onChange={(e) => setScheduledTime(e.target.value)}
                   className="w-full rounded-xl border border-border bg-card px-3 py-2.5 text-sm outline-none focus:border-primary"
                 />
+              )}
+              {whenType === "asap" && !asapCheck.ok && (
+                <p className="text-xs text-destructive">{asapCheck.reason} Pick "Schedule" to order for later.</p>
+              )}
+              {whenType === "schedule" && scheduledTime && !scheduleCheck.ok && (
+                <p className="text-xs text-destructive">{scheduleCheck.reason}</p>
               )}
             </Section>
           )}
