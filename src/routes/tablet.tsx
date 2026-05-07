@@ -115,11 +115,6 @@ function TabletPage() {
             if (payload.eventType === "INSERT") {
               const n = payload.new as Order;
               if (!isAdmin && !allowedLocations.includes(n.location_id)) return prev;
-              try {
-                new Audio(
-                  "data:audio/wav;base64,UklGRl9vT19XQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA="
-                ).play().catch(() => {});
-              } catch {}
               toast.success(`New order ${n.order_number}`);
               return [n, ...prev];
             }
