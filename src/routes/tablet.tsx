@@ -1,9 +1,10 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { Clock, MapPin, Phone, User, Truck, ShoppingBag, Check, ChefHat, X, LogOut } from "lucide-react";
+import { Clock, MapPin, Phone, User, Truck, ShoppingBag, Check, ChefHat, X, LogOut, Volume2, VolumeX } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { LOCATIONS, fmt, type CartLine } from "@/lib/order-context";
 import { sendOrderStatusSms } from "@/server/sms.functions";
+import { useNewOrderAlarm } from "@/lib/use-new-order-alarm";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/tablet")({
@@ -114,11 +115,6 @@ function TabletPage() {
             if (payload.eventType === "INSERT") {
               const n = payload.new as Order;
               if (!isAdmin && !allowedLocations.includes(n.location_id)) return prev;
-              try {
-                new Audio(
-                  "data:audio/wav;base64,UklGRl9vT19XQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA="
-                ).play().catch(() => {});
-              } catch {}
               toast.success(`New order ${n.order_number}`);
               return [n, ...prev];
             }
@@ -188,6 +184,8 @@ function TabletPage() {
     return c;
   }, [orders, locFilter]);
 
+  const { enabled: alarmEnabled, enable: enableAlarm } = useNewOrderAlarm(counts.new);
+
   if (!authChecked) {
     return <div className="grid min-h-screen place-items-center text-muted-foreground">Loading…</div>;
   }
@@ -241,6 +239,18 @@ function TabletPage() {
                 label={l.name}
               />
             ))}
+            <button
+              onClick={enableAlarm}
+              className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-bold uppercase tracking-wider transition ${
+                alarmEnabled
+                  ? "border-primary bg-primary/10 text-primary"
+                  : "border-destructive bg-destructive/10 text-destructive animate-pulse"
+              }`}
+              title={alarmEnabled ? "Sound on" : "Tap to enable order alerts"}
+            >
+              {alarmEnabled ? <Volume2 className="size-3.5" /> : <VolumeX className="size-3.5" />}
+              {alarmEnabled ? "Alerts on" : "Enable alerts"}
+            </button>
             <button
               onClick={async () => { await supabase.auth.signOut(); nav({ to: "/staff/login" }); }}
               className="inline-flex items-center gap-1.5 rounded-full border border-border px-3 py-1.5 text-xs font-bold uppercase tracking-wider text-muted-foreground hover:text-foreground"
