@@ -1,6 +1,6 @@
 import { createFileRoute, Link, Outlet, useNavigate, useLocation } from "@tanstack/react-router";
 import { useEffect } from "react";
-import { LogOut, LayoutDashboard, Clock, CalendarX, Map, Gauge, Truck, Users, Utensils, BookOpen, SlidersHorizontal } from "lucide-react";
+import { LogOut, LayoutDashboard, Clock, CalendarX, Map, Gauge, Truck, Users, Utensils, BookOpen, SlidersHorizontal, Tag } from "lucide-react";
 import { useAdminAuth } from "@/lib/admin-auth";
 
 export const Route = createFileRoute("/admin")({
@@ -19,6 +19,7 @@ const NAV = [
   { to: "/admin/menu", label: "Menu items", icon: BookOpen, adminOnly: true },
   { to: "/admin/modifiers", label: "Modifications", icon: SlidersHorizontal, adminOnly: true },
   { to: "/admin/biyo", label: "Biyo sync", icon: Utensils, adminOnly: true },
+  { to: "/admin/promos", label: "Promo codes", icon: Tag, adminOnly: true },
 ];
 
 function AdminLayout() {

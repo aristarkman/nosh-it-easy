@@ -230,6 +230,30 @@ export type Database = {
         }
         Relationships: []
       }
+      loyalty_redemptions: {
+        Row: {
+          amount: number
+          created_at: string
+          id: string
+          order_id: string | null
+          user_id: string
+        }
+        Insert: {
+          amount?: number
+          created_at?: string
+          id?: string
+          order_id?: string | null
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          id?: string
+          order_id?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       menu_item_availability: {
         Row: {
           location_id: string
@@ -593,6 +617,98 @@ export type Database = {
           },
         ]
       }
+      promo_codes: {
+        Row: {
+          active: boolean
+          bogo_buy_item_id: string | null
+          bogo_get_item_id: string | null
+          code: string
+          created_at: string
+          description: string | null
+          discount_type: string
+          discount_value: number
+          expires_at: string | null
+          id: string
+          max_total_uses: number | null
+          max_uses_per_customer: number
+          min_subtotal: number
+          starts_at: string | null
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          bogo_buy_item_id?: string | null
+          bogo_get_item_id?: string | null
+          code: string
+          created_at?: string
+          description?: string | null
+          discount_type: string
+          discount_value?: number
+          expires_at?: string | null
+          id?: string
+          max_total_uses?: number | null
+          max_uses_per_customer?: number
+          min_subtotal?: number
+          starts_at?: string | null
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          bogo_buy_item_id?: string | null
+          bogo_get_item_id?: string | null
+          code?: string
+          created_at?: string
+          description?: string | null
+          discount_type?: string
+          discount_value?: number
+          expires_at?: string | null
+          id?: string
+          max_total_uses?: number | null
+          max_uses_per_customer?: number
+          min_subtotal?: number
+          starts_at?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      promo_redemptions: {
+        Row: {
+          created_at: string
+          customer_phone: string | null
+          discount_amount: number
+          id: string
+          order_id: string | null
+          promo_code_id: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          customer_phone?: string | null
+          discount_amount?: number
+          id?: string
+          order_id?: string | null
+          promo_code_id: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          customer_phone?: string | null
+          discount_amount?: number
+          id?: string
+          order_id?: string | null
+          promo_code_id?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "promo_redemptions_promo_code_id_fkey"
+            columns: ["promo_code_id"]
+            isOneToOne: false
+            referencedRelation: "promo_codes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       staff_locations: {
         Row: {
           created_at: string
@@ -711,6 +827,16 @@ export type Database = {
       user_has_location: {
         Args: { _location_id: string; _user_id: string }
         Returns: boolean
+      }
+      validate_promo: {
+        Args: {
+          _code: string
+          _customer_phone: string
+          _item_ids: string[]
+          _subtotal: number
+          _user_id: string
+        }
+        Returns: Json
       }
     }
     Enums: {

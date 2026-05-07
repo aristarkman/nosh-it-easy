@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useNavigate, redirect } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ArrowLeft, CreditCard, Wallet, Apple, AlertTriangle, Lock } from "lucide-react";
+import { ArrowLeft, CreditCard, Wallet, Apple, AlertTriangle, Lock, Tag, Gift } from "lucide-react";
 import { useOrder, fmt, LOCATIONS } from "@/lib/order-context";
 import { useCustomerAuth } from "@/lib/customer-auth";
 import { supabase } from "@/integrations/supabase/client";
@@ -77,6 +77,22 @@ function CheckoutPage() {
 
   const [ftdReady, setFtdReady] = useState(false);
   const ftdLoadedRef = useRef(false);
+
+  // Promo code
+  const [promoInput, setPromoInput] = useState("");
+  const [promoChecking, setPromoChecking] = useState(false);
+  const [promo, setPromo] = useState<{
+    id: string;
+    code: string;
+    discount_type: "percent" | "fixed" | "bogo";
+    discount_value: number;
+    bogo_buy_item_id: string | null;
+    bogo_get_item_id: string | null;
+  } | null>(null);
+
+  // Loyalty: $5 reward per 10 completed orders
+  const [loyaltyAvailable, setLoyaltyAvailable] = useState(0);
+  const [useLoyalty, setUseLoyalty] = useState(false);
 
   // Autofill from profile + addresses when signed in
   useEffect(() => {
@@ -155,6 +171,58 @@ function CheckoutPage() {
     })();
   }, [pay]);
 
+  // Loyalty: count completed orders & redemptions
+  useEffect(() => {
+    if (!auth.authed || !auth.userId) {
+      setLoyaltyAvailable(0);
+      return;
+    }
+    (async () => {
+      const [{ count: completed }, { count: redeemed }] = await Promise.all([
+        supabase
+          .from("orders")
+          .select("id", { count: "exact", head: true })
+          .eq("user_id", auth.userId!)
+          .in("status", ["ready", "completed"]),
+        supabase
+          .from("loyalty_redemptions")
+          .select("id", { count: "exact", head: true })
+          .eq("user_id", auth.userId!),
+      ]);
+      const earned = Math.floor((completed ?? 0) / 10);
+      setLoyaltyAvailable(Math.max(0, earned - (redeemed ?? 0)));
+    })();
+  }, [auth.authed, auth.userId]);
+
+  const applyPromo = async () => {
+    if (!promoInput.trim()) return;
+    setPromoChecking(true);
+    const itemIds = Array.from(new Set(cart.map((l) => l.itemId)));
+    const { data, error } = await supabase.rpc("validate_promo", {
+      _code: promoInput.trim(),
+      _user_id: auth.userId ?? undefined,
+      _customer_phone: phone.trim() || undefined,
+      _subtotal: subtotal,
+      _item_ids: itemIds,
+    } as never);
+    setPromoChecking(false);
+    if (error) return toast.error(error.message);
+    const r = data as { ok: boolean; message?: string } & Record<string, unknown>;
+    if (!r.ok) {
+      setPromo(null);
+      return toast.error(r.message || "Invalid code");
+    }
+    setPromo({
+      id: r.id as string,
+      code: r.code as string,
+      discount_type: r.discount_type as "percent" | "fixed" | "bogo",
+      discount_value: Number(r.discount_value) || 0,
+      bogo_buy_item_id: (r.bogo_buy_item_id as string | null) ?? null,
+      bogo_get_item_id: (r.bogo_get_item_id as string | null) ?? null,
+    });
+    toast.success(`${r.code} applied`);
+  };
+
   const matchedZone = useMemo(
     () => (orderType === "delivery" && zip ? zones.find((z) => z.zip === zip) : undefined),
     [orderType, zip, zones]
@@ -170,9 +238,33 @@ function CheckoutPage() {
     return +(subtotal * tipPreset).toFixed(2);
   }, [tipMode, tipPreset, tipCustom, subtotal]);
 
-  const tax = +(subtotal * 0.06625).toFixed(2);
-  const cardFee = pay === "in-person" ? 0 : +((subtotal + deliveryFee) * 0.03).toFixed(2);
-  const total = +(subtotal + deliveryFee + tax + tipAmount + cardFee).toFixed(2);
+  const promoDiscount = useMemo(() => {
+    if (!promo) return 0;
+    if (promo.discount_type === "percent") {
+      return +((subtotal * promo.discount_value) / 100).toFixed(2);
+    }
+    if (promo.discount_type === "fixed") {
+      return +Math.min(subtotal, promo.discount_value).toFixed(2);
+    }
+    if (promo.discount_type === "bogo") {
+      // Find the cheapest unit price among lines matching the "get" item with qty>=1,
+      // requires at least one of the buy item in cart.
+      const hasBuy = cart.some((l) => l.itemId === promo.bogo_buy_item_id && l.quantity >= 1);
+      if (!hasBuy) return 0;
+      const getLines = cart.filter((l) => l.itemId === promo.bogo_get_item_id && l.quantity >= 1);
+      if (!getLines.length) return 0;
+      const cheapest = Math.min(...getLines.map((l) => l.unitPrice));
+      return +cheapest.toFixed(2);
+    }
+    return 0;
+  }, [promo, cart, subtotal]);
+
+  const loyaltyDiscount = useLoyalty && loyaltyAvailable > 0 ? 5 : 0;
+  const discounts = +Math.min(subtotal, promoDiscount + loyaltyDiscount).toFixed(2);
+  const discountedSubtotal = +(subtotal - discounts).toFixed(2);
+  const tax = +(discountedSubtotal * 0.06625).toFixed(2);
+  const cardFee = pay === "in-person" ? 0 : +((discountedSubtotal + deliveryFee) * 0.03).toFixed(2);
+  const total = +(discountedSubtotal + deliveryFee + tax + tipAmount + cardFee).toFixed(2);
 
   const canPayInPerson = orderType === "pickup" && subtotal < PAY_IN_PERSON_THRESHOLD;
   const zoneOk = orderType !== "delivery" || (!!matchedZone && subtotal >= matchedZone.minimum);
@@ -255,11 +347,14 @@ function CheckoutPage() {
         card_fee: cardFee,
         total,
         items: cart,
-        notes: Object.keys(paymentMeta).length
-          ? `tip:${tipAmount.toFixed(2)} | ${JSON.stringify(paymentMeta)}`
-          : `tip:${tipAmount.toFixed(2)}`,
+        notes: [
+          `tip:${tipAmount.toFixed(2)}`,
+          promo ? `promo:${promo.code}(-${promoDiscount.toFixed(2)})` : null,
+          loyaltyDiscount ? `loyalty:-${loyaltyDiscount.toFixed(2)}` : null,
+          Object.keys(paymentMeta).length ? JSON.stringify(paymentMeta) : null,
+        ].filter(Boolean).join(" | "),
       })
-      .select("order_number")
+      .select("id,order_number")
       .single();
 
     if (error || !data) {
@@ -289,6 +384,30 @@ function CheckoutPage() {
       })
     );
     clearCart();
+
+    // Record promo redemption (best-effort)
+    if (promo) {
+      supabase
+        .from("promo_redemptions")
+        .insert({
+          promo_code_id: promo.id,
+          user_id: auth.userId ?? null,
+          customer_phone: phone.trim() || null,
+          order_id: data.id,
+          discount_amount: promoDiscount,
+        })
+        .then(({ error: e }) => e && console.error("Promo redemption save failed:", e));
+    }
+    if (loyaltyDiscount && auth.userId) {
+      supabase
+        .from("loyalty_redemptions")
+        .insert({
+          user_id: auth.userId,
+          order_id: data.id,
+          amount: loyaltyDiscount,
+        })
+        .then(({ error: e }) => e && console.error("Loyalty save failed:", e));
+    }
 
     // Fire-and-forget SMS confirmation to the customer
     if (phone.trim()) {
@@ -464,6 +583,87 @@ function CheckoutPage() {
             )}
           </Section>
 
+          <Section title="Promo code & rewards">
+            {promo ? (
+              <div className="flex items-center justify-between rounded-xl border border-primary/40 bg-primary/5 p-3 text-sm">
+                <div className="flex items-center gap-2">
+                  <Tag className="size-4 text-primary" />
+                  <div>
+                    <div className="font-bold">{promo.code} applied</div>
+                    <div className="text-xs text-muted-foreground">
+                      {promo.discount_type === "bogo"
+                        ? "Buy 1, get 1 free"
+                        : promo.discount_type === "percent"
+                        ? `${promo.discount_value}% off`
+                        : `$${promo.discount_value.toFixed(2)} off`}
+                    </div>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPromo(null);
+                    setPromoInput("");
+                  }}
+                  className="text-xs font-bold uppercase tracking-wider text-muted-foreground hover:text-destructive"
+                >
+                  Remove
+                </button>
+              </div>
+            ) : (
+              <div className="flex gap-2">
+                <input
+                  value={promoInput}
+                  onChange={(e) => setPromoInput(e.target.value.toUpperCase())}
+                  placeholder="Enter promo code"
+                  className="flex-1 rounded-xl border border-border bg-background px-3 py-2.5 text-sm uppercase outline-none focus:border-primary"
+                />
+                <button
+                  type="button"
+                  onClick={applyPromo}
+                  disabled={promoChecking || !promoInput.trim()}
+                  className="rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground hover:opacity-90 disabled:opacity-40"
+                >
+                  {promoChecking ? "Checking…" : "Apply"}
+                </button>
+              </div>
+            )}
+
+            {auth.authed && loyaltyAvailable > 0 && (
+              <label className="mt-1 flex cursor-pointer items-start gap-3 rounded-xl border border-border bg-background p-3 text-sm">
+                <input
+                  type="checkbox"
+                  checked={useLoyalty}
+                  onChange={(e) => setUseLoyalty(e.target.checked)}
+                  className="mt-0.5"
+                />
+                <div className="flex-1">
+                  <div className="flex items-center gap-1.5 font-bold">
+                    <Gift className="size-4 text-primary" />
+                    Use $5 loyalty reward
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    You have {loyaltyAvailable} reward{loyaltyAvailable === 1 ? "" : "s"} available
+                    (earn $5 every 10 completed orders).
+                  </div>
+                </div>
+              </label>
+            )}
+            {auth.authed && loyaltyAvailable === 0 && (
+              <p className="text-xs text-muted-foreground">
+                Earn a $5 reward for every 10 completed orders.
+              </p>
+            )}
+            {!auth.authed && (
+              <p className="text-xs text-muted-foreground">
+                <Link to="/login" className="font-semibold text-primary underline">
+                  Sign in
+                </Link>{" "}
+                to earn loyalty rewards ($5 off every 10 orders).
+              </p>
+            )}
+          </Section>
+
           <Section title="Payment">
             <div className="grid gap-2 sm:grid-cols-2">
               <PayOption icon={<CreditCard className="size-4" />} active={pay === "card"} onClick={() => setPay("card")}>
@@ -541,6 +741,10 @@ function CheckoutPage() {
           </ul>
           <div className="my-4 border-t border-border" />
           <Row label="Subtotal" value={fmt(subtotal)} />
+          {promoDiscount > 0 && (
+            <Row label={`Promo (${promo?.code})`} value={`−${fmt(promoDiscount)}`} />
+          )}
+          {loyaltyDiscount > 0 && <Row label="Loyalty reward" value={`−${fmt(loyaltyDiscount)}`} />}
           {orderType === "delivery" && <Row label="Delivery fee" value={fmt(deliveryFee)} />}
           <Row label="Tax" value={fmt(tax)} />
           {tipAmount > 0 && <Row label="Tip" value={fmt(tipAmount)} />}
