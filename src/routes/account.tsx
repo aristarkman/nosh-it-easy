@@ -365,7 +365,7 @@ function FavoritesCard({ userId }: { userId: string }) {
       .eq("user_id", userId)
       .order("created_at", { ascending: false });
     if (error) toast.error(error.message);
-    setList((data ?? []) as Favorite[]);
+    setList((data ?? []) as unknown as Favorite[]);
     setLoading(false);
   };
 
