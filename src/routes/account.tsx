@@ -50,6 +50,7 @@ type Order = {
   status: string;
   total: number;
   order_type: string;
+  location_id: string;
   items: CartLine[];
 };
 
