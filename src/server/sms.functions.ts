@@ -76,3 +76,43 @@ export const sendOrderStatusSms = createServerFn({ method: "POST" })
       return { ok: false, error: err instanceof Error ? err.message : "Send failed" };
     }
   });
+
+const STAFF_ALERT_NUMBERS = ["+19173352812"];
+
+const StaffAlertSchema = z.object({
+  orderNumber: z.string().min(1).max(40),
+  customerName: z.string().min(1).max(80),
+  orderType: z.enum(["pickup", "delivery"]),
+  locationName: z.string().max(80).optional(),
+  total: z.number().nonnegative(),
+  whenType: z.string().max(20).optional(),
+  scheduledTime: z.string().max(40).nullable().optional(),
+  itemCount: z.number().int().nonnegative(),
+});
+
+export const sendStaffNewOrderAlert = createServerFn({ method: "POST" })
+  .inputValidator((input: unknown) => StaffAlertSchema.parse(input))
+  .handler(async ({ data }) => {
+    const when =
+      data.whenType === "schedule" && data.scheduledTime
+        ? `Scheduled ${data.scheduledTime}`
+        : "ASAP";
+    const where = data.locationName ? ` @ ${data.locationName}` : "";
+    const body = `New ${data.orderType.toUpperCase()} order #${data.orderNumber}${where}\n${data.customerName} • ${data.itemCount} item(s) • $${data.total.toFixed(2)}\n${when}`;
+    const results: Array<{ to: string; ok: boolean; error?: string }> = [];
+    for (const raw of STAFF_ALERT_NUMBERS) {
+      const to = normalizePhone(raw);
+      if (!to) {
+        results.push({ to: raw, ok: false, error: "Invalid number" });
+        continue;
+      }
+      try {
+        await sendSms(to, body);
+        results.push({ to, ok: true });
+      } catch (err) {
+        console.error("staff alert SMS failed:", err);
+        results.push({ to, ok: false, error: err instanceof Error ? err.message : "fail" });
+      }
+    }
+    return { results };
+  });
