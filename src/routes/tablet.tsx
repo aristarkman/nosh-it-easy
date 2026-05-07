@@ -263,7 +263,7 @@ function TabletPage() {
           </div>
         </div>
         <div className="mx-auto flex max-w-[1400px] gap-1 px-4">
-          {(["new", "accepted", "ready"] as Status[]).map((s) => (
+          {(["new", "accepted", "ready", "completed"] as Status[]).map((s) => (
             <button
               key={s}
               onClick={() => setTab(s)}
