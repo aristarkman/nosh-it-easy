@@ -86,8 +86,9 @@ function AccountPage() {
 
       <div className="mt-8 grid gap-6">
         <ProfileCard userId={auth.userId!} />
-        <AddressesCard userId={auth.userId!} />
+        <FavoritesCard userId={auth.userId!} />
         <OrdersCard userId={auth.userId!} />
+        <AddressesCard userId={auth.userId!} />
       </div>
     </div>
   );
