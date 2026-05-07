@@ -783,29 +783,35 @@ function CheckoutPage() {
               </div>
             )}
 
-            {auth.authed && loyaltyAvailable > 0 && (
-              <label className="mt-1 flex cursor-pointer items-start gap-3 rounded-xl border border-border bg-background p-3 text-sm">
-                <input
-                  type="checkbox"
-                  checked={useLoyalty}
-                  onChange={(e) => setUseLoyalty(e.target.checked)}
-                  className="mt-0.5"
-                />
-                <div className="flex-1">
-                  <div className="flex items-center gap-1.5 font-bold">
-                    <Gift className="size-4 text-primary" />
-                    Use $5 loyalty reward
-                  </div>
-                  <div className="text-xs text-muted-foreground">
-                    You have {loyaltyAvailable} reward{loyaltyAvailable === 1 ? "" : "s"} available
-                    (earn $5 every 10 completed orders).
-                  </div>
+            {auth.authed && maxRewards > 0 && (
+              <div className="mt-1 rounded-xl border border-border bg-background p-3 text-sm">
+                <div className="flex items-center gap-1.5 font-bold">
+                  <Gift className="size-4 text-primary" /> Loyalty rewards
                 </div>
-              </label>
+                <div className="mt-1 text-xs text-muted-foreground">
+                  Balance: <strong>{loyaltyBalance} pts</strong> · {POINTS_PER_REWARD} pts = ${REWARD_VALUE} off
+                </div>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {Array.from({ length: maxRewards + 1 }, (_, i) => i).map((n) => (
+                    <button
+                      key={n}
+                      type="button"
+                      onClick={() => setRewardsToUse(n)}
+                      className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition ${
+                        rewardsToUse === n
+                          ? "border-primary bg-primary/10 text-primary"
+                          : "border-border text-muted-foreground hover:border-primary"
+                      }`}
+                    >
+                      {n === 0 ? "None" : `−$${n * REWARD_VALUE} (${n * POINTS_PER_REWARD} pts)`}
+                    </button>
+                  ))}
+                </div>
+              </div>
             )}
-            {auth.authed && loyaltyAvailable === 0 && (
+            {auth.authed && maxRewards === 0 && (
               <p className="text-xs text-muted-foreground">
-                Earn a $5 reward for every 10 completed orders.
+                You have {loyaltyBalance} pts. Earn 1 pt per $1 — redeem {POINTS_PER_REWARD} pts for ${REWARD_VALUE} off.
               </p>
             )}
             {!auth.authed && (
@@ -813,7 +819,7 @@ function CheckoutPage() {
                 <Link to="/login" className="font-semibold text-primary underline">
                   Sign in
                 </Link>{" "}
-                to earn loyalty rewards ($5 off every 10 orders).
+                to earn 1 point per $1 spent ({POINTS_PER_REWARD} pts = ${REWARD_VALUE} off).
               </p>
             )}
           </Section>
