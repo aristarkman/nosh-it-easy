@@ -680,6 +680,7 @@ function CheckoutPage() {
               />
             )}
           </Section>
+          )}
 
           <Section title="Promo code & rewards">
             {promo ? (
