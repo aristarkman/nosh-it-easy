@@ -139,32 +139,6 @@ function CartPage() {
         ))}
       </ul>
 
-      {upsellItems.length > 0 && (
-        <section className="mt-8 rounded-2xl border border-dashed border-secondary/50 bg-secondary/5 p-5">
-          <div className="flex items-center gap-2 text-secondary">
-            <Sparkles className="size-4" />
-            <h2 className="text-sm font-bold uppercase tracking-widest">
-              People also added
-            </h2>
-          </div>
-          <ul className="mt-3 grid gap-2 sm:grid-cols-3">
-            {upsellItems.map((i) => (
-              <li key={i.id}>
-                <button
-                  onClick={() => addToCart(buildLineFromItem(i, {}, 1))}
-                  className="flex w-full items-center justify-between gap-3 rounded-xl border border-border bg-card p-3 text-left transition hover:border-primary"
-                >
-                  <div>
-                    <div className="text-sm font-semibold">{i.name}</div>
-                    <div className="text-xs text-muted-foreground">{fmt(i.price)}</div>
-                  </div>
-                  <Plus className="size-4 text-primary" />
-                </button>
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
 
       <section className="mt-8 rounded-2xl border border-border bg-card p-5">
         <Row label="Subtotal" value={fmt(subtotal)} />
