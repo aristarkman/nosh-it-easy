@@ -19,6 +19,7 @@ const NAV = [
   { to: "/admin/menu", label: "Menu items", icon: BookOpen, adminOnly: true },
   { to: "/admin/modifiers", label: "Modifications", icon: SlidersHorizontal, adminOnly: true },
   { to: "/admin/biyo", label: "Biyo sync", icon: Utensils, adminOnly: true },
+  { to: "/admin/promos", label: "Promo codes", icon: Tag, adminOnly: true },
 ];
 
 function AdminLayout() {
