@@ -35,8 +35,8 @@ function SignupPage() {
       toast.error(error.message);
       return;
     }
-    toast.success("Check your email to confirm your account.");
-    navigate({ to: "/login" });
+    toast.success("Account created!");
+    navigate({ to: "/account" });
   };
 
   const onGoogle = async () => {
