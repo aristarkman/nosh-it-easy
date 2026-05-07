@@ -55,6 +55,7 @@ function TabletPage() {
   const [allowedLocations, setAllowedLocations] = useState<string[]>([]);
   const [isAdmin, setIsAdmin] = useState(false);
   const [userEmail, setUserEmail] = useState<string>("");
+  const [refundOrder, setRefundOrder] = useState<Order | null>(null);
 
   // Auth gate + load assigned locations
   useEffect(() => {
