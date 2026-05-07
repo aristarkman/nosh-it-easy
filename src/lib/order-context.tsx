@@ -143,14 +143,14 @@ export const LOCATIONS: { id: LocationId; name: string; address: string; phone: 
     id: "glen-rock",
     name: "Glen Rock",
     address: "230 Rock Rd, Glen Rock, NJ",
-    phone: "(201) 331-0000",
+    phone: "(201) 445-1186",
     hours: "Open today · 7am – 8pm",
   },
   {
     id: "cresskill",
     name: "Cresskill",
     address: "27 Union Ave, Cresskill, NJ",
-    phone: "(201) 871-3535",
+    phone: "(201) 331-0000",
     hours: "Open today · 7am – 8pm",
   },
 ];
