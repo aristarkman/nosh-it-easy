@@ -24,7 +24,7 @@ export const Route = createFileRoute("/api/public/hooks/cart-abandonment")({
         const ghlKey = process.env.GHL_API_KEY;
         const ghlLocation = process.env.GHL_LOCATION_ID;
 
-        async function sendGhlEmail(c: { email: string; customer_name: string | null; phone: string | null; item_count: number }) {
+        async function sendGhlEmail(c: { email: string; customer_name: string | null; phone: string | null; item_count: number; subtotal: number | null }) {
           if (!ghlKey || !ghlLocation) throw new Error("GHL not configured");
           const [firstName, ...rest] = (c.customer_name ?? "").trim().split(/\s+/);
           const lastName = rest.join(" ") || undefined;
