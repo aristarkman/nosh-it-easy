@@ -184,6 +184,8 @@ function TabletPage() {
     return c;
   }, [orders, locFilter]);
 
+  const { enabled: alarmEnabled, needsUnlock, enable: enableAlarm } = useNewOrderAlarm(counts.new);
+
   if (!authChecked) {
     return <div className="grid min-h-screen place-items-center text-muted-foreground">Loading…</div>;
   }
