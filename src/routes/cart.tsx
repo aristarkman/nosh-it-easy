@@ -1,13 +1,16 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { ArrowLeft, Minus, Plus, Trash2, Sparkles } from "lucide-react";
+import { useEffect, useState } from "react";
+import { ArrowLeft, Minus, Plus, Trash2, Sparkles, Star } from "lucide-react";
 import { useOrder, fmt, LOCATIONS } from "@/lib/order-context";
 import { ITEMS, UPSELLS, getItem } from "@/lib/menu-data";
 import { buildLineFromItem } from "@/lib/order-context";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/cart")({
   head: () => ({
     meta: [
-      { title: "Your cart — The Kosher Nosh" },
+      { title: "Your cart — The Famous Kosher Nosh" },
       { name: "description", content: "Review your order before checkout." },
     ],
   }),
@@ -17,6 +20,38 @@ export const Route = createFileRoute("/cart")({
 function CartPage() {
   const { cart, subtotal, removeLine, updateQty, location, orderType, addToCart } = useOrder();
   const loc = LOCATIONS.find((l) => l.id === location);
+  const [authed, setAuthed] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => setAuthed(!!data.session));
+    const { data: sub } = supabase.auth.onAuthStateChange((_e, s) => setAuthed(!!s));
+    return () => sub.subscription.unsubscribe();
+  }, []);
+
+  const saveAsFavorite = async () => {
+    if (!location || !orderType || cart.length === 0) return;
+    const name = window.prompt("Name this favorite (e.g. \"My usual\")", "My usual");
+    if (!name) return;
+    setSaving(true);
+    const { data: sess } = await supabase.auth.getSession();
+    const userId = sess.session?.user.id;
+    if (!userId) {
+      setSaving(false);
+      toast.error("Please sign in to save favorites");
+      return;
+    }
+    const { error } = await supabase.from("customer_favorites").insert({
+      user_id: userId,
+      name: name.trim().slice(0, 60),
+      location_id: location,
+      order_type: orderType,
+      items: cart as unknown as never,
+    });
+    setSaving(false);
+    if (error) toast.error(error.message);
+    else toast.success("Saved to favorites");
+  };
 
   if (!cart.length) {
     return (
@@ -148,6 +183,23 @@ function CartPage() {
         >
           Continue to checkout · {fmt(total)}
         </Link>
+        {authed ? (
+          <button
+            onClick={saveAsFavorite}
+            disabled={saving}
+            className="mt-2 flex w-full items-center justify-center gap-1.5 rounded-full border border-border bg-card px-5 py-2.5 text-xs font-semibold uppercase tracking-wider hover:border-primary disabled:opacity-50"
+          >
+            <Star className="size-3.5 text-primary" />
+            {saving ? "Saving…" : "Save cart as favorite"}
+          </button>
+        ) : (
+          <Link
+            to="/login"
+            className="mt-2 block text-center text-xs text-muted-foreground hover:text-primary"
+          >
+            Sign in to save this as a favorite
+          </Link>
+        )}
       </section>
     </div>
   );

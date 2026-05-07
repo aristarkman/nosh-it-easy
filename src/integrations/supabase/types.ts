@@ -83,6 +83,42 @@ export type Database = {
         }
         Relationships: []
       }
+      customer_favorites: {
+        Row: {
+          created_at: string
+          id: string
+          items: Json
+          location_id: string
+          name: string
+          order_type: string
+          source_order_id: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          items: Json
+          location_id: string
+          name: string
+          order_type: string
+          source_order_id?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          items?: Json
+          location_id?: string
+          name?: string
+          order_type?: string
+          source_order_id?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       customer_profiles: {
         Row: {
           created_at: string
