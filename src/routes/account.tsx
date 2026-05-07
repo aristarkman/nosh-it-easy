@@ -2,13 +2,23 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useCustomerAuth } from "@/lib/customer-auth";
-import { useOrder, fmt, type CartLine } from "@/lib/order-context";
+import { useOrder, fmt, type CartLine, type LocationId, type OrderType } from "@/lib/order-context";
 import { toast } from "sonner";
-import { Plus, Trash2, RotateCcw, LogOut } from "lucide-react";
+import { Plus, Trash2, RotateCcw, LogOut, Star, StarOff } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 export const Route = createFileRoute("/account")({
   head: () => ({
-    meta: [{ title: "My account — The Kosher Nosh" }],
+    meta: [{ title: "My account — The Famous Kosher Nosh" }],
   }),
   component: AccountPage,
 });
