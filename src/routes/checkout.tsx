@@ -817,7 +817,7 @@ function Pill({ active, onClick, children }: { active: boolean; onClick: () => v
     <button
       type="button"
       onClick={onClick}
-      className={`rounded-xl border px-3 py-2.5 text-sm font-semibold transition ${
+      className={`rounded-xl border px-3 py-2.5 text-sm font-semibold transition text-center ${
         active ? "border-primary bg-primary/5 text-primary" : "border-border text-foreground hover:border-primary/50"
       }`}
     >
