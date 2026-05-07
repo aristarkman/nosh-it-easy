@@ -78,6 +78,22 @@ function CheckoutPage() {
   const [ftdReady, setFtdReady] = useState(false);
   const ftdLoadedRef = useRef(false);
 
+  // Promo code
+  const [promoInput, setPromoInput] = useState("");
+  const [promoChecking, setPromoChecking] = useState(false);
+  const [promo, setPromo] = useState<{
+    id: string;
+    code: string;
+    discount_type: "percent" | "fixed" | "bogo";
+    discount_value: number;
+    bogo_buy_item_id: string | null;
+    bogo_get_item_id: string | null;
+  } | null>(null);
+
+  // Loyalty: $5 reward per 10 completed orders
+  const [loyaltyAvailable, setLoyaltyAvailable] = useState(0);
+  const [useLoyalty, setUseLoyalty] = useState(false);
+
   // Autofill from profile + addresses when signed in
   useEffect(() => {
     if (!auth.authed || !auth.userId) return;
