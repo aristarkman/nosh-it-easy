@@ -38,6 +38,84 @@ export type Database = {
         }
         Relationships: []
       }
+      customer_addresses: {
+        Row: {
+          address_line1: string
+          address_line2: string | null
+          city: string
+          created_at: string
+          delivery_notes: string | null
+          id: string
+          is_default: boolean
+          label: string
+          state: string
+          updated_at: string
+          user_id: string
+          zip: string
+        }
+        Insert: {
+          address_line1: string
+          address_line2?: string | null
+          city: string
+          created_at?: string
+          delivery_notes?: string | null
+          id?: string
+          is_default?: boolean
+          label?: string
+          state: string
+          updated_at?: string
+          user_id: string
+          zip: string
+        }
+        Update: {
+          address_line1?: string
+          address_line2?: string | null
+          city?: string
+          created_at?: string
+          delivery_notes?: string | null
+          id?: string
+          is_default?: boolean
+          label?: string
+          state?: string
+          updated_at?: string
+          user_id?: string
+          zip?: string
+        }
+        Relationships: []
+      }
+      customer_profiles: {
+        Row: {
+          created_at: string
+          email: string | null
+          full_name: string | null
+          marketing_email: boolean
+          marketing_sms: boolean
+          phone: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          email?: string | null
+          full_name?: string | null
+          marketing_email?: boolean
+          marketing_sms?: boolean
+          phone?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          email?: string | null
+          full_name?: string | null
+          marketing_email?: boolean
+          marketing_sms?: boolean
+          phone?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       delivery_zones: {
         Row: {
           created_at: string
@@ -406,6 +484,7 @@ export type Database = {
           tax: number
           total: number
           updated_at: string
+          user_id: string | null
           when_type: string
         }
         Insert: {
@@ -435,6 +514,7 @@ export type Database = {
           tax?: number
           total: number
           updated_at?: string
+          user_id?: string | null
           when_type?: string
         }
         Update: {
@@ -464,6 +544,7 @@ export type Database = {
           tax?: number
           total?: number
           updated_at?: string
+          user_id?: string | null
           when_type?: string
         }
         Relationships: [

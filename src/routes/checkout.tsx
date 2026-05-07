@@ -2,9 +2,21 @@ import { createFileRoute, Link, useNavigate, redirect } from "@tanstack/react-ro
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowLeft, CreditCard, Wallet, Apple, AlertTriangle, Lock } from "lucide-react";
 import { useOrder, fmt, LOCATIONS } from "@/lib/order-context";
+import { useCustomerAuth } from "@/lib/customer-auth";
 import { supabase } from "@/integrations/supabase/client";
 import { chargeWithToken, getFtdConfig } from "@/server/ipospays.functions";
 import { toast } from "sonner";
+
+type SavedAddress = {
+  id: string;
+  label: string;
+  address_line1: string;
+  address_line2: string | null;
+  city: string;
+  state: string;
+  zip: string;
+  is_default: boolean;
+};
 
 const PAY_IN_PERSON_THRESHOLD = 100;
 const TIP_PRESETS = [0.15, 0.18, 0.2];
@@ -39,6 +51,7 @@ declare global {
 function CheckoutPage() {
   const navigate = useNavigate();
   const { cart, subtotal, location, orderType, clearCart } = useOrder();
+  const auth = useCustomerAuth();
   const loc = LOCATIONS.find((l) => l.id === location);
 
   const [name, setName] = useState("");
@@ -58,8 +71,47 @@ function CheckoutPage() {
   const [zones, setZones] = useState<{ zip: string; fee: number; minimum: number }[]>([]);
   const [closedToday, setClosedToday] = useState<string | null>(null);
 
+  const [savedAddresses, setSavedAddresses] = useState<SavedAddress[]>([]);
+  const [selectedAddrId, setSelectedAddrId] = useState<string>("");
+
   const [ftdReady, setFtdReady] = useState(false);
   const ftdLoadedRef = useRef(false);
+
+  // Autofill from profile + addresses when signed in
+  useEffect(() => {
+    if (!auth.authed || !auth.userId) return;
+    (async () => {
+      const [{ data: profile }, { data: addrs }] = await Promise.all([
+        supabase
+          .from("customer_profiles")
+          .select("full_name,phone,email")
+          .eq("user_id", auth.userId!)
+          .maybeSingle(),
+        supabase
+          .from("customer_addresses")
+          .select("id,label,address_line1,address_line2,city,state,zip,is_default")
+          .eq("user_id", auth.userId!)
+          .order("is_default", { ascending: false }),
+      ]);
+      if (profile) {
+        if (profile.full_name) setName((n) => n || profile.full_name!);
+        if (profile.phone) setPhone((p) => p || profile.phone!);
+        if (profile.email) setEmail((e) => e || profile.email!);
+      } else if (auth.email) {
+        setEmail((e) => e || auth.email);
+      }
+      const list = (addrs ?? []) as SavedAddress[];
+      setSavedAddresses(list);
+      const def = list.find((a) => a.is_default) ?? list[0];
+      if (def && orderType === "delivery" && !address) {
+        setSelectedAddrId(def.id);
+        setAddress(`${def.address_line1}${def.address_line2 ? `, ${def.address_line2}` : ""}, ${def.city}, ${def.state}`);
+        setZip(def.zip);
+      }
+    })();
+  }, [auth.authed, auth.userId, auth.email, orderType, address]);
+
+
 
   useEffect(() => {
     if (!location) return;
@@ -186,6 +238,7 @@ function CheckoutPage() {
       .from("orders")
       .insert({
         order_number: orderNumber,
+        user_id: auth.userId,
         location_id: location,
         order_type: orderType ?? "pickup",
         customer_name: name.trim(),
@@ -269,6 +322,33 @@ function CheckoutPage() {
 
           {orderType === "delivery" ? (
             <Section title="Delivery address">
+              {savedAddresses.length > 0 && (
+                <div className="space-y-2">
+                  <div className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+                    Saved addresses
+                  </div>
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    {savedAddresses.map((a) => (
+                      <button
+                        key={a.id}
+                        type="button"
+                        onClick={() => {
+                          setSelectedAddrId(a.id);
+                          setAddress(`${a.address_line1}${a.address_line2 ? `, ${a.address_line2}` : ""}, ${a.city}, ${a.state}`);
+                          setZip(a.zip);
+                        }}
+                        className={`rounded-xl border px-3 py-2 text-left text-xs transition ${
+                          selectedAddrId === a.id ? "border-primary bg-primary/5" : "border-border bg-card hover:border-primary"
+                        }`}
+                      >
+                        <div className="font-semibold">{a.label}</div>
+                        <div className="text-muted-foreground">{a.address_line1}, {a.city} {a.zip}</div>
+                      </button>
+                    ))}
+                  </div>
+                  <div className="text-[11px] text-muted-foreground">Or enter a new address below.</div>
+                </div>
+              )}
               <Field
                 label="Street address"
                 value={address}
