@@ -33,6 +33,7 @@ import { Route as ConfirmationOrderIdRouteImport } from './routes/confirmation.$
 import { Route as AdminZonesRouteImport } from './routes/admin.zones'
 import { Route as AdminThrottleRouteImport } from './routes/admin.throttle'
 import { Route as AdminStaffRouteImport } from './routes/admin.staff'
+import { Route as AdminReportsRouteImport } from './routes/admin.reports'
 import { Route as AdminPromosRouteImport } from './routes/admin.promos'
 import { Route as AdminModifiersRouteImport } from './routes/admin.modifiers'
 import { Route as AdminMenuRouteImport } from './routes/admin.menu'
@@ -42,6 +43,7 @@ import { Route as AdminClosuresRouteImport } from './routes/admin.closures'
 import { Route as AdminBiyoRouteImport } from './routes/admin.biyo'
 import { Route as ApiPublicHooksSyncBiyoRouteImport } from './routes/api/public/hooks/sync-biyo'
 import { Route as ApiPublicHooksShipdayRouteImport } from './routes/api/public/hooks/shipday'
+import { Route as ApiPublicHooksCartAbandonmentRouteImport } from './routes/api/public/hooks/cart-abandonment'
 
 const TermsRoute = TermsRouteImport.update({
   id: '/terms',
@@ -163,6 +165,11 @@ const AdminStaffRoute = AdminStaffRouteImport.update({
   path: '/staff',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminReportsRoute = AdminReportsRouteImport.update({
+  id: '/reports',
+  path: '/reports',
+  getParentRoute: () => AdminRoute,
+} as any)
 const AdminPromosRoute = AdminPromosRouteImport.update({
   id: '/promos',
   path: '/promos',
@@ -208,6 +215,12 @@ const ApiPublicHooksShipdayRoute = ApiPublicHooksShipdayRouteImport.update({
   path: '/api/public/hooks/shipday',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicHooksCartAbandonmentRoute =
+  ApiPublicHooksCartAbandonmentRouteImport.update({
+    id: '/api/public/hooks/cart-abandonment',
+    path: '/api/public/hooks/cart-abandonment',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -234,6 +247,7 @@ export interface FileRoutesByFullPath {
   '/admin/menu': typeof AdminMenuRoute
   '/admin/modifiers': typeof AdminModifiersRoute
   '/admin/promos': typeof AdminPromosRoute
+  '/admin/reports': typeof AdminReportsRoute
   '/admin/staff': typeof AdminStaffRoute
   '/admin/throttle': typeof AdminThrottleRoute
   '/admin/zones': typeof AdminZonesRoute
@@ -241,6 +255,7 @@ export interface FileRoutesByFullPath {
   '/item/$itemId': typeof ItemItemIdRoute
   '/staff/login': typeof StaffLoginRoute
   '/admin/': typeof AdminIndexRoute
+  '/api/public/hooks/cart-abandonment': typeof ApiPublicHooksCartAbandonmentRoute
   '/api/public/hooks/shipday': typeof ApiPublicHooksShipdayRoute
   '/api/public/hooks/sync-biyo': typeof ApiPublicHooksSyncBiyoRoute
 }
@@ -268,6 +283,7 @@ export interface FileRoutesByTo {
   '/admin/menu': typeof AdminMenuRoute
   '/admin/modifiers': typeof AdminModifiersRoute
   '/admin/promos': typeof AdminPromosRoute
+  '/admin/reports': typeof AdminReportsRoute
   '/admin/staff': typeof AdminStaffRoute
   '/admin/throttle': typeof AdminThrottleRoute
   '/admin/zones': typeof AdminZonesRoute
@@ -275,6 +291,7 @@ export interface FileRoutesByTo {
   '/item/$itemId': typeof ItemItemIdRoute
   '/staff/login': typeof StaffLoginRoute
   '/admin': typeof AdminIndexRoute
+  '/api/public/hooks/cart-abandonment': typeof ApiPublicHooksCartAbandonmentRoute
   '/api/public/hooks/shipday': typeof ApiPublicHooksShipdayRoute
   '/api/public/hooks/sync-biyo': typeof ApiPublicHooksSyncBiyoRoute
 }
@@ -304,6 +321,7 @@ export interface FileRoutesById {
   '/admin/menu': typeof AdminMenuRoute
   '/admin/modifiers': typeof AdminModifiersRoute
   '/admin/promos': typeof AdminPromosRoute
+  '/admin/reports': typeof AdminReportsRoute
   '/admin/staff': typeof AdminStaffRoute
   '/admin/throttle': typeof AdminThrottleRoute
   '/admin/zones': typeof AdminZonesRoute
@@ -311,6 +329,7 @@ export interface FileRoutesById {
   '/item/$itemId': typeof ItemItemIdRoute
   '/staff/login': typeof StaffLoginRoute
   '/admin/': typeof AdminIndexRoute
+  '/api/public/hooks/cart-abandonment': typeof ApiPublicHooksCartAbandonmentRoute
   '/api/public/hooks/shipday': typeof ApiPublicHooksShipdayRoute
   '/api/public/hooks/sync-biyo': typeof ApiPublicHooksSyncBiyoRoute
 }
@@ -341,6 +360,7 @@ export interface FileRouteTypes {
     | '/admin/menu'
     | '/admin/modifiers'
     | '/admin/promos'
+    | '/admin/reports'
     | '/admin/staff'
     | '/admin/throttle'
     | '/admin/zones'
@@ -348,6 +368,7 @@ export interface FileRouteTypes {
     | '/item/$itemId'
     | '/staff/login'
     | '/admin/'
+    | '/api/public/hooks/cart-abandonment'
     | '/api/public/hooks/shipday'
     | '/api/public/hooks/sync-biyo'
   fileRoutesByTo: FileRoutesByTo
@@ -375,6 +396,7 @@ export interface FileRouteTypes {
     | '/admin/menu'
     | '/admin/modifiers'
     | '/admin/promos'
+    | '/admin/reports'
     | '/admin/staff'
     | '/admin/throttle'
     | '/admin/zones'
@@ -382,6 +404,7 @@ export interface FileRouteTypes {
     | '/item/$itemId'
     | '/staff/login'
     | '/admin'
+    | '/api/public/hooks/cart-abandonment'
     | '/api/public/hooks/shipday'
     | '/api/public/hooks/sync-biyo'
   id:
@@ -410,6 +433,7 @@ export interface FileRouteTypes {
     | '/admin/menu'
     | '/admin/modifiers'
     | '/admin/promos'
+    | '/admin/reports'
     | '/admin/staff'
     | '/admin/throttle'
     | '/admin/zones'
@@ -417,6 +441,7 @@ export interface FileRouteTypes {
     | '/item/$itemId'
     | '/staff/login'
     | '/admin/'
+    | '/api/public/hooks/cart-abandonment'
     | '/api/public/hooks/shipday'
     | '/api/public/hooks/sync-biyo'
   fileRoutesById: FileRoutesById
@@ -442,6 +467,7 @@ export interface RootRouteChildren {
   ConfirmationOrderIdRoute: typeof ConfirmationOrderIdRoute
   ItemItemIdRoute: typeof ItemItemIdRoute
   StaffLoginRoute: typeof StaffLoginRoute
+  ApiPublicHooksCartAbandonmentRoute: typeof ApiPublicHooksCartAbandonmentRoute
   ApiPublicHooksShipdayRoute: typeof ApiPublicHooksShipdayRoute
   ApiPublicHooksSyncBiyoRoute: typeof ApiPublicHooksSyncBiyoRoute
 }
@@ -616,6 +642,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminStaffRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/admin/reports': {
+      id: '/admin/reports'
+      path: '/reports'
+      fullPath: '/admin/reports'
+      preLoaderRoute: typeof AdminReportsRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/admin/promos': {
       id: '/admin/promos'
       path: '/promos'
@@ -679,6 +712,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicHooksShipdayRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/hooks/cart-abandonment': {
+      id: '/api/public/hooks/cart-abandonment'
+      path: '/api/public/hooks/cart-abandonment'
+      fullPath: '/api/public/hooks/cart-abandonment'
+      preLoaderRoute: typeof ApiPublicHooksCartAbandonmentRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -690,6 +730,7 @@ interface AdminRouteChildren {
   AdminMenuRoute: typeof AdminMenuRoute
   AdminModifiersRoute: typeof AdminModifiersRoute
   AdminPromosRoute: typeof AdminPromosRoute
+  AdminReportsRoute: typeof AdminReportsRoute
   AdminStaffRoute: typeof AdminStaffRoute
   AdminThrottleRoute: typeof AdminThrottleRoute
   AdminZonesRoute: typeof AdminZonesRoute
@@ -704,6 +745,7 @@ const AdminRouteChildren: AdminRouteChildren = {
   AdminMenuRoute: AdminMenuRoute,
   AdminModifiersRoute: AdminModifiersRoute,
   AdminPromosRoute: AdminPromosRoute,
+  AdminReportsRoute: AdminReportsRoute,
   AdminStaffRoute: AdminStaffRoute,
   AdminThrottleRoute: AdminThrottleRoute,
   AdminZonesRoute: AdminZonesRoute,
@@ -733,6 +775,7 @@ const rootRouteChildren: RootRouteChildren = {
   ConfirmationOrderIdRoute: ConfirmationOrderIdRoute,
   ItemItemIdRoute: ItemItemIdRoute,
   StaffLoginRoute: StaffLoginRoute,
+  ApiPublicHooksCartAbandonmentRoute: ApiPublicHooksCartAbandonmentRoute,
   ApiPublicHooksShipdayRoute: ApiPublicHooksShipdayRoute,
   ApiPublicHooksSyncBiyoRoute: ApiPublicHooksSyncBiyoRoute,
 }

@@ -14,6 +14,108 @@ export type Database = {
   }
   public: {
     Tables: {
+      abandoned_carts: {
+        Row: {
+          created_at: string
+          customer_name: string | null
+          email: string | null
+          id: string
+          item_count: number
+          items: Json
+          last_activity_at: string
+          location_id: string | null
+          marketing_email_opt_in: boolean
+          marketing_sms_opt_in: boolean
+          order_type: string | null
+          phone: string | null
+          recovered: boolean
+          recovered_order_id: string | null
+          reminded_email_at: string | null
+          reminded_sms_at: string | null
+          session_id: string
+          subtotal: number
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          customer_name?: string | null
+          email?: string | null
+          id?: string
+          item_count?: number
+          items?: Json
+          last_activity_at?: string
+          location_id?: string | null
+          marketing_email_opt_in?: boolean
+          marketing_sms_opt_in?: boolean
+          order_type?: string | null
+          phone?: string | null
+          recovered?: boolean
+          recovered_order_id?: string | null
+          reminded_email_at?: string | null
+          reminded_sms_at?: string | null
+          session_id: string
+          subtotal?: number
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          customer_name?: string | null
+          email?: string | null
+          id?: string
+          item_count?: number
+          items?: Json
+          last_activity_at?: string
+          location_id?: string | null
+          marketing_email_opt_in?: boolean
+          marketing_sms_opt_in?: boolean
+          order_type?: string | null
+          phone?: string | null
+          recovered?: boolean
+          recovered_order_id?: string | null
+          reminded_email_at?: string | null
+          reminded_sms_at?: string | null
+          session_id?: string
+          subtotal?: number
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      analytics_events: {
+        Row: {
+          created_at: string
+          id: string
+          kind: string
+          location_id: string | null
+          order_type: string | null
+          properties: Json
+          session_id: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          kind: string
+          location_id?: string | null
+          order_type?: string | null
+          properties?: Json
+          session_id: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          kind?: string
+          location_id?: string | null
+          order_type?: string | null
+          properties?: Json
+          session_id?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       biyo_locations: {
         Row: {
           biyo_store_id: string
@@ -230,12 +332,43 @@ export type Database = {
         }
         Relationships: []
       }
+      loyalty_ledger: {
+        Row: {
+          created_at: string
+          id: string
+          kind: string
+          note: string | null
+          order_id: string | null
+          points: number
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          kind: string
+          note?: string | null
+          order_id?: string | null
+          points: number
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          kind?: string
+          note?: string | null
+          order_id?: string | null
+          points?: number
+          user_id?: string
+        }
+        Relationships: []
+      }
       loyalty_redemptions: {
         Row: {
           amount: number
           created_at: string
           id: string
           order_id: string | null
+          points_used: number
           user_id: string
         }
         Insert: {
@@ -243,6 +376,7 @@ export type Database = {
           created_at?: string
           id?: string
           order_id?: string | null
+          points_used?: number
           user_id: string
         }
         Update: {
@@ -250,6 +384,7 @@ export type Database = {
           created_at?: string
           id?: string
           order_id?: string | null
+          points_used?: number
           user_id?: string
         }
         Relationships: []
@@ -569,6 +704,7 @@ export type Database = {
       orders: {
         Row: {
           card_fee: number
+          channel: Database["public"]["Enums"]["order_channel"]
           created_at: string
           customer_email: string | null
           customer_name: string
@@ -602,6 +738,7 @@ export type Database = {
         }
         Insert: {
           card_fee?: number
+          channel?: Database["public"]["Enums"]["order_channel"]
           created_at?: string
           customer_email?: string | null
           customer_name: string
@@ -637,6 +774,7 @@ export type Database = {
         }
         Update: {
           card_fee?: number
+          channel?: Database["public"]["Enums"]["order_channel"]
           created_at?: string
           customer_email?: string | null
           customer_name?: string
@@ -929,6 +1067,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      loyalty_balance: { Args: { _user_id: string }; Returns: number }
       user_has_location: {
         Args: { _location_id: string; _user_id: string }
         Returns: boolean
@@ -951,6 +1090,7 @@ export type Database = {
         | "assigned"
         | "out_for_delivery"
         | "delivered"
+      order_channel: "web" | "tablet" | "phone" | "third_party"
       order_refund_state: "none" | "partial" | "full" | "voided"
       order_status: "new" | "accepted" | "ready" | "completed" | "cancelled"
       order_type: "pickup" | "delivery"
@@ -1090,6 +1230,7 @@ export const Constants = {
         "out_for_delivery",
         "delivered",
       ],
+      order_channel: ["web", "tablet", "phone", "third_party"],
       order_refund_state: ["none", "partial", "full", "voided"],
       order_status: ["new", "accepted", "ready", "completed", "cancelled"],
       order_type: ["pickup", "delivery"],

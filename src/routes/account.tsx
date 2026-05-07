@@ -589,32 +589,24 @@ function Toggle({ label, checked, onChange }: { label: string; checked: boolean;
 }
 
 function RewardsCard({ userId }: { userId: string }) {
-  const [completed, setCompleted] = useState(0);
-  const [redeemed, setRedeemed] = useState(0);
+  const [balance, setBalance] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [history, setHistory] = useState<Array<{ id: string; kind: string; points: number; note: string | null; created_at: string }>>([]);
 
   useEffect(() => {
     (async () => {
-      const [{ count: c }, { count: r }] = await Promise.all([
-        supabase
-          .from("orders")
-          .select("id", { count: "exact", head: true })
-          .eq("user_id", userId)
-          .in("status", ["ready", "completed"]),
-        supabase
-          .from("loyalty_redemptions")
-          .select("id", { count: "exact", head: true })
-          .eq("user_id", userId),
+      const [{ data: bal }, { data: rows }] = await Promise.all([
+        supabase.rpc("loyalty_balance", { _user_id: userId } as never),
+        supabase.from("loyalty_ledger").select("id,kind,points,note,created_at").eq("user_id", userId).order("created_at", { ascending: false }).limit(10),
       ]);
-      setCompleted(c ?? 0);
-      setRedeemed(r ?? 0);
+      setBalance(typeof bal === "number" ? bal : 0);
+      setHistory((rows ?? []) as never);
       setLoading(false);
     })();
   }, [userId]);
 
-  const earned = Math.floor(completed / 10);
-  const available = Math.max(0, earned - redeemed);
-  const progress = completed % 10;
+  const rewards = Math.floor(balance / 100);
+  const progress = balance % 100;
 
   return (
     <Card title="Loyalty rewards">
@@ -624,25 +616,36 @@ function RewardsCard({ userId }: { userId: string }) {
         <div className="space-y-3">
           <div className="flex items-center justify-between">
             <div>
-              <div className="text-2xl font-black">${(available * 5).toFixed(0)}</div>
+              <div className="text-2xl font-black">{balance} pts</div>
               <div className="text-xs text-muted-foreground">
-                available · {available} reward{available === 1 ? "" : "s"}
+                ${rewards * 5} available · {rewards} reward{rewards === 1 ? "" : "s"}
               </div>
             </div>
             <div className="text-right">
-              <div className="text-sm font-semibold">{progress} / 10</div>
-              <div className="text-xs text-muted-foreground">orders to next $5</div>
+              <div className="text-sm font-semibold">{progress} / 100</div>
+              <div className="text-xs text-muted-foreground">pts to next $5</div>
             </div>
           </div>
           <div className="h-2 overflow-hidden rounded-full bg-muted">
-            <div
-              className="h-full bg-primary transition-all"
-              style={{ width: `${(progress / 10) * 100}%` }}
-            />
+            <div className="h-full bg-primary transition-all" style={{ width: `${progress}%` }} />
           </div>
           <p className="text-xs text-muted-foreground">
-            Earn $5 off for every 10 completed orders. Apply at checkout.
+            Earn 1 point per $1 spent. Redeem 100 pts for $5 off at checkout.
           </p>
+          {history.length > 0 && (
+            <ul className="mt-3 space-y-1 text-xs">
+              {history.map((h) => (
+                <li key={h.id} className="flex justify-between">
+                  <span className="text-muted-foreground">
+                    {new Date(h.created_at).toLocaleDateString()} · {h.note ?? h.kind}
+                  </span>
+                  <span className={h.points > 0 ? "font-semibold text-primary" : "font-semibold text-muted-foreground"}>
+                    {h.points > 0 ? "+" : ""}{h.points} pts
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
       )}
     </Card>

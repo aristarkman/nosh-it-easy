@@ -8,6 +8,15 @@ import { chargeWithToken, getFtdConfig } from "@/server/ipospays.functions";
 import { sendOrderStatusSms, sendStaffNewOrderAlert } from "@/server/sms.functions";
 import { dispatchShipday, quoteShipday } from "@/server/shipday.functions";
 import { reportSystemAlert } from "@/lib/system-alerts";
+import { markCartRecovered, track } from "@/lib/analytics";
+import {
+  POINTS_PER_REWARD,
+  REWARD_VALUE,
+  discountForRewards,
+  maxRewardsRedeemable,
+  pointsEarnedFor,
+  pointsForRewards,
+} from "@/lib/loyalty";
 import { toast } from "sonner";
 
 type SavedAddress = {
@@ -92,9 +101,9 @@ function CheckoutPage() {
     bogo_get_item_id: string | null;
   } | null>(null);
 
-  // Loyalty: $5 reward per 10 completed orders
-  const [loyaltyAvailable, setLoyaltyAvailable] = useState(0);
-  const [useLoyalty, setUseLoyalty] = useState(false);
+  // Loyalty: 1 pt / $1, 100 pts = $5 off
+  const [loyaltyBalance, setLoyaltyBalance] = useState(0);
+  const [rewardsToUse, setRewardsToUse] = useState(0);
 
   // Autofill from profile + addresses when signed in
   useEffect(() => {
@@ -173,28 +182,27 @@ function CheckoutPage() {
     })();
   }, [pay]);
 
-  // Loyalty: count completed orders & redemptions
+  // Loyalty: load points balance
   useEffect(() => {
     if (!auth.authed || !auth.userId) {
-      setLoyaltyAvailable(0);
+      setLoyaltyBalance(0);
       return;
     }
     (async () => {
-      const [{ count: completed }, { count: redeemed }] = await Promise.all([
-        supabase
-          .from("orders")
-          .select("id", { count: "exact", head: true })
-          .eq("user_id", auth.userId!)
-          .in("status", ["ready", "completed"]),
-        supabase
-          .from("loyalty_redemptions")
-          .select("id", { count: "exact", head: true })
-          .eq("user_id", auth.userId!),
-      ]);
-      const earned = Math.floor((completed ?? 0) / 10);
-      setLoyaltyAvailable(Math.max(0, earned - (redeemed ?? 0)));
+      const { data } = await supabase.rpc("loyalty_balance", { _user_id: auth.userId! } as never);
+      setLoyaltyBalance(typeof data === "number" ? data : 0);
     })();
   }, [auth.authed, auth.userId]);
+
+  // Track checkout_started once on mount
+  useEffect(() => {
+    void track("checkout_started", {
+      props: { subtotal, itemCount: cart.reduce((n, l) => n + l.quantity, 0) },
+      locationId: location,
+      orderType,
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const applyPromo = async () => {
     if (!promoInput.trim()) return;
@@ -305,7 +313,9 @@ function CheckoutPage() {
     return 0;
   }, [promo, cart, subtotal]);
 
-  const loyaltyDiscount = useLoyalty && loyaltyAvailable > 0 ? 5 : 0;
+  const maxRewards = maxRewardsRedeemable(loyaltyBalance, subtotal);
+  const effectiveRewards = Math.min(rewardsToUse, maxRewards);
+  const loyaltyDiscount = discountForRewards(effectiveRewards);
   const discounts = +Math.min(subtotal, promoDiscount + loyaltyDiscount).toFixed(2);
   const discountedSubtotal = +(subtotal - discounts).toFixed(2);
   const tax = +(discountedSubtotal * 0.06625).toFixed(2);
@@ -469,16 +479,31 @@ function CheckoutPage() {
         })
         .then(({ error: e }) => e && console.error("Promo redemption save failed:", e));
     }
-    if (loyaltyDiscount && auth.userId) {
-      supabase
-        .from("loyalty_redemptions")
-        .insert({
-          user_id: auth.userId,
-          order_id: data.id,
-          amount: loyaltyDiscount,
-        })
-        .then(({ error: e }) => e && console.error("Loyalty save failed:", e));
+    // Loyalty: redeem (negative) and earn (positive on discounted subtotal)
+    if (auth.userId) {
+      const earnPts = pointsEarnedFor(discountedSubtotal);
+      const redeemPts = pointsForRewards(effectiveRewards);
+      if (redeemPts > 0) {
+        supabase.from("loyalty_redemptions").insert({
+          user_id: auth.userId, order_id: data.id, amount: loyaltyDiscount, points_used: redeemPts,
+        }).then(({ error: e }) => e && console.error("Loyalty redemption save failed:", e));
+        supabase.from("loyalty_ledger").insert({
+          user_id: auth.userId, order_id: data.id, kind: "redeem", points: -redeemPts, note: `Redeemed ${effectiveRewards} reward(s)`,
+        }).then(({ error: e }) => e && console.error("Loyalty ledger redeem failed:", e));
+      }
+      if (earnPts > 0) {
+        supabase.from("loyalty_ledger").insert({
+          user_id: auth.userId, order_id: data.id, kind: "earn", points: earnPts, note: `Earned on order #${data.order_number}`,
+        }).then(({ error: e }) => e && console.error("Loyalty ledger earn failed:", e));
+      }
     }
+
+    // Mark abandoned cart as recovered & track conversion
+    void markCartRecovered(data.id);
+    void track("checkout_completed", {
+      props: { orderId: data.id, orderNumber: data.order_number, total, subtotal, itemCount: cart.reduce((n,l)=>n+l.quantity,0) },
+      locationId: location, orderType,
+    });
 
     // Fire-and-forget SMS confirmation to the customer
     if (phone.trim()) {
@@ -773,29 +798,35 @@ function CheckoutPage() {
               </div>
             )}
 
-            {auth.authed && loyaltyAvailable > 0 && (
-              <label className="mt-1 flex cursor-pointer items-start gap-3 rounded-xl border border-border bg-background p-3 text-sm">
-                <input
-                  type="checkbox"
-                  checked={useLoyalty}
-                  onChange={(e) => setUseLoyalty(e.target.checked)}
-                  className="mt-0.5"
-                />
-                <div className="flex-1">
-                  <div className="flex items-center gap-1.5 font-bold">
-                    <Gift className="size-4 text-primary" />
-                    Use $5 loyalty reward
-                  </div>
-                  <div className="text-xs text-muted-foreground">
-                    You have {loyaltyAvailable} reward{loyaltyAvailable === 1 ? "" : "s"} available
-                    (earn $5 every 10 completed orders).
-                  </div>
+            {auth.authed && maxRewards > 0 && (
+              <div className="mt-1 rounded-xl border border-border bg-background p-3 text-sm">
+                <div className="flex items-center gap-1.5 font-bold">
+                  <Gift className="size-4 text-primary" /> Loyalty rewards
                 </div>
-              </label>
+                <div className="mt-1 text-xs text-muted-foreground">
+                  Balance: <strong>{loyaltyBalance} pts</strong> · {POINTS_PER_REWARD} pts = ${REWARD_VALUE} off
+                </div>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {Array.from({ length: maxRewards + 1 }, (_, i) => i).map((n) => (
+                    <button
+                      key={n}
+                      type="button"
+                      onClick={() => setRewardsToUse(n)}
+                      className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition ${
+                        rewardsToUse === n
+                          ? "border-primary bg-primary/10 text-primary"
+                          : "border-border text-muted-foreground hover:border-primary"
+                      }`}
+                    >
+                      {n === 0 ? "None" : `−$${n * REWARD_VALUE} (${n * POINTS_PER_REWARD} pts)`}
+                    </button>
+                  ))}
+                </div>
+              </div>
             )}
-            {auth.authed && loyaltyAvailable === 0 && (
+            {auth.authed && maxRewards === 0 && (
               <p className="text-xs text-muted-foreground">
-                Earn a $5 reward for every 10 completed orders.
+                You have {loyaltyBalance} pts. Earn 1 pt per $1 — redeem {POINTS_PER_REWARD} pts for ${REWARD_VALUE} off.
               </p>
             )}
             {!auth.authed && (
@@ -803,7 +834,7 @@ function CheckoutPage() {
                 <Link to="/login" className="font-semibold text-primary underline">
                   Sign in
                 </Link>{" "}
-                to earn loyalty rewards ($5 off every 10 orders).
+                to earn 1 point per $1 spent ({POINTS_PER_REWARD} pts = ${REWARD_VALUE} off).
               </p>
             )}
           </Section>
