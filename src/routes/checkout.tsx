@@ -479,16 +479,31 @@ function CheckoutPage() {
         })
         .then(({ error: e }) => e && console.error("Promo redemption save failed:", e));
     }
-    if (loyaltyDiscount && auth.userId) {
-      supabase
-        .from("loyalty_redemptions")
-        .insert({
-          user_id: auth.userId,
-          order_id: data.id,
-          amount: loyaltyDiscount,
-        })
-        .then(({ error: e }) => e && console.error("Loyalty save failed:", e));
+    // Loyalty: redeem (negative) and earn (positive on discounted subtotal)
+    if (auth.userId) {
+      const earnPts = pointsEarnedFor(discountedSubtotal);
+      const redeemPts = pointsForRewards(effectiveRewards);
+      if (redeemPts > 0) {
+        supabase.from("loyalty_redemptions").insert({
+          user_id: auth.userId, order_id: data.id, amount: loyaltyDiscount, points_used: redeemPts,
+        }).then(({ error: e }) => e && console.error("Loyalty redemption save failed:", e));
+        supabase.from("loyalty_ledger").insert({
+          user_id: auth.userId, order_id: data.id, kind: "redeem", points: -redeemPts, note: `Redeemed ${effectiveRewards} reward(s)`,
+        }).then(({ error: e }) => e && console.error("Loyalty ledger redeem failed:", e));
+      }
+      if (earnPts > 0) {
+        supabase.from("loyalty_ledger").insert({
+          user_id: auth.userId, order_id: data.id, kind: "earn", points: earnPts, note: `Earned on order #${data.order_number}`,
+        }).then(({ error: e }) => e && console.error("Loyalty ledger earn failed:", e));
+      }
     }
+
+    // Mark abandoned cart as recovered & track conversion
+    void markCartRecovered(data.id);
+    void track("checkout_completed", {
+      props: { orderId: data.id, orderNumber: data.order_number, total, subtotal, itemCount: cart.reduce((n,l)=>n+l.quantity,0) },
+      locationId: location, orderType,
+    });
 
     // Fire-and-forget SMS confirmation to the customer
     if (phone.trim()) {
