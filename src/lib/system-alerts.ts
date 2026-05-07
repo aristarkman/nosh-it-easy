@@ -29,7 +29,7 @@ export async function reportSystemAlert(input: ReportAlertInput) {
       location_id: input.locationId ?? null,
       order_number: input.orderNumber ?? null,
       order_id: input.orderId ?? null,
-      details: input.details ?? null,
+      details: (input.details ?? null) as never,
     });
   } catch (e) {
     console.error("system_alerts insert failed:", e);
