@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Clock, MapPin, Phone, User, Truck, ShoppingBag, Check, ChefHat, X, LogOut } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { LOCATIONS, fmt, type CartLine } from "@/lib/order-context";
+import { sendOrderStatusSms } from "@/server/sms.functions";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/tablet")({
