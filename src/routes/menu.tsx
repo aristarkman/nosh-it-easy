@@ -153,7 +153,7 @@ function MenuPage() {
                   >
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2">
-                        <h3 className="font-display text-lg font-bold text-foreground">
+                        <h3 className="text-base font-semibold normal-case tracking-tight text-foreground" style={{ fontFamily: "var(--font-body)" }}>
                           {i.name}
                         </h3>
                         {i.popular && (
