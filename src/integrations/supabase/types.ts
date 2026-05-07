@@ -853,6 +853,48 @@ export type Database = {
         }
         Relationships: []
       }
+      system_alerts: {
+        Row: {
+          acknowledged_at: string | null
+          acknowledged_by: string | null
+          created_at: string
+          details: Json | null
+          id: string
+          kind: string
+          location_id: string | null
+          message: string
+          order_id: string | null
+          order_number: string | null
+          severity: string
+        }
+        Insert: {
+          acknowledged_at?: string | null
+          acknowledged_by?: string | null
+          created_at?: string
+          details?: Json | null
+          id?: string
+          kind: string
+          location_id?: string | null
+          message: string
+          order_id?: string | null
+          order_number?: string | null
+          severity?: string
+        }
+        Update: {
+          acknowledged_at?: string | null
+          acknowledged_by?: string | null
+          created_at?: string
+          details?: Json | null
+          id?: string
+          kind?: string
+          location_id?: string | null
+          message?: string
+          order_id?: string | null
+          order_number?: string | null
+          severity?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string
