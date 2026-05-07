@@ -7,6 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { chargeWithToken, getFtdConfig } from "@/server/ipospays.functions";
 import { sendOrderStatusSms, sendStaffNewOrderAlert } from "@/server/sms.functions";
 import { dispatchShipday, quoteShipday } from "@/server/shipday.functions";
+import { reportSystemAlert } from "@/lib/system-alerts";
 import { toast } from "sonner";
 
 type SavedAddress = {
@@ -353,6 +354,14 @@ function CheckoutPage() {
         });
         if (!res.ok) {
           toast.error(res.message || "Payment was declined.");
+          void reportSystemAlert({
+            kind: "payment_failed",
+            message: res.message || "Card declined at checkout",
+            locationId: location,
+            locationName: loc?.name,
+            orderNumber,
+            details: { amountCents: Math.round(total * 100), customer: name.trim(), phone: phone.trim() },
+          });
           setSubmitting(false);
           return;
         }
@@ -368,6 +377,13 @@ function CheckoutPage() {
     } catch (err) {
       console.error(err);
       toast.error("Payment failed. Please try a different card.");
+      void reportSystemAlert({
+        kind: "payment_failed",
+        message: err instanceof Error ? err.message : "Unknown payment error",
+        locationId: location,
+        locationName: loc?.name,
+        orderNumber,
+      });
       setSubmitting(false);
       return;
     }
