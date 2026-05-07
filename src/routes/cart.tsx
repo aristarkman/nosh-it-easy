@@ -21,10 +21,26 @@ export const Route = createFileRoute("/cart")({
 });
 
 function CartPage() {
-  const { cart, subtotal, removeLine, updateQty, location, orderType } = useOrder();
+  const { cart, subtotal, removeLine, updateQty, addToCart, location, orderType } = useOrder();
   const loc = LOCATIONS.find((l) => l.id === location);
   const [authed, setAuthed] = useState(false);
   const [saving, setSaving] = useState(false);
+
+  const fetchMenu = useServerFn(getMenu);
+  const { data: menuData } = useQuery({
+    queryKey: ["menu"],
+    queryFn: () => fetchMenu(),
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const upsells = useMemo<MenuItem[]>(() => {
+    const items = menuData?.items ?? [];
+    const inCart = new Set(cart.map((l) => l.itemId));
+    return items
+      .filter((i) => !i.soldOut && !inCart.has(i.id))
+      .sort((a, b) => Number(b.popular) - Number(a.popular))
+      .slice(0, 4);
+  }, [menuData, cart]);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => setAuthed(!!data.session));
