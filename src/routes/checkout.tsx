@@ -111,15 +111,7 @@ function CheckoutPage() {
     })();
   }, [auth.authed, auth.userId, auth.email, orderType, address]);
 
-  const [tipMode, setTipMode] = useState<"preset" | "custom" | "none">("preset");
-  const [tipPreset, setTipPreset] = useState<number>(0.18);
-  const [tipCustom, setTipCustom] = useState<string>("");
 
-  const [zones, setZones] = useState<{ zip: string; fee: number; minimum: number }[]>([]);
-  const [closedToday, setClosedToday] = useState<string | null>(null);
-
-  const [ftdReady, setFtdReady] = useState(false);
-  const ftdLoadedRef = useRef(false);
 
   useEffect(() => {
     if (!location) return;
