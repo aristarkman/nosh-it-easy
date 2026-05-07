@@ -24,9 +24,11 @@ export function SiteHeader() {
       <div className="border-b border-border">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3">
           <Link to="/" className="flex items-center gap-2">
-            <span className="font-display text-2xl leading-none tracking-wide text-foreground sm:text-[28px]">
-              The <span className="italic">famous</span> Kosher Nosh
-            </span>
+            <img
+              src={noshLogo}
+              alt="The Famous Kosher Nosh"
+              className="h-12 w-auto sm:h-14"
+            />
           </Link>
 
           <div className="hidden items-center gap-6 md:flex">
