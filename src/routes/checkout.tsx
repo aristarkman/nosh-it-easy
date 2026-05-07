@@ -7,6 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { chargeWithToken, getFtdConfig } from "@/server/ipospays.functions";
 import { sendOrderStatusSms, sendStaffNewOrderAlert } from "@/server/sms.functions";
 import { dispatchShipday, quoteShipday } from "@/server/shipday.functions";
+import { reportSystemAlert } from "@/lib/system-alerts";
 import { toast } from "sonner";
 
 type SavedAddress = {
@@ -353,6 +354,14 @@ function CheckoutPage() {
         });
         if (!res.ok) {
           toast.error(res.message || "Payment was declined.");
+          void reportSystemAlert({
+            kind: "payment_failed",
+            message: res.message || "Card declined at checkout",
+            locationId: location,
+            locationName: loc?.name,
+            orderNumber,
+            details: { amountCents: Math.round(total * 100), customer: name.trim(), phone: phone.trim() },
+          });
           setSubmitting(false);
           return;
         }
@@ -368,6 +377,13 @@ function CheckoutPage() {
     } catch (err) {
       console.error(err);
       toast.error("Payment failed. Please try a different card.");
+      void reportSystemAlert({
+        kind: "payment_failed",
+        message: err instanceof Error ? err.message : "Unknown payment error",
+        locationId: location,
+        locationName: loc?.name,
+        orderNumber,
+      });
       setSubmitting(false);
       return;
     }
@@ -409,6 +425,16 @@ function CheckoutPage() {
           ? "Payment captured but order could not be saved. Please call us."
           : "Could not place order. Please try again."
       );
+      void reportSystemAlert({
+        kind: "order_save_failed",
+        message:
+          (pay === "card" ? "Card was charged but order DB insert failed: " : "Order DB insert failed: ") +
+          (error?.message ?? "unknown"),
+        locationId: location,
+        locationName: loc?.name,
+        orderNumber,
+        details: { customer: name.trim(), phone: phone.trim(), total },
+      });
       setSubmitting(false);
       return;
     }
@@ -518,9 +544,27 @@ function CheckoutPage() {
               .then(({ error: e }) => e && console.error("Shipday persist failed:", e));
           } else {
             console.error("Shipday dispatch failed:", r.message);
+            void reportSystemAlert({
+              kind: "shipday_dispatch_failed",
+              message: r.message || "Shipday dispatch returned not-ok",
+              locationId: location,
+              locationName: loc?.name,
+              orderNumber: data.order_number,
+              orderId: data.id,
+            });
           }
         })
-        .catch((e) => console.error("Shipday dispatch error:", e));
+        .catch((e) => {
+          console.error("Shipday dispatch error:", e);
+          void reportSystemAlert({
+            kind: "shipday_dispatch_failed",
+            message: e instanceof Error ? e.message : "Shipday dispatch threw",
+            locationId: location,
+            locationName: loc?.name,
+            orderNumber: data.order_number,
+            orderId: data.id,
+          });
+        });
     }
 
     navigate({ to: "/confirmation/$orderId", params: { orderId: data.order_number } });

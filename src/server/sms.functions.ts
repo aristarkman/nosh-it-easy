@@ -143,3 +143,33 @@ export const sendStaffNewOrderAlert = createServerFn({ method: "POST" })
     }
     return { results };
   });
+
+const OwnerAlertSchema = z.object({
+  kind: z.string().min(1).max(40),
+  message: z.string().min(1).max(280),
+  orderNumber: z.string().max(40).optional(),
+  locationName: z.string().max(80).optional(),
+});
+
+const OWNER_ALERT_NUMBERS = ["+19173352812"];
+
+export const sendOwnerErrorAlert = createServerFn({ method: "POST" })
+  .inputValidator((input: unknown) => OwnerAlertSchema.parse(input))
+  .handler(async ({ data }) => {
+    const where = data.locationName ? ` @ ${data.locationName}` : "";
+    const ord = data.orderNumber ? ` #${data.orderNumber}` : "";
+    const body = `⚠️ Kosher Nosh ${data.kind.toUpperCase()}${ord}${where}\n${data.message}`;
+    const results: Array<{ to: string; ok: boolean; error?: string }> = [];
+    for (const raw of OWNER_ALERT_NUMBERS) {
+      const to = normalizePhone(raw);
+      if (!to) continue;
+      try {
+        await sendSms(to, body);
+        results.push({ to, ok: true });
+      } catch (err) {
+        console.error("owner alert SMS failed:", err);
+        results.push({ to, ok: false, error: err instanceof Error ? err.message : "fail" });
+      }
+    }
+    return { results };
+  });
