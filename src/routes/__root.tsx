@@ -87,7 +87,11 @@ function RootComponent() {
                 <p>A New York deli, in New Jersey, since 1985.</p>
               </div>
               <div className="text-right text-xs uppercase tracking-widest">
-                Glen Rock · Cresskill
+                <div>Glen Rock · Cresskill</div>
+                <div className="mt-2 flex justify-end gap-4 normal-case tracking-normal">
+                  <Link to="/privacy" className="hover:text-primary">Privacy</Link>
+                  <Link to="/terms" className="hover:text-primary">Terms</Link>
+                </div>
               </div>
             </div>
           </div>
