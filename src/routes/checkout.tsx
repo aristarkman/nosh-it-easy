@@ -314,7 +314,7 @@ function CheckoutPage() {
         total,
         whenType,
         scheduledTime: whenType === "schedule" ? scheduledTime : null,
-        itemCount: cart.reduce((n, l) => n + l.qty, 0),
+        itemCount: cart.reduce((n, l) => n + l.quantity, 0),
       },
     }).catch((e) => console.error("Staff alert failed:", e));
     navigate({ to: "/confirmation/$orderId", params: { orderId: data.order_number } });
