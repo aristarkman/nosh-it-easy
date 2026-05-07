@@ -238,6 +238,7 @@ function CheckoutPage() {
       .from("orders")
       .insert({
         order_number: orderNumber,
+        user_id: auth.userId,
         location_id: location,
         order_type: orderType ?? "pickup",
         customer_name: name.trim(),
