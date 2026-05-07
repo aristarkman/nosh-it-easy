@@ -215,6 +215,7 @@ function CartPage() {
         </section>
       )}
 
+      <section className="mt-8 rounded-2xl border border-border bg-card p-5">
         <Row label="Subtotal" value={fmt(subtotal)} />
         {orderType === "delivery" && <Row label="Delivery fee" value={fmt(deliveryFee)} />}
         <Row label="Tax" value={fmt(tax)} />
