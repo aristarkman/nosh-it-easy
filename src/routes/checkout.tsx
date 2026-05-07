@@ -274,13 +274,14 @@ function CheckoutPage() {
     orderType === "delivery" ? liveQuote?.fee ?? matchedZone?.fee ?? 0 : 0;
 
   const tipAmount = useMemo(() => {
+    if (orderType !== "delivery") return 0;
     if (tipMode === "none") return 0;
     if (tipMode === "custom") {
       const n = parseFloat(tipCustom);
       return isNaN(n) || n < 0 ? 0 : +n.toFixed(2);
     }
     return +(subtotal * tipPreset).toFixed(2);
-  }, [tipMode, tipPreset, tipCustom, subtotal]);
+  }, [orderType, tipMode, tipPreset, tipCustom, subtotal]);
 
   const promoDiscount = useMemo(() => {
     if (!promo) return 0;
