@@ -518,6 +518,54 @@ export type Database = {
           },
         ]
       }
+      order_refunds: {
+        Row: {
+          amount: number
+          created_at: string
+          id: string
+          ipospays_reference: string | null
+          items_refunded: Json | null
+          location_id: string
+          order_id: string
+          reason: string
+          reason_notes: string | null
+          refunded_by: string | null
+          refunded_by_email: string | null
+          status: Database["public"]["Enums"]["refund_status"]
+          type: Database["public"]["Enums"]["refund_type"]
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          id?: string
+          ipospays_reference?: string | null
+          items_refunded?: Json | null
+          location_id: string
+          order_id: string
+          reason: string
+          reason_notes?: string | null
+          refunded_by?: string | null
+          refunded_by_email?: string | null
+          status?: Database["public"]["Enums"]["refund_status"]
+          type: Database["public"]["Enums"]["refund_type"]
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          id?: string
+          ipospays_reference?: string | null
+          items_refunded?: Json | null
+          location_id?: string
+          order_id?: string
+          reason?: string
+          reason_notes?: string | null
+          refunded_by?: string | null
+          refunded_by_email?: string | null
+          status?: Database["public"]["Enums"]["refund_status"]
+          type?: Database["public"]["Enums"]["refund_type"]
+        }
+        Relationships: []
+      }
       orders: {
         Row: {
           card_fee: number
@@ -539,6 +587,8 @@ export type Database = {
           order_type: Database["public"]["Enums"]["order_type"]
           payment_method: string
           quoted_delivery_fee: number | null
+          refund_status: Database["public"]["Enums"]["order_refund_state"]
+          refunded_total: number
           scheduled_time: string | null
           shipday_order_id: string | null
           shipday_tracking_url: string | null
@@ -572,6 +622,8 @@ export type Database = {
           order_type: Database["public"]["Enums"]["order_type"]
           payment_method: string
           quoted_delivery_fee?: number | null
+          refund_status?: Database["public"]["Enums"]["order_refund_state"]
+          refunded_total?: number
           scheduled_time?: string | null
           shipday_order_id?: string | null
           shipday_tracking_url?: string | null
@@ -605,6 +657,8 @@ export type Database = {
           order_type?: Database["public"]["Enums"]["order_type"]
           payment_method?: string
           quoted_delivery_fee?: number | null
+          refund_status?: Database["public"]["Enums"]["order_refund_state"]
+          refunded_total?: number
           scheduled_time?: string | null
           shipday_order_id?: string | null
           shipday_tracking_url?: string | null
@@ -855,8 +909,11 @@ export type Database = {
         | "assigned"
         | "out_for_delivery"
         | "delivered"
+      order_refund_state: "none" | "partial" | "full" | "voided"
       order_status: "new" | "accepted" | "ready" | "completed" | "cancelled"
       order_type: "pickup" | "delivery"
+      refund_status: "recorded" | "failed" | "pending"
+      refund_type: "full" | "partial" | "void"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -991,8 +1048,11 @@ export const Constants = {
         "out_for_delivery",
         "delivered",
       ],
+      order_refund_state: ["none", "partial", "full", "voided"],
       order_status: ["new", "accepted", "ready", "completed", "cancelled"],
       order_type: ["pickup", "delivery"],
+      refund_status: ["recorded", "failed", "pending"],
+      refund_type: ["full", "partial", "void"],
     },
   },
 } as const

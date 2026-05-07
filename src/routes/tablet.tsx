@@ -1,10 +1,11 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { Clock, MapPin, Phone, User, Truck, ShoppingBag, Check, ChefHat, X, LogOut, Volume2, VolumeX } from "lucide-react";
+import { Clock, MapPin, Phone, User, Truck, ShoppingBag, Check, ChefHat, X, LogOut, Volume2, VolumeX, RotateCcw } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { LOCATIONS, fmt, type CartLine } from "@/lib/order-context";
 import { sendOrderStatusSms } from "@/server/sms.functions";
 import { useNewOrderAlarm } from "@/lib/use-new-order-alarm";
+import { RefundDialog } from "@/components/refund-dialog";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/tablet")({
@@ -32,6 +33,8 @@ type Order = {
   items: CartLine[];
   notes: string | null;
   created_at: string;
+  refunded_total: number;
+  refund_status: "none" | "partial" | "full" | "voided";
 };
 
 const STATUS_FLOW: Record<Status, { next?: Status; label?: string; color: string }> = {
@@ -52,6 +55,7 @@ function TabletPage() {
   const [allowedLocations, setAllowedLocations] = useState<string[]>([]);
   const [isAdmin, setIsAdmin] = useState(false);
   const [userEmail, setUserEmail] = useState<string>("");
+  const [refundOrder, setRefundOrder] = useState<Order | null>(null);
 
   // Auth gate + load assigned locations
   useEffect(() => {
@@ -92,7 +96,7 @@ function TabletPage() {
       let q = supabase
         .from("orders")
         .select("*")
-        .in("status", ["new", "accepted", "ready"])
+        .in("status", ["new", "accepted", "ready", "completed"])
         .order("created_at", { ascending: false })
         .limit(200);
       if (!isAdmin && allowedLocations.length > 0) {
@@ -260,7 +264,7 @@ function TabletPage() {
           </div>
         </div>
         <div className="mx-auto flex max-w-[1400px] gap-1 px-4">
-          {(["new", "accepted", "ready"] as Status[]).map((s) => (
+          {(["new", "accepted", "ready", "completed"] as Status[]).map((s) => (
             <button
               key={s}
               onClick={() => setTab(s)}
@@ -289,11 +293,28 @@ function TabletPage() {
         ) : (
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {filtered.map((o) => (
-              <OrderCard key={o.id} o={o} onAdvance={() => advance(o)} onCancel={() => cancel(o)} />
+              <OrderCard
+                key={o.id}
+                o={o}
+                onAdvance={() => advance(o)}
+                onCancel={() => cancel(o)}
+                onRefund={() => setRefundOrder(o)}
+              />
             ))}
           </div>
         )}
       </div>
+
+      {refundOrder && (
+        <RefundDialog
+          open={!!refundOrder}
+          onClose={() => setRefundOrder(null)}
+          order={refundOrder}
+          onRefunded={() => {
+            // realtime UPDATE will refresh totals; nothing else to do
+          }}
+        />
+      )}
     </div>
   );
 }
@@ -319,15 +340,19 @@ function OrderCard({
   o,
   onAdvance,
   onCancel,
+  onRefund,
 }: {
   o: Order;
   onAdvance: () => void;
   onCancel: () => void;
+  onRefund: () => void;
 }) {
   const flow = STATUS_FLOW[o.status];
   const loc = LOCATIONS.find((l) => l.id === o.location_id);
   const ago = timeAgo(o.created_at);
   const isNew = o.status === "new";
+  const refunded = (o.refunded_total ?? 0) > 0;
+  const canRefund = (o.refunded_total ?? 0) < o.total && o.refund_status !== "voided";
 
   return (
     <div
@@ -403,9 +428,28 @@ function OrderCard({
           <span className="text-muted-foreground">Total</span>{" "}
           <span className="font-bold">{fmt(o.total)}</span>{" "}
           <span className="text-xs text-muted-foreground">· {o.payment_method}</span>
+          {refunded && (
+            <div className="mt-0.5 text-xs font-bold uppercase tracking-wider text-destructive">
+              {o.refund_status === "voided"
+                ? "Voided"
+                : o.refund_status === "full"
+                  ? `Refunded ${fmt(o.refunded_total)}`
+                  : `Partial refund ${fmt(o.refunded_total)}`}
+            </div>
+          )}
         </div>
         <div className="flex gap-1.5">
-          {o.status !== "ready" && (
+          {canRefund && (
+            <button
+              onClick={onRefund}
+              className="grid size-9 place-items-center rounded-full border border-border text-muted-foreground hover:border-destructive hover:text-destructive"
+              aria-label="Refund order"
+              title="Refund / void"
+            >
+              <RotateCcw className="size-4" />
+            </button>
+          )}
+          {o.status !== "ready" && o.status !== "completed" && (
             <button
               onClick={onCancel}
               className="grid size-9 place-items-center rounded-full border border-border text-muted-foreground hover:border-destructive hover:text-destructive"
