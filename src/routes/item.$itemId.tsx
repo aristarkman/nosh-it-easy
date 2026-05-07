@@ -1,12 +1,13 @@
 import { createFileRoute, Link, useNavigate, notFound } from "@tanstack/react-router";
 import { useState } from "react";
 import { ArrowLeft, Minus, Plus } from "lucide-react";
-import { getItem, type MenuItem, type ModifierGroup, type ModifierOption } from "@/lib/menu-data";
+import type { MenuItem, ModifierGroup, ModifierOption } from "@/lib/menu-types";
 import { useOrder, fmt, buildLineFromItem } from "@/lib/order-context";
+import { getMenuItem } from "@/lib/menu.functions";
 
 export const Route = createFileRoute("/item/$itemId")({
-  loader: ({ params }) => {
-    const item = getItem(params.itemId);
+  loader: async ({ params }) => {
+    const { item } = await getMenuItem({ data: { id: params.itemId } });
     if (!item) throw notFound();
     return { item };
   },

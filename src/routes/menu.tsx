@@ -2,7 +2,8 @@ import { createFileRoute, Link, redirect } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { Search, ChevronRight, Flame } from "lucide-react";
 import { LOCATIONS, useOrder, fmt } from "@/lib/order-context";
-import { CATEGORIES, ITEMS } from "@/lib/menu-data";
+import { CATEGORIES } from "@/lib/menu-categories";
+import { getMenu } from "@/lib/menu.functions";
 
 export const Route = createFileRoute("/menu")({
   head: () => ({
@@ -29,22 +30,29 @@ export const Route = createFileRoute("/menu")({
       }
     }
   },
+  loader: () => getMenu(),
+  errorComponent: () => (
+    <div className="mx-auto max-w-md p-10 text-center">
+      <p>Could not load the menu. Please try again in a moment.</p>
+    </div>
+  ),
   component: MenuPage,
 });
 
 function MenuPage() {
+  const { items } = Route.useLoaderData() as { items: import("@/lib/menu-types").MenuItem[] };
   const { location, orderType } = useOrder();
   const loc = LOCATIONS.find((l) => l.id === location);
   const [active, setActive] = useState(CATEGORIES[0].id);
   const [q, setQ] = useState("");
 
   const filtered = useMemo(() => {
-    if (!q.trim()) return ITEMS;
+    if (!q.trim()) return items;
     const s = q.toLowerCase();
-    return ITEMS.filter(
+    return items.filter(
       (i) => i.name.toLowerCase().includes(s) || i.description.toLowerCase().includes(s)
     );
-  }, [q]);
+  }, [q, items]);
 
   useEffect(() => {
     const onScroll = () => {
@@ -103,25 +111,28 @@ function MenuPage() {
 
       <div className="sticky top-[68px] z-30 mt-4 -mx-4 overflow-x-auto border-b border-border bg-background/85 px-4 backdrop-blur">
         <div className="flex gap-1 py-2">
-          {CATEGORIES.map((c) => (
-            <button
-              key={c.id}
-              onClick={() => scrollTo(c.id)}
-              className={`whitespace-nowrap rounded-full px-3.5 py-1.5 text-sm font-semibold transition ${
-                active === c.id
-                  ? "bg-primary text-primary-foreground"
-                  : "text-muted-foreground hover:bg-muted hover:text-foreground"
-              }`}
-            >
-              {c.name}
-            </button>
-          ))}
+          {CATEGORIES.map((c) => {
+            if (!filtered.some((i) => i.category === c.id)) return null;
+            return (
+              <button
+                key={c.id}
+                onClick={() => scrollTo(c.id)}
+                className={`whitespace-nowrap rounded-full px-3.5 py-1.5 text-sm font-semibold transition ${
+                  active === c.id
+                    ? "bg-primary text-primary-foreground"
+                    : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                }`}
+              >
+                {c.name}
+              </button>
+            );
+          })}
         </div>
       </div>
 
       {CATEGORIES.map((c) => {
-        const items = filtered.filter((i) => i.category === c.id);
-        if (!items.length) return null;
+        const catItems = filtered.filter((i) => i.category === c.id);
+        if (!catItems.length) return null;
         return (
           <section key={c.id} id={`cat-${c.id}`} className="mt-10 scroll-mt-32">
             <div className="mb-4 flex items-baseline justify-between">
@@ -133,7 +144,7 @@ function MenuPage() {
               )}
             </div>
             <ul className="grid gap-3 sm:grid-cols-2">
-              {items.map((i) => (
+              {catItems.map((i) => (
                 <li key={i.id}>
                   <Link
                     to="/item/$itemId"
@@ -148,6 +159,11 @@ function MenuPage() {
                         {i.popular && (
                           <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-primary">
                             <Flame className="size-3" /> Popular
+                          </span>
+                        )}
+                        {i.soldOut && (
+                          <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                            Sold out
                           </span>
                         )}
                       </div>

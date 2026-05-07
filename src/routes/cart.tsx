@@ -1,9 +1,8 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { ArrowLeft, Minus, Plus, Trash2, Sparkles, Star } from "lucide-react";
+import { ArrowLeft, Minus, Plus, Trash2, Star } from "lucide-react";
 import { useOrder, fmt, LOCATIONS } from "@/lib/order-context";
-import { ITEMS, UPSELLS, getItem } from "@/lib/menu-data";
-import { buildLineFromItem } from "@/lib/order-context";
+
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -18,7 +17,7 @@ export const Route = createFileRoute("/cart")({
 });
 
 function CartPage() {
-  const { cart, subtotal, removeLine, updateQty, location, orderType, addToCart } = useOrder();
+  const { cart, subtotal, removeLine, updateQty, location, orderType } = useOrder();
   const loc = LOCATIONS.find((l) => l.id === location);
   const [authed, setAuthed] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -72,9 +71,6 @@ function CartPage() {
   const tax = +(subtotal * 0.06625).toFixed(2);
   const total = +(subtotal + deliveryFee + tax).toFixed(2);
 
-  const upsellItems = UPSELLS.map((u) => getItem(u.id))
-    .filter((i): i is NonNullable<typeof i> => !!i)
-    .filter((i) => !cart.some((l) => l.itemId === i.id));
 
   return (
     <div className="mx-auto max-w-3xl px-4 pb-16 pt-6">
@@ -143,32 +139,6 @@ function CartPage() {
         ))}
       </ul>
 
-      {upsellItems.length > 0 && (
-        <section className="mt-8 rounded-2xl border border-dashed border-secondary/50 bg-secondary/5 p-5">
-          <div className="flex items-center gap-2 text-secondary">
-            <Sparkles className="size-4" />
-            <h2 className="text-sm font-bold uppercase tracking-widest">
-              People also added
-            </h2>
-          </div>
-          <ul className="mt-3 grid gap-2 sm:grid-cols-3">
-            {upsellItems.map((i) => (
-              <li key={i.id}>
-                <button
-                  onClick={() => addToCart(buildLineFromItem(i, {}, 1))}
-                  className="flex w-full items-center justify-between gap-3 rounded-xl border border-border bg-card p-3 text-left transition hover:border-primary"
-                >
-                  <div>
-                    <div className="text-sm font-semibold">{i.name}</div>
-                    <div className="text-xs text-muted-foreground">{fmt(i.price)}</div>
-                  </div>
-                  <Plus className="size-4 text-primary" />
-                </button>
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
 
       <section className="mt-8 rounded-2xl border border-border bg-card p-5">
         <Row label="Subtotal" value={fmt(subtotal)} />
