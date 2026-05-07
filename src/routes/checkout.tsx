@@ -566,7 +566,7 @@ function CheckoutPage() {
                 </Pill>
               ))}
               <Pill active={tipMode === "custom"} onClick={() => setTipMode("custom")}>
-                ​Cust-\num
+                Custom
               </Pill>
               <Pill active={tipMode === "none"} onClick={() => setTipMode("none")}>
                 No tip
