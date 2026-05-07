@@ -21,7 +21,67 @@ export const Route = createFileRoute("/api/public/hooks/cart-abandonment")({
           .lte("last_activity_at", cutoff)
           .limit(50);
 
+        const ghlKey = process.env.GHL_API_KEY;
+        const ghlLocation = process.env.GHL_LOCATION_ID;
+
+        async function sendGhlEmail(c: { email: string; customer_name: string | null; phone: string | null; item_count: number }) {
+          if (!ghlKey || !ghlLocation) throw new Error("GHL not configured");
+          const [firstName, ...rest] = (c.customer_name ?? "").trim().split(/\s+/);
+          const lastName = rest.join(" ") || undefined;
+
+          // Upsert contact in GHL
+          const contactRes = await fetch("https://services.leadconnectorhq.com/contacts/upsert", {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${ghlKey}`,
+              Version: "2021-07-28",
+              "Content-Type": "application/json",
+              Accept: "application/json",
+            },
+            body: JSON.stringify({
+              locationId: ghlLocation,
+              email: c.email,
+              firstName: firstName || undefined,
+              lastName,
+              phone: c.phone || undefined,
+              tags: ["abandoned-cart"],
+            }),
+          });
+          if (!contactRes.ok) throw new Error(`GHL contact upsert ${contactRes.status}: ${await contactRes.text()}`);
+          const contactJson = await contactRes.json() as any;
+          const contactId = contactJson?.contact?.id ?? contactJson?.id;
+          if (!contactId) throw new Error("GHL contact upsert: no id returned");
+
+          const greeting = firstName ? `Hi ${firstName},` : "Hi there,";
+          const html = `<!doctype html><html><body style="font-family:Arial,sans-serif;color:#222;background:#fff;padding:24px">
+            <h2 style="margin:0 0 12px">You left something behind 🥯</h2>
+            <p style="margin:0 0 12px">${greeting}</p>
+            <p style="margin:0 0 12px">You have <strong>${c.item_count} item(s)</strong> waiting in your cart at <strong>The Famous Kosher Nosh</strong>.</p>
+            <p style="margin:24px 0"><a href="https://nosh-it-easy.lovable.app/cart" style="background:#c9a84c;color:#0d0d0d;padding:12px 20px;text-decoration:none;border-radius:6px;font-weight:600">Finish your order</a></p>
+            <p style="font-size:12px;color:#666;margin-top:32px">The Famous Kosher Nosh — Glen Rock & Cresskill, NJ</p>
+          </body></html>`;
+
+          const msgRes = await fetch("https://services.leadconnectorhq.com/conversations/messages", {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${ghlKey}`,
+              Version: "2021-04-15",
+              "Content-Type": "application/json",
+              Accept: "application/json",
+            },
+            body: JSON.stringify({
+              type: "Email",
+              contactId,
+              subject: "You left items in your cart at The Famous Kosher Nosh",
+              html,
+            }),
+          });
+          if (!msgRes.ok) throw new Error(`GHL email send ${msgRes.status}: ${await msgRes.text()}`);
+        }
+
         let smsSent = 0;
+        let emailSent = 0;
+        const errors: string[] = [];
         for (const c of carts ?? []) {
           if (c.marketing_sms_opt_in && c.phone && !c.reminded_sms_at) {
             try {
@@ -46,10 +106,20 @@ export const Route = createFileRoute("/api/public/hooks/cart-abandonment")({
               console.error("abandon sms failed:", e);
             }
           }
-          // Email reminders deferred until Lovable Emails sender domain is configured.
+
+          if (c.marketing_email_opt_in && c.email && !c.reminded_email_at) {
+            try {
+              await sendGhlEmail({ email: c.email, customer_name: c.customer_name, phone: c.phone, item_count: c.item_count });
+              emailSent++;
+              await supabaseAdmin.from("abandoned_carts").update({ reminded_email_at: new Date().toISOString() }).eq("id", c.id);
+            } catch (e: any) {
+              console.error("abandon email (GHL) failed:", e);
+              errors.push(String(e?.message ?? e));
+            }
+          }
         }
 
-        return Response.json({ ok: true, considered: carts?.length ?? 0, smsSent });
+        return Response.json({ ok: true, considered: carts?.length ?? 0, smsSent, emailSent, errors });
       },
     },
   },
