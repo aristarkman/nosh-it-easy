@@ -8,6 +8,15 @@ import { chargeWithToken, getFtdConfig } from "@/server/ipospays.functions";
 import { sendOrderStatusSms, sendStaffNewOrderAlert } from "@/server/sms.functions";
 import { dispatchShipday, quoteShipday } from "@/server/shipday.functions";
 import { reportSystemAlert } from "@/lib/system-alerts";
+import { markCartRecovered, track } from "@/lib/analytics";
+import {
+  POINTS_PER_REWARD,
+  REWARD_VALUE,
+  discountForRewards,
+  maxRewardsRedeemable,
+  pointsEarnedFor,
+  pointsForRewards,
+} from "@/lib/loyalty";
 import { toast } from "sonner";
 
 type SavedAddress = {
@@ -92,9 +101,9 @@ function CheckoutPage() {
     bogo_get_item_id: string | null;
   } | null>(null);
 
-  // Loyalty: $5 reward per 10 completed orders
-  const [loyaltyAvailable, setLoyaltyAvailable] = useState(0);
-  const [useLoyalty, setUseLoyalty] = useState(false);
+  // Loyalty: 1 pt / $1, 100 pts = $5 off
+  const [loyaltyBalance, setLoyaltyBalance] = useState(0);
+  const [rewardsToUse, setRewardsToUse] = useState(0);
 
   // Autofill from profile + addresses when signed in
   useEffect(() => {
@@ -173,28 +182,27 @@ function CheckoutPage() {
     })();
   }, [pay]);
 
-  // Loyalty: count completed orders & redemptions
+  // Loyalty: load points balance
   useEffect(() => {
     if (!auth.authed || !auth.userId) {
-      setLoyaltyAvailable(0);
+      setLoyaltyBalance(0);
       return;
     }
     (async () => {
-      const [{ count: completed }, { count: redeemed }] = await Promise.all([
-        supabase
-          .from("orders")
-          .select("id", { count: "exact", head: true })
-          .eq("user_id", auth.userId!)
-          .in("status", ["ready", "completed"]),
-        supabase
-          .from("loyalty_redemptions")
-          .select("id", { count: "exact", head: true })
-          .eq("user_id", auth.userId!),
-      ]);
-      const earned = Math.floor((completed ?? 0) / 10);
-      setLoyaltyAvailable(Math.max(0, earned - (redeemed ?? 0)));
+      const { data } = await supabase.rpc("loyalty_balance", { _user_id: auth.userId! } as never);
+      setLoyaltyBalance(typeof data === "number" ? data : 0);
     })();
   }, [auth.authed, auth.userId]);
+
+  // Track checkout_started once on mount
+  useEffect(() => {
+    void track("checkout_started", {
+      props: { subtotal, itemCount: cart.reduce((n, l) => n + l.quantity, 0) },
+      locationId: location,
+      orderType,
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const applyPromo = async () => {
     if (!promoInput.trim()) return;
