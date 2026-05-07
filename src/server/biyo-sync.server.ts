@@ -245,17 +245,21 @@ export async function runBiyoSync(): Promise<{
       if (!upErr) itemsUpserted += 1;
     }
 
-    // 3. Prices per (item, location). Skip items disabled at that store.
+    // 3. Prices per (item, location). Single price model: every location uses
+    //    the Cresskill price. Skip items disabled at that store entirely.
+    const cresskillStoreId = locs.find((l) => l.location_id === "cresskill")?.biyo_store_id;
+    if (!cresskillStoreId) throw new Error("Cresskill biyo_store_id not configured in biyo_locations");
     const pricesPayload: { menu_item_id: string; location_id: string; price: number; synced_at: string }[] = [];
     for (const p of products) {
       const ex = existingMap.get(String(p.id));
       if (!ex) continue;
+      const unifiedPrice = priceForStore(p, cresskillStoreId);
       for (const loc of locs) {
         if (!storeEnabled(p, loc.biyo_store_id)) continue;
         pricesPayload.push({
           menu_item_id: ex.id,
           location_id: loc.location_id,
-          price: priceForStore(p, loc.biyo_store_id),
+          price: unifiedPrice,
           synced_at: new Date().toISOString(),
         });
       }
