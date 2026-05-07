@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
-import type { MenuItem, ModifierOption } from "./menu-data";
+import type { MenuItem, ModifierOption } from "./menu-types";
 
 export type LocationId = "glen-rock" | "cresskill";
 export type OrderType = "pickup" | "delivery";
