@@ -45,6 +45,9 @@ export const Route = createFileRoute("/api/public/hooks/cart-abandonment")({
               lastName,
               phone: c.phone || undefined,
               tags: ["abandoned-cart"],
+              customFields: [
+                { key: "cart_item_count", field_value: String(c.item_count) },
+              ],
             }),
           });
           if (!contactRes.ok) throw new Error(`GHL contact upsert ${contactRes.status}: ${await contactRes.text()}`);
