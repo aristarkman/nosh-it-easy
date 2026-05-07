@@ -27,7 +27,7 @@ export function SiteHeader() {
             <img
               src={noshLogo}
               alt="The Famous Kosher Nosh"
-              className="h-12 w-auto sm:h-14"
+              className="h-20 w-auto sm:h-28 md:h-32"
             />
           </Link>
 
