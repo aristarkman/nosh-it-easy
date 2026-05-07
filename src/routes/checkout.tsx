@@ -351,7 +351,7 @@ function CheckoutPage() {
           ? `tip:${tipAmount.toFixed(2)} | ${JSON.stringify(paymentMeta)}`
           : `tip:${tipAmount.toFixed(2)}`,
       })
-      .select("order_number")
+      .select("id,order_number")
       .single();
 
     if (error || !data) {
