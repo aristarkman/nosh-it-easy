@@ -159,8 +159,62 @@ function CartPage() {
         ))}
       </ul>
 
+      {upsells.length > 0 && (
+        <section className="mt-8">
+          <h2 className="font-display text-xl font-bold">People also added</h2>
+          <ul className="mt-3 grid gap-3 sm:grid-cols-2">
+            {upsells.map((u) => {
+              const hasRequired = (u.modifierGroups ?? []).some((g) => g.required);
+              return (
+                <li
+                  key={u.id}
+                  className="flex items-center gap-3 rounded-2xl border border-border bg-card p-3"
+                >
+                  {u.image ? (
+                    <img
+                      src={u.image}
+                      alt={u.name}
+                      className="size-16 flex-none rounded-xl object-cover"
+                    />
+                  ) : (
+                    <div className="size-16 flex-none rounded-xl bg-muted" />
+                  )}
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate font-display text-sm font-bold">{u.name}</div>
+                    <div className="text-xs text-muted-foreground">{fmt(u.price)}</div>
+                  </div>
+                  {hasRequired ? (
+                    <Link
+                      to="/item/$itemId"
+                      params={{ itemId: u.id }}
+                      className="rounded-full border border-border px-3 py-1.5 text-xs font-semibold hover:border-primary"
+                    >
+                      Add
+                    </Link>
+                  ) : (
+                    <button
+                      onClick={() =>
+                        addToCart({
+                          itemId: u.id,
+                          name: u.name,
+                          basePrice: u.price,
+                          quantity: 1,
+                          modifiers: [],
+                          unitPrice: u.price,
+                        })
+                      }
+                      className="rounded-full bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground hover:opacity-90"
+                    >
+                      <Plus className="inline size-3.5" /> Add
+                    </button>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+        </section>
+      )}
 
-      <section className="mt-8 rounded-2xl border border-border bg-card p-5">
         <Row label="Subtotal" value={fmt(subtotal)} />
         {orderType === "delivery" && <Row label="Delivery fee" value={fmt(deliveryFee)} />}
         <Row label="Tax" value={fmt(tax)} />
