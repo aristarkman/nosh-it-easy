@@ -340,15 +340,19 @@ function OrderCard({
   o,
   onAdvance,
   onCancel,
+  onRefund,
 }: {
   o: Order;
   onAdvance: () => void;
   onCancel: () => void;
+  onRefund: () => void;
 }) {
   const flow = STATUS_FLOW[o.status];
   const loc = LOCATIONS.find((l) => l.id === o.location_id);
   const ago = timeAgo(o.created_at);
   const isNew = o.status === "new";
+  const refunded = (o.refunded_total ?? 0) > 0;
+  const canRefund = (o.refunded_total ?? 0) < o.total && o.refund_status !== "voided";
 
   return (
     <div
