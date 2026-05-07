@@ -15,7 +15,7 @@ export const Route = createFileRoute("/api/public/hooks/cart-abandonment")({
         const cutoff = new Date(Date.now() - 60 * 60_000).toISOString();
         const { data: carts } = await supabaseAdmin
           .from("abandoned_carts")
-          .select("id,session_id,phone,email,customer_name,subtotal,item_count,marketing_sms_opt_in,marketing_email_opt_in,reminded_sms_at,reminded_email_at")
+          .select("id,session_id,phone,email,customer_name,subtotal,item_count,items,marketing_sms_opt_in,marketing_email_opt_in,reminded_sms_at,reminded_email_at")
           .eq("recovered", false)
           .gt("item_count", 0)
           .lte("last_activity_at", cutoff)
@@ -24,7 +24,7 @@ export const Route = createFileRoute("/api/public/hooks/cart-abandonment")({
         const ghlKey = process.env.GHL_API_KEY;
         const ghlLocation = process.env.GHL_LOCATION_ID;
 
-        async function sendGhlEmail(c: { email: string; customer_name: string | null; phone: string | null; item_count: number }) {
+        async function sendGhlEmail(c: { email: string; customer_name: string | null; phone: string | null; item_count: number; subtotal: number | null }) {
           if (!ghlKey || !ghlLocation) throw new Error("GHL not configured");
           const [firstName, ...rest] = (c.customer_name ?? "").trim().split(/\s+/);
           const lastName = rest.join(" ") || undefined;
@@ -47,6 +47,8 @@ export const Route = createFileRoute("/api/public/hooks/cart-abandonment")({
               tags: ["abandoned-cart"],
               customFields: [
                 { key: "cart_item_count", field_value: String(c.item_count) },
+                { key: "cart_subtotal", field_value: c.subtotal != null ? `$${Number(c.subtotal).toFixed(2)}` : "" },
+                { key: "cart_url", field_value: "https://nosh-it-easy.lovable.app/cart" },
               ],
             }),
           });
@@ -106,7 +108,7 @@ export const Route = createFileRoute("/api/public/hooks/cart-abandonment")({
 
           if (c.marketing_email_opt_in && c.email && !c.reminded_email_at) {
             try {
-              await sendGhlEmail({ email: c.email, customer_name: c.customer_name, phone: c.phone, item_count: c.item_count });
+              await sendGhlEmail({ email: c.email, customer_name: c.customer_name, phone: c.phone, item_count: c.item_count, subtotal: c.subtotal as any });
               emailSent++;
               await supabaseAdmin.from("abandoned_carts").update({ reminded_email_at: new Date().toISOString() }).eq("id", c.id);
             } catch (e: any) {
