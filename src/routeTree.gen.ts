@@ -11,7 +11,9 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as TermsRouteImport } from './routes/terms'
 import { Route as TabletRouteImport } from './routes/tablet'
+import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as SignupRouteImport } from './routes/signup'
+import { Route as RobotsDottxtRouteImport } from './routes/robots[.]txt'
 import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as OrderTypeRouteImport } from './routes/order-type'
 import { Route as MenuRouteImport } from './routes/menu'
@@ -47,9 +49,19 @@ const TabletRoute = TabletRouteImport.update({
   path: '/tablet',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
+  id: '/sitemap.xml',
+  path: '/sitemap.xml',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SignupRoute = SignupRouteImport.update({
   id: '/signup',
   path: '/signup',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RobotsDottxtRoute = RobotsDottxtRouteImport.update({
+  id: '/robots.txt',
+  path: '/robots.txt',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PrivacyRoute = PrivacyRouteImport.update({
@@ -184,7 +196,9 @@ export interface FileRoutesByFullPath {
   '/menu': typeof MenuRoute
   '/order-type': typeof OrderTypeRoute
   '/privacy': typeof PrivacyRoute
+  '/robots.txt': typeof RobotsDottxtRoute
   '/signup': typeof SignupRoute
+  '/sitemap.xml': typeof SitemapDotxmlRoute
   '/tablet': typeof TabletRoute
   '/terms': typeof TermsRoute
   '/admin/biyo': typeof AdminBiyoRoute
@@ -212,7 +226,9 @@ export interface FileRoutesByTo {
   '/menu': typeof MenuRoute
   '/order-type': typeof OrderTypeRoute
   '/privacy': typeof PrivacyRoute
+  '/robots.txt': typeof RobotsDottxtRoute
   '/signup': typeof SignupRoute
+  '/sitemap.xml': typeof SitemapDotxmlRoute
   '/tablet': typeof TabletRoute
   '/terms': typeof TermsRoute
   '/admin/biyo': typeof AdminBiyoRoute
@@ -242,7 +258,9 @@ export interface FileRoutesById {
   '/menu': typeof MenuRoute
   '/order-type': typeof OrderTypeRoute
   '/privacy': typeof PrivacyRoute
+  '/robots.txt': typeof RobotsDottxtRoute
   '/signup': typeof SignupRoute
+  '/sitemap.xml': typeof SitemapDotxmlRoute
   '/tablet': typeof TabletRoute
   '/terms': typeof TermsRoute
   '/admin/biyo': typeof AdminBiyoRoute
@@ -273,7 +291,9 @@ export interface FileRouteTypes {
     | '/menu'
     | '/order-type'
     | '/privacy'
+    | '/robots.txt'
     | '/signup'
+    | '/sitemap.xml'
     | '/tablet'
     | '/terms'
     | '/admin/biyo'
@@ -301,7 +321,9 @@ export interface FileRouteTypes {
     | '/menu'
     | '/order-type'
     | '/privacy'
+    | '/robots.txt'
     | '/signup'
+    | '/sitemap.xml'
     | '/tablet'
     | '/terms'
     | '/admin/biyo'
@@ -330,7 +352,9 @@ export interface FileRouteTypes {
     | '/menu'
     | '/order-type'
     | '/privacy'
+    | '/robots.txt'
     | '/signup'
+    | '/sitemap.xml'
     | '/tablet'
     | '/terms'
     | '/admin/biyo'
@@ -360,7 +384,9 @@ export interface RootRouteChildren {
   MenuRoute: typeof MenuRoute
   OrderTypeRoute: typeof OrderTypeRoute
   PrivacyRoute: typeof PrivacyRoute
+  RobotsDottxtRoute: typeof RobotsDottxtRoute
   SignupRoute: typeof SignupRoute
+  SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   TabletRoute: typeof TabletRoute
   TermsRoute: typeof TermsRoute
   ConfirmationOrderIdRoute: typeof ConfirmationOrderIdRoute
@@ -385,11 +411,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TabletRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/sitemap.xml': {
+      id: '/sitemap.xml'
+      path: '/sitemap.xml'
+      fullPath: '/sitemap.xml'
+      preLoaderRoute: typeof SitemapDotxmlRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/signup': {
       id: '/signup'
       path: '/signup'
       fullPath: '/signup'
       preLoaderRoute: typeof SignupRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/robots.txt': {
+      id: '/robots.txt'
+      path: '/robots.txt'
+      fullPath: '/robots.txt'
+      preLoaderRoute: typeof RobotsDottxtRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/privacy': {
@@ -602,7 +642,9 @@ const rootRouteChildren: RootRouteChildren = {
   MenuRoute: MenuRoute,
   OrderTypeRoute: OrderTypeRoute,
   PrivacyRoute: PrivacyRoute,
+  RobotsDottxtRoute: RobotsDottxtRoute,
   SignupRoute: SignupRoute,
+  SitemapDotxmlRoute: SitemapDotxmlRoute,
   TabletRoute: TabletRoute,
   TermsRoute: TermsRoute,
   ConfirmationOrderIdRoute: ConfirmationOrderIdRoute,

@@ -25,32 +25,116 @@ function NotFoundComponent() {
   );
 }
 
+const SITE_URL = "https://nosh-it-easy.lovable.app";
+const OG_IMAGE =
+  "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/aa7ac457-fa46-45da-8dc0-b59bf97f8ae1/id-preview-72af64d7--97170e30-27fe-4893-b45b-869d09d9e0e7.lovable.app-1778084387913.png";
+
+const RESTAURANT_JSONLD = {
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Restaurant",
+      "@id": `${SITE_URL}/#glen-rock`,
+      name: "The Famous Kosher Nosh — Glen Rock",
+      url: SITE_URL,
+      image: OG_IMAGE,
+      priceRange: "$$",
+      servesCuisine: ["Jewish Deli", "Kosher", "American"],
+      telephone: "+1-201-444-2424",
+      address: {
+        "@type": "PostalAddress",
+        streetAddress: "230 Rock Rd",
+        addressLocality: "Glen Rock",
+        addressRegion: "NJ",
+        postalCode: "07452",
+        addressCountry: "US",
+      },
+      acceptsReservations: false,
+      hasMenu: `${SITE_URL}/menu`,
+      potentialAction: {
+        "@type": "OrderAction",
+        target: `${SITE_URL}/menu`,
+        deliveryMethod: [
+          "http://purl.org/goodrelations/v1#DeliveryModePickUp",
+          "http://purl.org/goodrelations/v1#DeliveryModeOwnFleet",
+        ],
+      },
+    },
+    {
+      "@type": "Restaurant",
+      "@id": `${SITE_URL}/#cresskill`,
+      name: "The Famous Kosher Nosh — Cresskill",
+      url: SITE_URL,
+      image: OG_IMAGE,
+      priceRange: "$$",
+      servesCuisine: ["Jewish Deli", "Kosher", "American"],
+      telephone: "+1-201-871-3535",
+      address: {
+        "@type": "PostalAddress",
+        streetAddress: "27 Union Ave",
+        addressLocality: "Cresskill",
+        addressRegion: "NJ",
+        postalCode: "07626",
+        addressCountry: "US",
+      },
+      acceptsReservations: false,
+      hasMenu: `${SITE_URL}/menu`,
+      potentialAction: {
+        "@type": "OrderAction",
+        target: `${SITE_URL}/menu`,
+        deliveryMethod: [
+          "http://purl.org/goodrelations/v1#DeliveryModePickUp",
+          "http://purl.org/goodrelations/v1#DeliveryModeOwnFleet",
+        ],
+      },
+    },
+    {
+      "@type": "Organization",
+      name: "The Famous Kosher Nosh",
+      url: SITE_URL,
+      logo: OG_IMAGE,
+      sameAs: [],
+    },
+  ],
+};
+
 export const Route = createRootRoute({
   head: () => ({
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Order Online — The Kosher Nosh" },
+      { title: "The Famous Kosher Nosh — Order Pickup & Delivery in Glen Rock & Cresskill, NJ" },
       {
         name: "description",
         content:
-          "Order pickup or delivery from The Kosher Nosh — classic NY Jewish deli with locations in Glen Rock and Cresskill, NJ.",
+          "Order pastrami, knishes, matzo ball soup, and classic Jewish deli online from The Famous Kosher Nosh. Pickup and delivery in Glen Rock and Cresskill, NJ.",
       },
-      { property: "og:title", content: "Order Online — The Kosher Nosh" },
+      { name: "robots", content: "index,follow,max-image-preview:large" },
+      { name: "theme-color", content: "#b91c1c" },
+      { property: "og:site_name", content: "The Famous Kosher Nosh" },
+      { property: "og:type", content: "website" },
+      { property: "og:url", content: SITE_URL },
+      { property: "og:title", content: "The Famous Kosher Nosh — Glen Rock & Cresskill, NJ" },
       {
         property: "og:description",
-        content: "Pastrami, knishes, matzo ball soup. Pickup or delivery from Glen Rock & Cresskill.",
+        content: "NY-style Jewish deli in NJ since 1985. Order pickup or delivery online.",
       },
-      { property: "og:type", content: "website" },
-      { name: "twitter:title", content: "Order Online — The Kosher Nosh" },
-      { name: "description", content: "Nosh Direct is a custom online ordering platform for The Kosher Nosh deli." },
-      { property: "og:description", content: "Nosh Direct is a custom online ordering platform for The Kosher Nosh deli." },
-      { name: "twitter:description", content: "Nosh Direct is a custom online ordering platform for The Kosher Nosh deli." },
-      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/aa7ac457-fa46-45da-8dc0-b59bf97f8ae1/id-preview-72af64d7--97170e30-27fe-4893-b45b-869d09d9e0e7.lovable.app-1778084387913.png" },
-      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/aa7ac457-fa46-45da-8dc0-b59bf97f8ae1/id-preview-72af64d7--97170e30-27fe-4893-b45b-869d09d9e0e7.lovable.app-1778084387913.png" },
+      { property: "og:image", content: OG_IMAGE },
       { name: "twitter:card", content: "summary_large_image" },
+      { name: "twitter:title", content: "The Famous Kosher Nosh" },
+      { name: "twitter:description", content: "NY-style Jewish deli in NJ. Pickup or delivery." },
+      { name: "twitter:image", content: OG_IMAGE },
     ],
-    links: [{ rel: "stylesheet", href: appCss }],
+    links: [
+      { rel: "stylesheet", href: appCss },
+      { rel: "canonical", href: SITE_URL },
+    ],
+    scripts: [
+      {
+        type: "application/ld+json",
+        children: JSON.stringify(RESTAURANT_JSONLD),
+      },
+    ],
   }),
   shellComponent: RootShell,
   component: RootComponent,

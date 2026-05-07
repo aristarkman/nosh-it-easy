@@ -6,9 +6,15 @@ import { LOCATIONS, useOrder, type LocationId } from "@/lib/order-context";
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Choose your location — The Kosher Nosh" },
+      { title: "Order Online — The Famous Kosher Nosh (Glen Rock & Cresskill, NJ)" },
       {
         name: "description",
+        content:
+          "Order pickup or delivery from The Famous Kosher Nosh. Choose Glen Rock or Cresskill, NJ — pastrami, corned beef, knishes, matzo ball soup and the full deli menu.",
+      },
+      { property: "og:title", content: "Order Online — The Famous Kosher Nosh" },
+      {
+        property: "og:description",
         content: "Pick Glen Rock or Cresskill to start your pickup or delivery order.",
       },
     ],
