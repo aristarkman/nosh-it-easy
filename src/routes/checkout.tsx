@@ -51,6 +51,7 @@ declare global {
 function CheckoutPage() {
   const navigate = useNavigate();
   const { cart, subtotal, location, orderType, clearCart } = useOrder();
+  const auth = useCustomerAuth();
   const loc = LOCATIONS.find((l) => l.id === location);
 
   const [name, setName] = useState("");
@@ -62,6 +63,53 @@ function CheckoutPage() {
   const [scheduledTime, setScheduledTime] = useState("");
   const [pay, setPay] = useState<"card" | "applepay" | "googlepay" | "in-person">("card");
   const [submitting, setSubmitting] = useState(false);
+
+  const [tipMode, setTipMode] = useState<"preset" | "custom" | "none">("preset");
+  const [tipPreset, setTipPreset] = useState<number>(0.18);
+  const [tipCustom, setTipCustom] = useState<string>("");
+
+  const [zones, setZones] = useState<{ zip: string; fee: number; minimum: number }[]>([]);
+  const [closedToday, setClosedToday] = useState<string | null>(null);
+
+  const [savedAddresses, setSavedAddresses] = useState<SavedAddress[]>([]);
+  const [selectedAddrId, setSelectedAddrId] = useState<string>("");
+
+  const [ftdReady, setFtdReady] = useState(false);
+  const ftdLoadedRef = useRef(false);
+
+  // Autofill from profile + addresses when signed in
+  useEffect(() => {
+    if (!auth.authed || !auth.userId) return;
+    (async () => {
+      const [{ data: profile }, { data: addrs }] = await Promise.all([
+        supabase
+          .from("customer_profiles")
+          .select("full_name,phone,email")
+          .eq("user_id", auth.userId!)
+          .maybeSingle(),
+        supabase
+          .from("customer_addresses")
+          .select("id,label,address_line1,address_line2,city,state,zip,is_default")
+          .eq("user_id", auth.userId!)
+          .order("is_default", { ascending: false }),
+      ]);
+      if (profile) {
+        if (profile.full_name) setName((n) => n || profile.full_name!);
+        if (profile.phone) setPhone((p) => p || profile.phone!);
+        if (profile.email) setEmail((e) => e || profile.email!);
+      } else if (auth.email) {
+        setEmail((e) => e || auth.email);
+      }
+      const list = (addrs ?? []) as SavedAddress[];
+      setSavedAddresses(list);
+      const def = list.find((a) => a.is_default) ?? list[0];
+      if (def && orderType === "delivery" && !address) {
+        setSelectedAddrId(def.id);
+        setAddress(`${def.address_line1}${def.address_line2 ? `, ${def.address_line2}` : ""}, ${def.city}, ${def.state}`);
+        setZip(def.zip);
+      }
+    })();
+  }, [auth.authed, auth.userId, auth.email, orderType, address]);
 
   const [tipMode, setTipMode] = useState<"preset" | "custom" | "none">("preset");
   const [tipPreset, setTipPreset] = useState<number>(0.18);
