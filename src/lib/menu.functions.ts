@@ -1,13 +1,13 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
-import { bucketFor } from "@/lib/menu-categories";
-import type { MenuItem, ModifierGroup, ModifierOption } from "@/lib/menu-types";
+import type { MenuItem, ModifierGroup, ModifierOption, Category } from "@/lib/menu-types";
 
 const PRICE_LOCATION = "cresskill"; // single source of truth for prices
+const FALLBACK_CATEGORY = "More from the Deli";
 
-async function buildMenu(): Promise<MenuItem[]> {
-  const [itemsRes, pricesRes, availRes, migRes, mgRes, moRes] = await Promise.all([
+async function buildMenu(): Promise<{ items: MenuItem[]; categories: Category[] }> {
+  const [itemsRes, pricesRes, availRes, migRes, mgRes, moRes, catsRes] = await Promise.all([
     supabaseAdmin
       .from("menu_items")
       .select("id,name,description,category,popular,photo_url,sort_order")
@@ -26,6 +26,7 @@ async function buildMenu(): Promise<MenuItem[]> {
     supabaseAdmin.from("menu_item_modifier_groups").select("menu_item_id,modifier_group_id,sort_order"),
     supabaseAdmin.from("modifier_groups").select("id,name,required,min_select,max_select"),
     supabaseAdmin.from("modifier_options").select("id,group_id,name,price_delta,sort_order").order("sort_order"),
+    supabaseAdmin.from("menu_categories").select("id,name,blurb,sort_order").eq("active", true).order("sort_order").order("name"),
   ]);
 
   if (itemsRes.error) throw itemsRes.error;
@@ -65,16 +66,30 @@ async function buildMenu(): Promise<MenuItem[]> {
     groupsByItem.set(a.menu_item_id, arr);
   }
 
+  // Build category list. Use admin-defined categories; ensure a fallback bucket exists.
+  const categories: Category[] = (catsRes.data ?? []).map((c) => ({
+    id: c.name, // use name as the id since menu_items.category is free text
+    name: c.name,
+    blurb: c.blurb ?? undefined,
+  }));
+  const validCatNames = new Set(categories.map((c) => c.name));
+  if (!validCatNames.has(FALLBACK_CATEGORY)) {
+    categories.push({ id: FALLBACK_CATEGORY, name: FALLBACK_CATEGORY });
+    validCatNames.add(FALLBACK_CATEGORY);
+  }
+
   const items: MenuItem[] = [];
   for (const it of itemsRes.data ?? []) {
     const price = priceById.get(it.id);
     if (price == null || price <= 0) continue; // skip items with no price
+    const raw = (it.category ?? "").trim();
+    const cat = validCatNames.has(raw) ? raw : FALLBACK_CATEGORY;
     items.push({
       id: it.id,
       name: it.name,
       description: it.description ?? "",
       price,
-      category: bucketFor(it.category),
+      category: cat,
       rawCategory: it.category,
       image: it.photo_url ?? undefined,
       popular: !!it.popular,
@@ -82,17 +97,17 @@ async function buildMenu(): Promise<MenuItem[]> {
       modifierGroups: groupsByItem.get(it.id) ?? [],
     });
   }
-  return items;
+  return { items, categories };
 }
 
 export const getMenu = createServerFn({ method: "GET" }).handler(async () => {
-  return { items: await buildMenu() };
+  return await buildMenu();
 });
 
 export const getMenuItem = createServerFn({ method: "GET" })
   .inputValidator((input) => z.object({ id: z.string().uuid() }).parse(input))
   .handler(async ({ data }) => {
-    const items = await buildMenu();
+    const { items } = await buildMenu();
     const item = items.find((i) => i.id === data.id) ?? null;
     return { item };
   });
