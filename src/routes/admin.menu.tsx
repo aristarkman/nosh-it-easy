@@ -19,6 +19,7 @@ type Item = {
 type Price = { menu_item_id: string; location_id: string; price: number };
 type Loc = { location_id: string; display_name: string | null };
 type Group = { id: string; name: string };
+type CatRow = { id: string; name: string; sort_order: number };
 type Assign = { menu_item_id: string; modifier_group_id: string };
 
 function fmt(n: number | undefined) {
@@ -31,6 +32,7 @@ function MenuAdmin() {
   const [prices, setPrices] = useState<Price[]>([]);
   const [locs, setLocs] = useState<Loc[]>([]);
   const [groups, setGroups] = useState<Group[]>([]);
+  const [catRows, setCatRows] = useState<CatRow[]>([]);
   const [assigns, setAssigns] = useState<Assign[]>([]);
   const [loading, setLoading] = useState(true);
   const [q, setQ] = useState("");
@@ -40,18 +42,20 @@ function MenuAdmin() {
 
   async function load() {
     setLoading(true);
-    const [i, p, l, g, a] = await Promise.all([
+    const [i, p, l, g, a, c] = await Promise.all([
       supabase.from("menu_items").select("id,name,category,active,sort_order,photo_url").order("category").order("sort_order").order("name"),
       supabase.from("menu_item_prices").select("menu_item_id,location_id,price"),
       supabase.from("biyo_locations").select("location_id,display_name").order("location_id"),
       supabase.from("modifier_groups").select("id,name").order("name"),
       supabase.from("menu_item_modifier_groups").select("menu_item_id,modifier_group_id"),
+      supabase.from("menu_categories").select("id,name,sort_order").eq("active", true).order("sort_order").order("name"),
     ]);
     setItems((i.data ?? []) as Item[]);
     setPrices((p.data ?? []) as Price[]);
     setLocs((l.data ?? []) as Loc[]);
     setGroups((g.data ?? []) as Group[]);
     setAssigns((a.data ?? []) as Assign[]);
+    setCatRows((c.data ?? []) as CatRow[]);
     setLoading(false);
   }
   useEffect(() => { load(); }, []);
@@ -206,16 +210,29 @@ function MenuAdmin() {
                     </label>
                   </td>
                   <td className="px-4 py-3">
-                    <input
-                      defaultValue={it.category ?? ""}
-                      onBlur={async (e) => {
-                        const v = e.target.value.trim() || null;
+                    <select
+                      value={it.category ?? ""}
+                      onChange={async (e) => {
+                        const v = e.target.value || null;
                         if (v === it.category) return;
-                        await supabase.from("menu_items").update({ category: v }).eq("id", it.id);
-                        setItems((prev) => prev.map((x) => x.id === it.id ? { ...x, category: v } : x));
+                        const prev = it.category;
+                        setItems((p) => p.map((x) => x.id === it.id ? { ...x, category: v } : x));
+                        const { error } = await supabase.from("menu_items").update({ category: v }).eq("id", it.id);
+                        if (error) {
+                          setItems((p) => p.map((x) => x.id === it.id ? { ...x, category: prev } : x));
+                          alert(error.message);
+                        }
                       }}
-                      className="w-32 rounded border border-border bg-background px-2 py-1 text-xs"
-                    />
+                      className="w-40 rounded border border-border bg-background px-2 py-1 text-xs"
+                    >
+                      <option value="">— Uncategorized —</option>
+                      {catRows.map((c) => (
+                        <option key={c.id} value={c.name}>{c.name}</option>
+                      ))}
+                      {it.category && !catRows.some((c) => c.name === it.category) && (
+                        <option value={it.category}>{it.category} (legacy)</option>
+                      )}
+                    </select>
                   </td>
                   <td className="px-4 py-3 font-medium">{it.name}</td>
                   {locs.map((l) => (
