@@ -151,9 +151,23 @@ function CategoriesAdmin() {
             </thead>
             <tbody>
               {cats.map((c, idx) => (
-                <tr key={c.id} className="border-b border-border last:border-0">
+                <tr
+                  key={c.id}
+                  draggable
+                  onDragStart={() => setDragId(c.id)}
+                  onDragOver={(e) => { e.preventDefault(); if (overId !== c.id) setOverId(c.id); }}
+                  onDragLeave={() => { if (overId === c.id) setOverId(null); }}
+                  onDrop={(e) => { e.preventDefault(); onDrop(c.id); }}
+                  onDragEnd={() => { setDragId(null); setOverId(null); }}
+                  className={`border-b border-border last:border-0 transition ${
+                    dragId === c.id ? "opacity-40" : ""
+                  } ${overId === c.id && dragId !== c.id ? "bg-primary/5" : ""}`}
+                >
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-1">
+                      <span className="cursor-grab text-muted-foreground hover:text-foreground active:cursor-grabbing" title="Drag to reorder">
+                        <GripVertical className="size-4" />
+                      </span>
                       <button onClick={() => move(idx, -1)} disabled={idx === 0}
                         className="rounded p-1 hover:bg-muted disabled:opacity-30">
                         <ArrowUp className="size-3.5" />
