@@ -389,6 +389,36 @@ export type Database = {
         }
         Relationships: []
       }
+      menu_categories: {
+        Row: {
+          active: boolean
+          blurb: string | null
+          created_at: string
+          id: string
+          name: string
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          blurb?: string | null
+          created_at?: string
+          id?: string
+          name: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          blurb?: string | null
+          created_at?: string
+          id?: string
+          name?: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       menu_item_availability: {
         Row: {
           location_id: string

@@ -40,6 +40,7 @@ import { Route as AdminMenuRouteImport } from './routes/admin.menu'
 import { Route as AdminHoursRouteImport } from './routes/admin.hours'
 import { Route as AdminDriversRouteImport } from './routes/admin.drivers'
 import { Route as AdminClosuresRouteImport } from './routes/admin.closures'
+import { Route as AdminCategoriesRouteImport } from './routes/admin.categories'
 import { Route as AdminBiyoRouteImport } from './routes/admin.biyo'
 import { Route as ApiPublicHooksSyncBiyoRouteImport } from './routes/api/public/hooks/sync-biyo'
 import { Route as ApiPublicHooksShipdayRouteImport } from './routes/api/public/hooks/shipday'
@@ -200,6 +201,11 @@ const AdminClosuresRoute = AdminClosuresRouteImport.update({
   path: '/closures',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminCategoriesRoute = AdminCategoriesRouteImport.update({
+  id: '/categories',
+  path: '/categories',
+  getParentRoute: () => AdminRoute,
+} as any)
 const AdminBiyoRoute = AdminBiyoRouteImport.update({
   id: '/biyo',
   path: '/biyo',
@@ -241,6 +247,7 @@ export interface FileRoutesByFullPath {
   '/tablet': typeof TabletRoute
   '/terms': typeof TermsRoute
   '/admin/biyo': typeof AdminBiyoRoute
+  '/admin/categories': typeof AdminCategoriesRoute
   '/admin/closures': typeof AdminClosuresRoute
   '/admin/drivers': typeof AdminDriversRoute
   '/admin/hours': typeof AdminHoursRoute
@@ -277,6 +284,7 @@ export interface FileRoutesByTo {
   '/tablet': typeof TabletRoute
   '/terms': typeof TermsRoute
   '/admin/biyo': typeof AdminBiyoRoute
+  '/admin/categories': typeof AdminCategoriesRoute
   '/admin/closures': typeof AdminClosuresRoute
   '/admin/drivers': typeof AdminDriversRoute
   '/admin/hours': typeof AdminHoursRoute
@@ -315,6 +323,7 @@ export interface FileRoutesById {
   '/tablet': typeof TabletRoute
   '/terms': typeof TermsRoute
   '/admin/biyo': typeof AdminBiyoRoute
+  '/admin/categories': typeof AdminCategoriesRoute
   '/admin/closures': typeof AdminClosuresRoute
   '/admin/drivers': typeof AdminDriversRoute
   '/admin/hours': typeof AdminHoursRoute
@@ -354,6 +363,7 @@ export interface FileRouteTypes {
     | '/tablet'
     | '/terms'
     | '/admin/biyo'
+    | '/admin/categories'
     | '/admin/closures'
     | '/admin/drivers'
     | '/admin/hours'
@@ -390,6 +400,7 @@ export interface FileRouteTypes {
     | '/tablet'
     | '/terms'
     | '/admin/biyo'
+    | '/admin/categories'
     | '/admin/closures'
     | '/admin/drivers'
     | '/admin/hours'
@@ -427,6 +438,7 @@ export interface FileRouteTypes {
     | '/tablet'
     | '/terms'
     | '/admin/biyo'
+    | '/admin/categories'
     | '/admin/closures'
     | '/admin/drivers'
     | '/admin/hours'
@@ -691,6 +703,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminClosuresRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/admin/categories': {
+      id: '/admin/categories'
+      path: '/categories'
+      fullPath: '/admin/categories'
+      preLoaderRoute: typeof AdminCategoriesRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/admin/biyo': {
       id: '/admin/biyo'
       path: '/biyo'
@@ -724,6 +743,7 @@ declare module '@tanstack/react-router' {
 
 interface AdminRouteChildren {
   AdminBiyoRoute: typeof AdminBiyoRoute
+  AdminCategoriesRoute: typeof AdminCategoriesRoute
   AdminClosuresRoute: typeof AdminClosuresRoute
   AdminDriversRoute: typeof AdminDriversRoute
   AdminHoursRoute: typeof AdminHoursRoute
@@ -739,6 +759,7 @@ interface AdminRouteChildren {
 
 const AdminRouteChildren: AdminRouteChildren = {
   AdminBiyoRoute: AdminBiyoRoute,
+  AdminCategoriesRoute: AdminCategoriesRoute,
   AdminClosuresRoute: AdminClosuresRoute,
   AdminDriversRoute: AdminDriversRoute,
   AdminHoursRoute: AdminHoursRoute,
@@ -782,12 +803,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { createStart } from '@tanstack/react-start'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-  }
-}

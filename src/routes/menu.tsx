@@ -2,8 +2,8 @@ import { createFileRoute, Link, redirect } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { Search, ChevronRight, Flame } from "lucide-react";
 import { LOCATIONS, useOrder, fmt } from "@/lib/order-context";
-import { CATEGORIES } from "@/lib/menu-categories";
 import { getMenu } from "@/lib/menu.functions";
+import type { Category } from "@/lib/menu-types";
 
 export const Route = createFileRoute("/menu")({
   head: () => ({
@@ -40,10 +40,10 @@ export const Route = createFileRoute("/menu")({
 });
 
 function MenuPage() {
-  const { items } = Route.useLoaderData() as { items: import("@/lib/menu-types").MenuItem[] };
+  const { items, categories } = Route.useLoaderData() as { items: import("@/lib/menu-types").MenuItem[]; categories: Category[] };
   const { location, orderType } = useOrder();
   const loc = LOCATIONS.find((l) => l.id === location);
-  const [active, setActive] = useState(CATEGORIES[0].id);
+  const [active, setActive] = useState(categories[0]?.id ?? "");
   const [q, setQ] = useState("");
 
   const filtered = useMemo(() => {
@@ -56,7 +56,7 @@ function MenuPage() {
 
   useEffect(() => {
     const onScroll = () => {
-      for (const c of CATEGORIES) {
+      for (const c of categories) {
         const el = document.getElementById(`cat-${c.id}`);
         if (el) {
           const r = el.getBoundingClientRect();
@@ -69,7 +69,7 @@ function MenuPage() {
     };
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
-  }, []);
+  }, [categories]);
 
   const scrollTo = (id: string) => {
     const el = document.getElementById(`cat-${id}`);
@@ -111,7 +111,7 @@ function MenuPage() {
 
       <div className="sticky top-[68px] z-30 mt-4 -mx-4 overflow-x-auto border-b border-border bg-background/85 px-4 backdrop-blur">
         <div className="flex gap-1 py-2">
-          {CATEGORIES.map((c) => {
+          {categories.map((c) => {
             if (!filtered.some((i) => i.category === c.id)) return null;
             return (
               <button
@@ -130,7 +130,7 @@ function MenuPage() {
         </div>
       </div>
 
-      {CATEGORIES.map((c) => {
+      {categories.map((c) => {
         const catItems = filtered.filter((i) => i.category === c.id);
         if (!catItems.length) return null;
         return (
