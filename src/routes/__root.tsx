@@ -158,31 +158,34 @@ function RootShell({ children }: { children: React.ReactNode }) {
 }
 
 function RootComponent() {
+  const [queryClient] = useState(() => new QueryClient());
   return (
-    <OrderProvider>
-      <div className="flex min-h-screen flex-col paper-bg">
-        <SiteHeader />
-        <main className="flex-1">
-          <Outlet />
-        </main>
-        <footer className="mt-16 border-t border-border bg-card/60">
-          <div className="mx-auto max-w-6xl px-4 py-8 text-sm text-muted-foreground">
-            <div className="flex flex-wrap items-baseline justify-between gap-4">
-              <div>
-                <div className="font-display text-lg font-bold text-foreground">The Kosher Nosh</div>
-                <p>A New York deli, in New Jersey, since 1985.</p>
-              </div>
-              <div className="text-right text-xs uppercase tracking-widest">
-                <div>Glen Rock · Cresskill</div>
-                <div className="mt-2 flex justify-end gap-4 normal-case tracking-normal">
-                  <Link to="/privacy" className="hover:text-primary">Privacy</Link>
-                  <Link to="/terms" className="hover:text-primary">Terms</Link>
+    <QueryClientProvider client={queryClient}>
+      <OrderProvider>
+        <div className="flex min-h-screen flex-col paper-bg">
+          <SiteHeader />
+          <main className="flex-1">
+            <Outlet />
+          </main>
+          <footer className="mt-16 border-t border-border bg-card/60">
+            <div className="mx-auto max-w-6xl px-4 py-8 text-sm text-muted-foreground">
+              <div className="flex flex-wrap items-baseline justify-between gap-4">
+                <div>
+                  <div className="font-display text-lg font-bold text-foreground">The Kosher Nosh</div>
+                  <p>A New York deli, in New Jersey, since 1985.</p>
+                </div>
+                <div className="text-right text-xs uppercase tracking-widest">
+                  <div>Glen Rock · Cresskill</div>
+                  <div className="mt-2 flex justify-end gap-4 normal-case tracking-normal">
+                    <Link to="/privacy" className="hover:text-primary">Privacy</Link>
+                    <Link to="/terms" className="hover:text-primary">Terms</Link>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
-        </footer>
-      </div>
-    </OrderProvider>
+          </footer>
+        </div>
+      </OrderProvider>
+    </QueryClientProvider>
   );
 }
