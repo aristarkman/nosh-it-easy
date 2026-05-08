@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Loader2, Plus, Trash2, ArrowUp, ArrowDown } from "lucide-react";
+import { Loader2, Plus, Trash2, ArrowUp, ArrowDown, GripVertical } from "lucide-react";
 
 export const Route = createFileRoute("/admin/categories")({
   head: () => ({ meta: [{ title: "Menu categories — Admin" }] }),
@@ -21,6 +21,36 @@ function CategoriesAdmin() {
   const [loading, setLoading] = useState(true);
   const [newName, setNewName] = useState("");
   const [adding, setAdding] = useState(false);
+  const [dragId, setDragId] = useState<string | null>(null);
+  const [overId, setOverId] = useState<string | null>(null);
+
+  async function persistOrder(rows: Cat[]) {
+    // Renumber 10, 20, 30… and write any that changed.
+    const updates = rows
+      .map((c, idx) => ({ ...c, sort_order: (idx + 1) * 10 }))
+      .filter((c, idx) => c.sort_order !== rows[idx].sort_order);
+    if (!updates.length) return;
+    await Promise.all(
+      updates.map((c) =>
+        supabase.from("menu_categories").update({ sort_order: c.sort_order }).eq("id", c.id),
+      ),
+    );
+  }
+
+  function onDrop(targetId: string) {
+    if (!dragId || dragId === targetId) { setDragId(null); setOverId(null); return; }
+    const from = cats.findIndex((c) => c.id === dragId);
+    const to = cats.findIndex((c) => c.id === targetId);
+    if (from < 0 || to < 0) { setDragId(null); setOverId(null); return; }
+    const next = [...cats];
+    const [moved] = next.splice(from, 1);
+    next.splice(to, 0, moved);
+    const renumbered = next.map((c, idx) => ({ ...c, sort_order: (idx + 1) * 10 }));
+    setCats(renumbered);
+    setDragId(null);
+    setOverId(null);
+    persistOrder(renumbered);
+  }
 
   async function load() {
     setLoading(true);
@@ -121,9 +151,23 @@ function CategoriesAdmin() {
             </thead>
             <tbody>
               {cats.map((c, idx) => (
-                <tr key={c.id} className="border-b border-border last:border-0">
+                <tr
+                  key={c.id}
+                  draggable
+                  onDragStart={() => setDragId(c.id)}
+                  onDragOver={(e) => { e.preventDefault(); if (overId !== c.id) setOverId(c.id); }}
+                  onDragLeave={() => { if (overId === c.id) setOverId(null); }}
+                  onDrop={(e) => { e.preventDefault(); onDrop(c.id); }}
+                  onDragEnd={() => { setDragId(null); setOverId(null); }}
+                  className={`border-b border-border last:border-0 transition ${
+                    dragId === c.id ? "opacity-40" : ""
+                  } ${overId === c.id && dragId !== c.id ? "bg-primary/5" : ""}`}
+                >
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-1">
+                      <span className="cursor-grab text-muted-foreground hover:text-foreground active:cursor-grabbing" title="Drag to reorder">
+                        <GripVertical className="size-4" />
+                      </span>
                       <button onClick={() => move(idx, -1)} disabled={idx === 0}
                         className="rounded p-1 hover:bg-muted disabled:opacity-30">
                         <ArrowUp className="size-3.5" />
