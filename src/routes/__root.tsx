@@ -175,7 +175,7 @@ function RootComponent() {
               <div className="flex flex-wrap items-baseline justify-between gap-4">
                 <div>
                   <div className="font-display text-lg font-bold text-foreground">The Kosher Nosh</div>
-                  <p>A New York deli, in New Jersey, since 1985.</p>
+                  <p>A New York deli, in New Jersey, Kosher since 1976.</p>
                 </div>
                 <div className="text-right text-xs uppercase tracking-widest">
                   <div>Glen Rock · Cresskill</div>
