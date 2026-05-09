@@ -10,7 +10,19 @@ import { toast } from "sonner";
 
 export const Route = createFileRoute("/tablet")({
   head: () => ({
-    meta: [{ title: "Order Tablet — The Kosher Nosh" }],
+    meta: [
+      { title: "Order Tablet — The Kosher Nosh" },
+      { name: "apple-mobile-web-app-capable", content: "yes" },
+      { name: "mobile-web-app-capable", content: "yes" },
+      { name: "apple-mobile-web-app-status-bar-style", content: "black-translucent" },
+      { name: "apple-mobile-web-app-title", content: "KN Tablet" },
+      { name: "theme-color", content: "#b91c1c" },
+    ],
+    links: [
+      { rel: "manifest", href: "/tablet-manifest.json" },
+      { rel: "apple-touch-icon", href: "/tablet-icon-192.png" },
+      { rel: "icon", type: "image/png", sizes: "512x512", href: "/tablet-icon-512.png" },
+    ],
   }),
   component: TabletPage,
 });
