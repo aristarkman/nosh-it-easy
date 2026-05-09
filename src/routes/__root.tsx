@@ -1,4 +1,4 @@
-import { Outlet, Link, createRootRoute, HeadContent, Scripts } from "@tanstack/react-router";
+import { Outlet, Link, createRootRoute, HeadContent, Scripts, useLocation } from "@tanstack/react-router";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useState } from "react";
 import appCss from "../styles.css?url";
@@ -159,14 +159,17 @@ function RootShell({ children }: { children: React.ReactNode }) {
 
 function RootComponent() {
   const [queryClient] = useState(() => new QueryClient());
+  const path = useLocation({ select: (l) => l.pathname });
+  const isChromeless = path.startsWith("/tablet") || path.startsWith("/dispatch");
   return (
     <QueryClientProvider client={queryClient}>
       <OrderProvider>
         <div className="flex min-h-screen flex-col paper-bg">
-          <SiteHeader />
+          {!isChromeless && <SiteHeader />}
           <main className="flex-1">
             <Outlet />
           </main>
+          {!isChromeless && (
           <footer className="mt-16 border-t border-border bg-card/60">
             <div className="mx-auto max-w-6xl px-4 py-8 text-sm text-muted-foreground">
               <div className="flex flex-wrap items-baseline justify-between gap-4">
@@ -184,6 +187,7 @@ function RootComponent() {
               </div>
             </div>
           </footer>
+          )}
         </div>
       </OrderProvider>
     </QueryClientProvider>
