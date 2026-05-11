@@ -101,6 +101,32 @@ function MenuAdmin() {
     return assignsByItem.get(itemId)?.size ?? 0;
   }
 
+  async function saveName(it: Item, name: string) {
+    const trimmed = name.trim();
+    if (!trimmed || trimmed === it.name) return;
+    const prev = it.name;
+    setItems((p) => p.map((x) => x.id === it.id ? { ...x, name: trimmed } : x));
+    const { error } = await supabase.from("menu_items").update({ name: trimmed }).eq("id", it.id);
+    if (error) {
+      setItems((p) => p.map((x) => x.id === it.id ? { ...x, name: prev } : x));
+      alert(error.message);
+    }
+  }
+
+  async function saveOnlinePrice(it: Item, raw: string) {
+    const trimmed = raw.trim();
+    const next = trimmed === "" ? null : Number(trimmed);
+    if (next != null && (!isFinite(next) || next < 0)) { alert("Invalid price"); return; }
+    if (next === it.online_price) return;
+    const prev = it.online_price;
+    setItems((p) => p.map((x) => x.id === it.id ? { ...x, online_price: next } : x));
+    const { error } = await supabase.from("menu_items").update({ online_price: next }).eq("id", it.id);
+    if (error) {
+      setItems((p) => p.map((x) => x.id === it.id ? { ...x, online_price: prev } : x));
+      alert(error.message);
+    }
+  }
+
   async function toggleActive(it: Item) {
     // optimistic
     setItems((prev) => prev.map((x) => x.id === it.id ? { ...x, active: !x.active } : x));
