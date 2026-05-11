@@ -262,7 +262,29 @@ function MenuAdmin() {
                       )}
                     </select>
                   </td>
-                  <td className="px-4 py-3 font-medium">{it.name}</td>
+                  <td className="px-4 py-3 font-medium">
+                    <input
+                      defaultValue={it.name}
+                      onBlur={(e) => saveName(it, e.target.value)}
+                      onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }}
+                      className="w-56 rounded border border-transparent bg-transparent px-2 py-1 hover:border-border focus:border-primary focus:bg-background focus:outline-none"
+                    />
+                  </td>
+                  <td className="px-4 py-3 tabular-nums">
+                    <div className="flex items-center gap-1">
+                      <span className="text-muted-foreground">$</span>
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        defaultValue={it.online_price ?? ""}
+                        placeholder="—"
+                        onBlur={(e) => saveOnlinePrice(it, e.target.value)}
+                        onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }}
+                        className="w-20 rounded border border-border bg-background px-2 py-1 text-right"
+                      />
+                    </div>
+                  </td>
                   {locs.map((l) => (
                     <td key={l.location_id} className="px-4 py-3 tabular-nums text-muted-foreground">
                       {fmt(priceFor(it.id, l.location_id))}
