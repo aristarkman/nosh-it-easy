@@ -553,6 +553,7 @@ export type Database = {
           id: string
           last_synced_at: string | null
           name: string
+          online_price: number | null
           photo_url: string | null
           popular: boolean
           sort_order: number
@@ -567,6 +568,7 @@ export type Database = {
           id?: string
           last_synced_at?: string | null
           name: string
+          online_price?: number | null
           photo_url?: string | null
           popular?: boolean
           sort_order?: number
@@ -581,6 +583,7 @@ export type Database = {
           id?: string
           last_synced_at?: string | null
           name?: string
+          online_price?: number | null
           photo_url?: string | null
           popular?: boolean
           sort_order?: number

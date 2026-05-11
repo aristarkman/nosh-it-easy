@@ -15,6 +15,7 @@ type Item = {
   active: boolean;
   sort_order: number;
   photo_url: string | null;
+  online_price: number | null;
 };
 type Price = { menu_item_id: string; location_id: string; price: number };
 type Loc = { location_id: string; display_name: string | null };
@@ -43,7 +44,7 @@ function MenuAdmin() {
   async function load() {
     setLoading(true);
     const [i, p, l, g, a, c] = await Promise.all([
-      supabase.from("menu_items").select("id,name,category,active,sort_order,photo_url").order("category").order("sort_order").order("name"),
+      supabase.from("menu_items").select("id,name,category,active,sort_order,photo_url,online_price").order("category").order("sort_order").order("name"),
       supabase.from("menu_item_prices").select("menu_item_id,location_id,price"),
       supabase.from("biyo_locations").select("location_id,display_name").order("location_id"),
       supabase.from("modifier_groups").select("id,name").order("name"),
@@ -98,6 +99,32 @@ function MenuAdmin() {
   }
   function modCount(itemId: string) {
     return assignsByItem.get(itemId)?.size ?? 0;
+  }
+
+  async function saveName(it: Item, name: string) {
+    const trimmed = name.trim();
+    if (!trimmed || trimmed === it.name) return;
+    const prev = it.name;
+    setItems((p) => p.map((x) => x.id === it.id ? { ...x, name: trimmed } : x));
+    const { error } = await supabase.from("menu_items").update({ name: trimmed }).eq("id", it.id);
+    if (error) {
+      setItems((p) => p.map((x) => x.id === it.id ? { ...x, name: prev } : x));
+      alert(error.message);
+    }
+  }
+
+  async function saveOnlinePrice(it: Item, raw: string) {
+    const trimmed = raw.trim();
+    const next = trimmed === "" ? null : Number(trimmed);
+    if (next != null && (!isFinite(next) || next < 0)) { alert("Invalid price"); return; }
+    if (next === it.online_price) return;
+    const prev = it.online_price;
+    setItems((p) => p.map((x) => x.id === it.id ? { ...x, online_price: next } : x));
+    const { error } = await supabase.from("menu_items").update({ online_price: next }).eq("id", it.id);
+    if (error) {
+      setItems((p) => p.map((x) => x.id === it.id ? { ...x, online_price: prev } : x));
+      alert(error.message);
+    }
   }
 
   async function toggleActive(it: Item) {
@@ -185,6 +212,7 @@ function MenuAdmin() {
                 <th className="px-4 py-3">Photo</th>
                 <th className="px-4 py-3">Category</th>
                 <th className="px-4 py-3">Menu item</th>
+                <th className="px-4 py-3">Online price</th>
                 {locs.map((l) => (
                   <th key={l.location_id} className="px-4 py-3">{(l.display_name ?? l.location_id)} price</th>
                 ))}
@@ -234,7 +262,29 @@ function MenuAdmin() {
                       )}
                     </select>
                   </td>
-                  <td className="px-4 py-3 font-medium">{it.name}</td>
+                  <td className="px-4 py-3 font-medium">
+                    <input
+                      defaultValue={it.name}
+                      onBlur={(e) => saveName(it, e.target.value)}
+                      onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }}
+                      className="w-56 rounded border border-transparent bg-transparent px-2 py-1 hover:border-border focus:border-primary focus:bg-background focus:outline-none"
+                    />
+                  </td>
+                  <td className="px-4 py-3 tabular-nums">
+                    <div className="flex items-center gap-1">
+                      <span className="text-muted-foreground">$</span>
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        defaultValue={it.online_price ?? ""}
+                        placeholder="—"
+                        onBlur={(e) => saveOnlinePrice(it, e.target.value)}
+                        onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }}
+                        className="w-20 rounded border border-border bg-background px-2 py-1 text-right"
+                      />
+                    </div>
+                  </td>
                   {locs.map((l) => (
                     <td key={l.location_id} className="px-4 py-3 tabular-nums text-muted-foreground">
                       {fmt(priceFor(it.id, l.location_id))}

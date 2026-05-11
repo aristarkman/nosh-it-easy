@@ -10,7 +10,7 @@ async function buildMenu(): Promise<{ items: MenuItem[]; categories: Category[] 
   const [itemsRes, pricesRes, availRes, migRes, mgRes, moRes, catsRes] = await Promise.all([
     supabaseAdmin
       .from("menu_items")
-      .select("id,name,description,category,popular,photo_url,sort_order")
+      .select("id,name,description,category,popular,photo_url,sort_order,online_price")
       .eq("active", true)
       .order("sort_order")
       .order("name"),
@@ -80,7 +80,9 @@ async function buildMenu(): Promise<{ items: MenuItem[]; categories: Category[] 
 
   const items: MenuItem[] = [];
   for (const it of itemsRes.data ?? []) {
-    const price = priceById.get(it.id);
+    const basePrice = priceById.get(it.id);
+    const onlineOverride = it.online_price != null ? Number(it.online_price) : null;
+    const price = onlineOverride != null && onlineOverride > 0 ? onlineOverride : basePrice;
     if (price == null || price <= 0) continue; // skip items with no price
     const raw = (it.category ?? "").trim();
     const cat = validCatNames.has(raw) ? raw : FALLBACK_CATEGORY;
