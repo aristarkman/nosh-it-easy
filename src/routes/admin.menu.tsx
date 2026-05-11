@@ -212,6 +212,7 @@ function MenuAdmin() {
                 <th className="px-4 py-3">Photo</th>
                 <th className="px-4 py-3">Category</th>
                 <th className="px-4 py-3">Menu item</th>
+                <th className="px-4 py-3">Online price</th>
                 {locs.map((l) => (
                   <th key={l.location_id} className="px-4 py-3">{(l.display_name ?? l.location_id)} price</th>
                 ))}
