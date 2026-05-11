@@ -1,0 +1,1 @@
+ALTER TABLE public.menu_items DROP COLUMN IF EXISTS online_price;
