@@ -52,7 +52,7 @@ function MenuAdmin() {
     ]);
     setItems((i.data ?? []) as Item[]);
     setPrices((p.data ?? []) as Price[]);
-    setLocs((l.data ?? []) as Loc[]);
+    setLocs(((l.data ?? []) as Loc[]).filter((x) => x.location_id !== "glen-rock"));
     setGroups((g.data ?? []) as Group[]);
     setAssigns((a.data ?? []) as Assign[]);
     setCatRows((c.data ?? []) as CatRow[]);
