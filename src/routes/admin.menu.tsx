@@ -15,7 +15,6 @@ type Item = {
   active: boolean;
   sort_order: number;
   photo_url: string | null;
-  online_price: number | null;
 };
 type Price = { menu_item_id: string; location_id: string; price: number };
 type Loc = { location_id: string; display_name: string | null };
