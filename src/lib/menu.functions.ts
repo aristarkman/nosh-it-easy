@@ -80,9 +80,7 @@ async function buildMenu(): Promise<{ items: MenuItem[]; categories: Category[] 
 
   const items: MenuItem[] = [];
   for (const it of itemsRes.data ?? []) {
-    const basePrice = priceById.get(it.id);
-    const onlineOverride = it.online_price != null ? Number(it.online_price) : null;
-    const price = onlineOverride != null && onlineOverride > 0 ? onlineOverride : basePrice;
+    const price = priceById.get(it.id);
     if (price == null || price <= 0) continue; // skip items with no price
     const raw = (it.category ?? "").trim();
     const cat = validCatNames.has(raw) ? raw : FALLBACK_CATEGORY;
