@@ -62,14 +62,23 @@ function MenuAdmin() {
 
   const cats = useMemo(() => Array.from(new Set(items.map((x) => x.category).filter(Boolean))) as string[], [items]);
 
+  const cresskillPriced = useMemo(() => {
+    const set = new Set<string>();
+    for (const p of prices) {
+      if (p.location_id === "cresskill" && Number(p.price) > 0) set.add(p.menu_item_id);
+    }
+    return set;
+  }, [prices]);
+
   const filtered = useMemo(() => {
     const s = q.trim().toLowerCase();
     return items.filter((it) => {
+      if (!cresskillPriced.has(it.id)) return false; // hide Glen Rock–only items
       if (cat && it.category !== cat) return false;
       if (s && !it.name.toLowerCase().includes(s) && !(it.category ?? "").toLowerCase().includes(s)) return false;
       return true;
     });
-  }, [items, q, cat]);
+  }, [items, q, cat, cresskillPriced]);
 
   useEffect(() => { setPage(0); }, [q, cat]);
   const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
