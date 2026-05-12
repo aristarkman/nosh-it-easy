@@ -189,6 +189,7 @@ function RootComponent() {
             </div>
           </footer>
           )}
+          {!isChromeless && <ScrollToTop />}
         </div>
       </OrderProvider>
     </QueryClientProvider>
