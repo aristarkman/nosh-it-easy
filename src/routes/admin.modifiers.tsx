@@ -101,12 +101,29 @@ function ModifiersAdmin() {
         </div>
       </section>
 
+      <div className="relative">
+        <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+        <input
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Search groups or options…"
+          className="w-full rounded-full border border-border bg-background py-2 pl-9 pr-3 text-sm"
+        />
+      </div>
+
       {loading ? (
         <div className="flex items-center gap-2 text-sm text-muted-foreground"><Loader2 className="size-4 animate-spin" /> Loading…</div>
       ) : groups.length === 0 ? (
         <div className="rounded-2xl border border-border bg-card p-5 text-sm text-muted-foreground">No modifier groups yet.</div>
       ) : (
-        groups.map((g) => {
+        groups
+          .filter((g) => {
+            const q = search.trim().toLowerCase();
+            if (!q) return true;
+            if (g.name.toLowerCase().includes(q)) return true;
+            return options.some((o) => o.group_id === g.id && o.name.toLowerCase().includes(q));
+          })
+          .map((g) => {
           const opts = options.filter((o) => o.group_id === g.id);
           return (
             <section key={g.id} className="rounded-2xl border border-border bg-card p-5">
