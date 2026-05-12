@@ -29,6 +29,7 @@ function ModifiersAdmin() {
   const [options, setOptions] = useState<Option[]>([]);
   const [loading, setLoading] = useState(true);
   const [newName, setNewName] = useState("");
+  const [search, setSearch] = useState("");
 
   async function load() {
     setLoading(true);
