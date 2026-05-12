@@ -4,6 +4,7 @@ import { useState } from "react";
 import appCss from "../styles.css?url";
 import { OrderProvider } from "@/lib/order-context";
 import { SiteHeader } from "@/components/site-header";
+import { ScrollToTop } from "@/components/scroll-to-top";
 
 function NotFoundComponent() {
   return (
