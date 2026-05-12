@@ -192,6 +192,7 @@ function ModifiersAdmin() {
           );
         })
       )}
+      <ScrollToTop />
     </div>
   );
 }
