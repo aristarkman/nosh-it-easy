@@ -164,7 +164,7 @@ function CartPage() {
           <h2 className="font-display text-xl font-bold">People also added</h2>
           <ul className="mt-3 grid gap-3 sm:grid-cols-2">
             {upsells.map((u) => {
-              const hasRequired = (u.modifierGroups ?? []).some((g) => g.required);
+              const hasModifiers = (u.modifierGroups ?? []).length > 0;
               return (
                 <li
                   key={u.id}
@@ -183,11 +183,11 @@ function CartPage() {
                     <div className="truncate font-display text-sm font-bold">{u.name}</div>
                     <div className="text-xs text-muted-foreground">{fmt(u.price)}</div>
                   </div>
-                  {hasRequired ? (
+                  {hasModifiers ? (
                     <Link
                       to="/item/$itemId"
                       params={{ itemId: u.id }}
-                      className="rounded-full border border-border px-3 py-1.5 text-xs font-semibold hover:border-primary"
+                      className="rounded-full bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground hover:opacity-90"
                     >
                       Add
                     </Link>
