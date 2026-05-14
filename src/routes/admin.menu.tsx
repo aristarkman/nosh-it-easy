@@ -155,6 +155,32 @@ function MenuAdmin() {
 
   const [editingMods, setEditingMods] = useState<string | null>(null);
   const [uploading, setUploading] = useState<string | null>(null);
+  const [creating, setCreating] = useState(false);
+  const [newName, setNewName] = useState("");
+  const [newCat, setNewCat] = useState("");
+  const [newPrice, setNewPrice] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  async function createItem() {
+    const name = newName.trim();
+    const price = Number(newPrice);
+    if (!name) { alert("Name is required"); return; }
+    if (!Number.isFinite(price) || price < 0) { alert("Enter a valid price"); return; }
+    setSaving(true);
+    try {
+      const biyo_product_id = `manual-${crypto.randomUUID()}`;
+      const { data: ins, error } = await supabase.from("menu_items")
+        .insert({ name, category: newCat || null, biyo_product_id, active: true })
+        .select("id,name,category,active,sort_order,photo_url").single();
+      if (error || !ins) { alert(error?.message ?? "Failed"); return; }
+      const { error: pErr } = await supabase.from("menu_item_prices")
+        .insert({ menu_item_id: ins.id, location_id: "cresskill", price });
+      if (pErr) { alert(pErr.message); return; }
+      setItems((p) => [ins as Item, ...p]);
+      setPrices((p) => [...p, { menu_item_id: ins.id, location_id: "cresskill", price }]);
+      setNewName(""); setNewCat(""); setNewPrice(""); setCreating(false);
+    } finally { setSaving(false); }
+  }
 
   async function uploadPhoto(it: Item, file: File) {
     setUploading(it.id);
