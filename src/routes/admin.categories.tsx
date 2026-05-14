@@ -25,16 +25,17 @@ function CategoriesAdmin() {
   const [overId, setOverId] = useState<string | null>(null);
 
   async function persistOrder(rows: Cat[]) {
-    // Renumber 10, 20, 30… and write any that changed.
-    const updates = rows
-      .map((c, idx) => ({ ...c, sort_order: (idx + 1) * 10 }))
-      .filter((c, idx) => c.sort_order !== rows[idx].sort_order);
-    if (!updates.length) return;
-    await Promise.all(
-      updates.map((c) =>
-        supabase.from("menu_categories").update({ sort_order: c.sort_order }).eq("id", c.id),
+    // Write the new sort_order for every row (caller passes already-renumbered rows).
+    const results = await Promise.all(
+      rows.map((c, idx) =>
+        supabase
+          .from("menu_categories")
+          .update({ sort_order: (idx + 1) * 10 })
+          .eq("id", c.id),
       ),
     );
+    const failed = results.find((r) => r.error);
+    if (failed?.error) alert(failed.error.message);
   }
 
   function onDrop(targetId: string) {
