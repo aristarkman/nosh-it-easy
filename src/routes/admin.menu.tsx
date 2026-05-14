@@ -163,7 +163,7 @@ function MenuAdmin() {
 
   async function createItem() {
     const name = newName.trim();
-    const price = Number(newPrice);
+    const price = newPrice.trim() === "" ? 0 : Number(newPrice);
     if (!name) { alert("Name is required"); return; }
     if (!Number.isFinite(price) || price < 0) { alert("Enter a valid price"); return; }
     setSaving(true);
