@@ -155,6 +155,32 @@ function MenuAdmin() {
 
   const [editingMods, setEditingMods] = useState<string | null>(null);
   const [uploading, setUploading] = useState<string | null>(null);
+  const [creating, setCreating] = useState(false);
+  const [newName, setNewName] = useState("");
+  const [newCat, setNewCat] = useState("");
+  const [newPrice, setNewPrice] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  async function createItem() {
+    const name = newName.trim();
+    const price = Number(newPrice);
+    if (!name) { alert("Name is required"); return; }
+    if (!Number.isFinite(price) || price < 0) { alert("Enter a valid price"); return; }
+    setSaving(true);
+    try {
+      const biyo_product_id = `manual-${crypto.randomUUID()}`;
+      const { data: ins, error } = await supabase.from("menu_items")
+        .insert({ name, category: newCat || null, biyo_product_id, active: true })
+        .select("id,name,category,active,sort_order,photo_url").single();
+      if (error || !ins) { alert(error?.message ?? "Failed"); return; }
+      const { error: pErr } = await supabase.from("menu_item_prices")
+        .insert({ menu_item_id: ins.id, location_id: "cresskill", price });
+      if (pErr) { alert(pErr.message); return; }
+      setItems((p) => [ins as Item, ...p]);
+      setPrices((p) => [...p, { menu_item_id: ins.id, location_id: "cresskill", price }]);
+      setNewName(""); setNewCat(""); setNewPrice(""); setCreating(false);
+    } finally { setSaving(false); }
+  }
 
   async function uploadPhoto(it: Item, file: File) {
     setUploading(it.id);
@@ -183,7 +209,11 @@ function MenuAdmin() {
             <Link to="/admin/modifiers" className="text-primary underline">Manage modifications →</Link>
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <button onClick={() => setCreating((v) => !v)}
+            className="rounded border border-primary bg-primary px-3 py-1.5 text-sm font-bold text-primary-foreground hover:opacity-90">
+            {creating ? "Cancel" : "+ New item"}
+          </button>
           <select value={cat} onChange={(e) => setCat(e.target.value)} className="rounded border border-border bg-background px-2 py-1.5 text-sm">
             <option value="">All categories</option>
             {cats.map((c) => <option key={c} value={c}>{c}</option>)}
@@ -195,6 +225,33 @@ function MenuAdmin() {
           </div>
         </div>
       </div>
+
+      {creating && (
+        <div className="flex flex-wrap items-end gap-2 rounded-2xl border border-border bg-card p-4">
+          <div className="flex flex-col">
+            <label className="text-xs uppercase tracking-wider text-muted-foreground">Name</label>
+            <input value={newName} onChange={(e) => setNewName(e.target.value)} maxLength={120}
+              className="w-64 rounded border border-border bg-background px-2 py-1.5 text-sm" />
+          </div>
+          <div className="flex flex-col">
+            <label className="text-xs uppercase tracking-wider text-muted-foreground">Category</label>
+            <select value={newCat} onChange={(e) => setNewCat(e.target.value)}
+              className="w-48 rounded border border-border bg-background px-2 py-1.5 text-sm">
+              <option value="">— Uncategorized —</option>
+              {catRows.map((c) => <option key={c.id} value={c.name}>{c.name}</option>)}
+            </select>
+          </div>
+          <div className="flex flex-col">
+            <label className="text-xs uppercase tracking-wider text-muted-foreground">Online price ($)</label>
+            <input value={newPrice} onChange={(e) => setNewPrice(e.target.value)} inputMode="decimal" placeholder="0.00"
+              className="w-28 rounded border border-border bg-background px-2 py-1.5 text-sm" />
+          </div>
+          <button onClick={createItem} disabled={saving}
+            className="rounded border border-primary bg-primary px-4 py-1.5 text-sm font-bold text-primary-foreground disabled:opacity-50">
+            {saving ? "Saving…" : "Create"}
+          </button>
+        </div>
+      )}
 
       <div className="rounded-2xl border border-border bg-card">
         {loading ? (
