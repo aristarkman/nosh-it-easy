@@ -164,7 +164,7 @@ function CartPage() {
           <h2 className="font-display text-xl font-bold">People also added</h2>
           <ul className="mt-3 grid gap-3 sm:grid-cols-2">
             {upsells.map((u) => {
-              const hasRequired = (u.modifierGroups ?? []).some((g) => g.required);
+              const hasModifiers = (u.modifierGroups ?? []).length > 0;
               return (
                 <li
                   key={u.id}
