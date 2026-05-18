@@ -253,10 +253,46 @@ function CheckoutPage() {
     toast.success(`${r.code} applied`);
   };
 
-  const matchedZone = useMemo(
-    () => (orderType === "delivery" && zip ? zones.find((z) => z.zip === zip) : undefined),
-    [orderType, zip, zones]
-  );
+  // Geocode the typed address (debounced) and match against polygon zones
+  useEffect(() => {
+    if (orderType !== "delivery" || address.trim().length < 5 || zip.length !== 5) {
+      setGeo(null);
+      setGeoError(null);
+      return;
+    }
+    let cancelled = false;
+    setGeoLoading(true);
+    setGeoError(null);
+    const handle = setTimeout(async () => {
+      try {
+        const r = await geocodeAddress({ data: { address: `${address.trim()}, ${zip}` } });
+        if (cancelled) return;
+        if (r.ok) {
+          setGeo({ lat: r.lat, lng: r.lng });
+          setGeoError(null);
+        } else {
+          setGeo(null);
+          setGeoError(r.message);
+        }
+      } catch {
+        if (!cancelled) {
+          setGeo(null);
+          setGeoError("Couldn't look up that address.");
+        }
+      } finally {
+        if (!cancelled) setGeoLoading(false);
+      }
+    }, 700);
+    return () => {
+      cancelled = true;
+      clearTimeout(handle);
+    };
+  }, [orderType, address, zip]);
+
+  const matchedZone = useMemo(() => {
+    if (orderType !== "delivery" || !geo) return undefined;
+    return zones.find((z) => pointInPolygon(geo, z.polygon));
+  }, [orderType, geo, zones]);
 
   // Live Shipday on-demand quote — falls back to zone fee if unavailable.
   const [liveQuote, setLiveQuote] = useState<{
