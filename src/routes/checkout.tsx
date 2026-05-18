@@ -80,7 +80,10 @@ function CheckoutPage() {
   const [tipPreset, setTipPreset] = useState<number>(0.18);
   const [tipCustom, setTipCustom] = useState<string>("");
 
-  const [zones, setZones] = useState<{ zip: string; fee: number; minimum: number }[]>([]);
+  const [zones, setZones] = useState<{ id: string; name: string; fee: number; minimum: number; polygon: { lat: number; lng: number }[] }[]>([]);
+  const [geo, setGeo] = useState<{ lat: number; lng: number } | null>(null);
+  const [geoError, setGeoError] = useState<string | null>(null);
+  const [geoLoading, setGeoLoading] = useState(false);
   const [closedToday, setClosedToday] = useState<string | null>(null);
   const [onlineHours, setOnlineHours] = useState<{ day_of_week: number; open_time: string | null; close_time: string | null; is_closed: boolean }[]>([]);
   const [closures, setClosures] = useState<{ start_date: string; end_date: string }[]>([]);
@@ -148,7 +151,7 @@ function CheckoutPage() {
     (async () => {
       const today = new Date().toISOString().slice(0, 10);
       const [{ data: z }, { data: c }, { data: h }] = await Promise.all([
-        supabase.from("delivery_zones").select("zip,fee,minimum").eq("location_id", location),
+        supabase.from("delivery_zone_polygons").select("id,name,fee,minimum,polygon").eq("location_id", location).eq("active", true).order("sort_order"),
         supabase
           .from("store_closures")
           .select("reason,location_id,start_date,end_date")
@@ -159,7 +162,15 @@ function CheckoutPage() {
           .eq("location_id", location)
           .eq("hours_kind", "online"),
       ]);
-      setZones((z ?? []).map((x) => ({ zip: x.zip, fee: Number(x.fee), minimum: Number(x.minimum) })));
+      setZones(
+        (z ?? []).map((x) => ({
+          id: x.id as string,
+          name: x.name as string,
+          fee: Number(x.fee),
+          minimum: Number(x.minimum),
+          polygon: (x.polygon as { lat: number; lng: number }[]) ?? [],
+        })),
+      );
       const allClosures = (c ?? []).filter((x) => x.location_id === null || x.location_id === location);
       setClosures(allClosures.map((x) => ({ start_date: x.start_date, end_date: x.end_date })));
       const hitToday = allClosures.find((x) => x.start_date <= today && x.end_date >= today);
