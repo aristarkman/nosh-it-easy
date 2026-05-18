@@ -119,7 +119,20 @@ function MenuAdmin() {
     if (error) {
       setItems((p) => p.map((x) => x.id === it.id ? { ...x, name: prev } : x));
       alert(error.message);
+  }
+
+  async function saveDescription(it: Item, description: string) {
+    const trimmed = description.trim();
+    const next = trimmed === "" ? null : trimmed;
+    if (next === it.description) return;
+    const prev = it.description;
+    setItems((p) => p.map((x) => x.id === it.id ? { ...x, description: next } : x));
+    const { error } = await supabase.from("menu_items").update({ description: next }).eq("id", it.id);
+    if (error) {
+      setItems((p) => p.map((x) => x.id === it.id ? { ...x, description: prev } : x));
+      alert(error.message);
     }
+  }
   }
 
   // online price removed — Cresskill price is the online price
