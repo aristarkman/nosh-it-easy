@@ -142,7 +142,7 @@ export const LOCATIONS: { id: LocationId; name: string; address: string; phone: 
   {
     id: "glen-rock",
     name: "Glen Rock",
-    address: "230 Rock Rd, Glen Rock, NJ",
+    address: "894 PROSPECT ST, GLEN ROCK, NJ 07452",
     phone: "(201) 445-1186",
     hours: "Open today · 7am – 8pm",
   },
