@@ -765,21 +765,27 @@ function CheckoutPage() {
                 placeholder="07452"
                 required
               />
-              {zip.length === 5 && !matchedZone && (
+              {geoLoading && address.trim().length >= 5 && zip.length === 5 && (
+                <p className="text-xs text-muted-foreground">Checking delivery area…</p>
+              )}
+              {!geoLoading && geo && !matchedZone && (
                 <p className="text-xs text-destructive">
-                  Sorry — we don't deliver to {zip} from {loc?.name}. Try pickup instead.
+                  Sorry — that address is outside our delivery area from {loc?.name}. Try pickup instead.
                 </p>
+              )}
+              {!geoLoading && geoError && address.trim().length >= 5 && zip.length === 5 && (
+                <p className="text-xs text-destructive">{geoError}</p>
               )}
               {matchedZone && !zoneOk && (
                 <p className="text-xs text-destructive">
-                  ${minShortfall.toFixed(2)} below the {fmt(matchedZone.minimum)} delivery minimum for this ZIP.
+                  ${minShortfall.toFixed(2)} below the {fmt(matchedZone.minimum)} delivery minimum for {matchedZone.name}.
                 </p>
               )}
               {matchedZone && zoneOk && !liveQuote && !quoteError && (
                 <p className="text-xs text-muted-foreground">
                   {quoteLoading
                     ? "Getting a live delivery quote…"
-                    : `Delivery to ${zip}: ${fmt(matchedZone.fee)} fee · ${fmt(matchedZone.minimum)} minimum.`}
+                    : `${matchedZone.name}: ${fmt(matchedZone.fee)} fee · ${fmt(matchedZone.minimum)} minimum.`}
                 </p>
               )}
               {liveQuote && (
