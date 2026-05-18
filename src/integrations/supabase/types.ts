@@ -254,30 +254,45 @@ export type Database = {
         }
         Relationships: []
       }
-      delivery_zones: {
+      delivery_zone_polygons: {
         Row: {
+          active: boolean
+          color: string
           created_at: string
           fee: number
           id: string
           location_id: string
           minimum: number
-          zip: string
+          name: string
+          polygon: Json
+          sort_order: number
+          updated_at: string
         }
         Insert: {
+          active?: boolean
+          color?: string
           created_at?: string
           fee?: number
           id?: string
           location_id: string
           minimum?: number
-          zip: string
+          name: string
+          polygon: Json
+          sort_order?: number
+          updated_at?: string
         }
         Update: {
+          active?: boolean
+          color?: string
           created_at?: string
           fee?: number
           id?: string
           location_id?: string
           minimum?: number
-          zip?: string
+          name?: string
+          polygon?: Json
+          sort_order?: number
+          updated_at?: string
         }
         Relationships: []
       }

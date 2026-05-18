@@ -18,6 +18,8 @@ import {
   pointsForRewards,
 } from "@/lib/loyalty";
 import { toast } from "sonner";
+import { geocodeAddress } from "@/lib/geocoding.functions";
+import { pointInPolygon } from "@/lib/point-in-polygon";
 
 type SavedAddress = {
   id: string;
@@ -80,7 +82,10 @@ function CheckoutPage() {
   const [tipPreset, setTipPreset] = useState<number>(0.18);
   const [tipCustom, setTipCustom] = useState<string>("");
 
-  const [zones, setZones] = useState<{ zip: string; fee: number; minimum: number }[]>([]);
+  const [zones, setZones] = useState<{ id: string; name: string; fee: number; minimum: number; polygon: { lat: number; lng: number }[] }[]>([]);
+  const [geo, setGeo] = useState<{ lat: number; lng: number } | null>(null);
+  const [geoError, setGeoError] = useState<string | null>(null);
+  const [geoLoading, setGeoLoading] = useState(false);
   const [closedToday, setClosedToday] = useState<string | null>(null);
   const [onlineHours, setOnlineHours] = useState<{ day_of_week: number; open_time: string | null; close_time: string | null; is_closed: boolean }[]>([]);
   const [closures, setClosures] = useState<{ start_date: string; end_date: string }[]>([]);
@@ -148,7 +153,7 @@ function CheckoutPage() {
     (async () => {
       const today = new Date().toISOString().slice(0, 10);
       const [{ data: z }, { data: c }, { data: h }] = await Promise.all([
-        supabase.from("delivery_zones").select("zip,fee,minimum").eq("location_id", location),
+        supabase.from("delivery_zone_polygons").select("id,name,fee,minimum,polygon").eq("location_id", location).eq("active", true).order("sort_order"),
         supabase
           .from("store_closures")
           .select("reason,location_id,start_date,end_date")
@@ -159,7 +164,15 @@ function CheckoutPage() {
           .eq("location_id", location)
           .eq("hours_kind", "online"),
       ]);
-      setZones((z ?? []).map((x) => ({ zip: x.zip, fee: Number(x.fee), minimum: Number(x.minimum) })));
+      setZones(
+        (z ?? []).map((x) => ({
+          id: x.id as string,
+          name: x.name as string,
+          fee: Number(x.fee),
+          minimum: Number(x.minimum),
+          polygon: (x.polygon as { lat: number; lng: number }[]) ?? [],
+        })),
+      );
       const allClosures = (c ?? []).filter((x) => x.location_id === null || x.location_id === location);
       setClosures(allClosures.map((x) => ({ start_date: x.start_date, end_date: x.end_date })));
       const hitToday = allClosures.find((x) => x.start_date <= today && x.end_date >= today);
@@ -242,10 +255,46 @@ function CheckoutPage() {
     toast.success(`${r.code} applied`);
   };
 
-  const matchedZone = useMemo(
-    () => (orderType === "delivery" && zip ? zones.find((z) => z.zip === zip) : undefined),
-    [orderType, zip, zones]
-  );
+  // Geocode the typed address (debounced) and match against polygon zones
+  useEffect(() => {
+    if (orderType !== "delivery" || address.trim().length < 5 || zip.length !== 5) {
+      setGeo(null);
+      setGeoError(null);
+      return;
+    }
+    let cancelled = false;
+    setGeoLoading(true);
+    setGeoError(null);
+    const handle = setTimeout(async () => {
+      try {
+        const r = await geocodeAddress({ data: { address: `${address.trim()}, ${zip}` } });
+        if (cancelled) return;
+        if (r.ok) {
+          setGeo({ lat: r.lat, lng: r.lng });
+          setGeoError(null);
+        } else {
+          setGeo(null);
+          setGeoError(r.message);
+        }
+      } catch {
+        if (!cancelled) {
+          setGeo(null);
+          setGeoError("Couldn't look up that address.");
+        }
+      } finally {
+        if (!cancelled) setGeoLoading(false);
+      }
+    }, 700);
+    return () => {
+      cancelled = true;
+      clearTimeout(handle);
+    };
+  }, [orderType, address, zip]);
+
+  const matchedZone = useMemo(() => {
+    if (orderType !== "delivery" || !geo) return undefined;
+    return zones.find((z) => pointInPolygon(geo, z.polygon));
+  }, [orderType, geo, zones]);
 
   // Live Shipday on-demand quote — falls back to zone fee if unavailable.
   const [liveQuote, setLiveQuote] = useState<{
@@ -716,21 +765,27 @@ function CheckoutPage() {
                 placeholder="07452"
                 required
               />
-              {zip.length === 5 && !matchedZone && (
+              {geoLoading && address.trim().length >= 5 && zip.length === 5 && (
+                <p className="text-xs text-muted-foreground">Checking delivery area…</p>
+              )}
+              {!geoLoading && geo && !matchedZone && (
                 <p className="text-xs text-destructive">
-                  Sorry — we don't deliver to {zip} from {loc?.name}. Try pickup instead.
+                  Sorry — that address is outside our delivery area from {loc?.name}. Try pickup instead.
                 </p>
+              )}
+              {!geoLoading && geoError && address.trim().length >= 5 && zip.length === 5 && (
+                <p className="text-xs text-destructive">{geoError}</p>
               )}
               {matchedZone && !zoneOk && (
                 <p className="text-xs text-destructive">
-                  ${minShortfall.toFixed(2)} below the {fmt(matchedZone.minimum)} delivery minimum for this ZIP.
+                  ${minShortfall.toFixed(2)} below the {fmt(matchedZone.minimum)} delivery minimum for {matchedZone.name}.
                 </p>
               )}
               {matchedZone && zoneOk && !liveQuote && !quoteError && (
                 <p className="text-xs text-muted-foreground">
                   {quoteLoading
                     ? "Getting a live delivery quote…"
-                    : `Delivery to ${zip}: ${fmt(matchedZone.fee)} fee · ${fmt(matchedZone.minimum)} minimum.`}
+                    : `${matchedZone.name}: ${fmt(matchedZone.fee)} fee · ${fmt(matchedZone.minimum)} minimum.`}
                 </p>
               )}
               {liveQuote && (
