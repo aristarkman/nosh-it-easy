@@ -1,3 +1,4 @@
+/// <reference types="google.maps" />
 // Singleton loader for the Google Maps JS API with the drawing library
 let loadPromise: Promise<typeof google> | null = null;
 
