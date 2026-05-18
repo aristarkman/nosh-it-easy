@@ -15,6 +15,7 @@ type Item = {
   active: boolean;
   sort_order: number;
   photo_url: string | null;
+  description: string | null;
 };
 type Price = { menu_item_id: string; location_id: string; price: number };
 type Loc = { location_id: string; display_name: string | null };
@@ -43,7 +44,7 @@ function MenuAdmin() {
   async function load() {
     setLoading(true);
     const [i, p, l, g, a, c] = await Promise.all([
-      supabase.from("menu_items").select("id,name,category,active,sort_order,photo_url").order("category").order("sort_order").order("name"),
+      supabase.from("menu_items").select("id,name,category,active,sort_order,photo_url,description").order("category").order("sort_order").order("name"),
       supabase.from("menu_item_prices").select("menu_item_id,location_id,price"),
       supabase.from("biyo_locations").select("location_id,display_name").order("location_id"),
       supabase.from("modifier_groups").select("id,name").order("name"),
@@ -121,6 +122,19 @@ function MenuAdmin() {
     }
   }
 
+  async function saveDescription(it: Item, description: string) {
+    const trimmed = description.trim();
+    const next = trimmed === "" ? null : trimmed;
+    if (next === it.description) return;
+    const prev = it.description;
+    setItems((p) => p.map((x) => x.id === it.id ? { ...x, description: next } : x));
+    const { error } = await supabase.from("menu_items").update({ description: next }).eq("id", it.id);
+    if (error) {
+      setItems((p) => p.map((x) => x.id === it.id ? { ...x, description: prev } : x));
+      alert(error.message);
+    }
+  }
+
   // online price removed — Cresskill price is the online price
 
   async function toggleActive(it: Item) {
@@ -171,7 +185,7 @@ function MenuAdmin() {
       const biyo_product_id = `manual-${crypto.randomUUID()}`;
       const { data: ins, error } = await supabase.from("menu_items")
         .insert({ name, category: newCat || null, biyo_product_id, active: true })
-        .select("id,name,category,active,sort_order,photo_url").single();
+        .select("id,name,category,active,sort_order,photo_url,description").single();
       if (error || !ins) { alert(error?.message ?? "Failed"); return; }
       const { error: pErr } = await supabase.from("menu_item_prices")
         .insert({ menu_item_id: ins.id, location_id: "cresskill", price });
@@ -319,7 +333,15 @@ function MenuAdmin() {
                       defaultValue={it.name}
                       onBlur={(e) => saveName(it, e.target.value)}
                       onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }}
-                      className="w-56 rounded border border-transparent bg-transparent px-2 py-1 hover:border-border focus:border-primary focus:bg-background focus:outline-none"
+                      className="w-64 rounded border border-transparent bg-transparent px-2 py-1 hover:border-border focus:border-primary focus:bg-background focus:outline-none"
+                    />
+                    <textarea
+                      key={`desc-${it.id}-${it.description ?? ""}`}
+                      defaultValue={it.description ?? ""}
+                      onBlur={(e) => saveDescription(it, e.target.value)}
+                      placeholder="Add description…"
+                      rows={2}
+                      className="mt-1 w-64 rounded border border-transparent bg-transparent px-2 py-1 text-xs text-muted-foreground hover:border-border focus:border-primary focus:bg-background focus:text-foreground focus:outline-none"
                     />
                   </td>
                   {locs.map((l) => (
