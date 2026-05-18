@@ -333,7 +333,15 @@ function MenuAdmin() {
                       defaultValue={it.name}
                       onBlur={(e) => saveName(it, e.target.value)}
                       onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }}
-                      className="w-56 rounded border border-transparent bg-transparent px-2 py-1 hover:border-border focus:border-primary focus:bg-background focus:outline-none"
+                      className="w-64 rounded border border-transparent bg-transparent px-2 py-1 hover:border-border focus:border-primary focus:bg-background focus:outline-none"
+                    />
+                    <textarea
+                      key={`desc-${it.id}-${it.description ?? ""}`}
+                      defaultValue={it.description ?? ""}
+                      onBlur={(e) => saveDescription(it, e.target.value)}
+                      placeholder="Add description…"
+                      rows={2}
+                      className="mt-1 w-64 rounded border border-transparent bg-transparent px-2 py-1 text-xs text-muted-foreground hover:border-border focus:border-primary focus:bg-background focus:text-foreground focus:outline-none"
                     />
                   </td>
                   {locs.map((l) => (
