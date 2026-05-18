@@ -18,6 +18,8 @@ import {
   pointsForRewards,
 } from "@/lib/loyalty";
 import { toast } from "sonner";
+import { geocodeAddress } from "@/lib/geocoding.functions";
+import { pointInPolygon } from "@/lib/point-in-polygon";
 
 type SavedAddress = {
   id: string;
