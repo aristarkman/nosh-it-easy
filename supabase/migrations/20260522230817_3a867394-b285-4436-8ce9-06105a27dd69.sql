@@ -1,0 +1,1 @@
+DROP POLICY IF EXISTS "anyone can insert redemptions" ON public.promo_redemptions;
