@@ -565,18 +565,17 @@ function CheckoutPage() {
     );
     clearCart();
 
-    // Record promo redemption (best-effort)
+    // Record promo redemption via trusted server fn (best-effort)
     if (promo) {
-      supabase
-        .from("promo_redemptions")
-        .insert({
-          promo_code_id: promo.id,
-          user_id: auth.userId ?? null,
-          customer_phone: phone.trim() || null,
-          order_id: data.id,
-          discount_amount: promoDiscount,
-        })
-        .then(({ error: e }) => e && console.error("Promo redemption save failed:", e));
+      void recordPromoRedemption({
+        data: {
+          promoCodeId: promo.id,
+          orderId: data.id,
+          discountAmount: promoDiscount,
+          customerPhone: phone.trim() || null,
+          userId: auth.userId ?? null,
+        },
+      }).catch((e) => console.error("Promo redemption save failed:", e));
     }
     // Loyalty: redeem (negative) and earn (positive on discounted subtotal)
     if (auth.userId) {
