@@ -19,6 +19,7 @@ import {
 } from "@/lib/loyalty";
 import { toast } from "sonner";
 import { geocodeAddress } from "@/lib/geocoding.functions";
+import { recordPromoRedemption } from "@/lib/promo.functions";
 import { pointInPolygon } from "@/lib/point-in-polygon";
 
 type SavedAddress = {
