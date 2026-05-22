@@ -81,7 +81,13 @@ async function buildMenu(): Promise<{ items: MenuItem[]; categories: Category[] 
   const items: MenuItem[] = [];
   for (const it of itemsRes.data ?? []) {
     const price = priceById.get(it.id);
-    if (price == null || price <= 0) continue; // skip items with no price
+    if (price == null || price < 0) continue; // skip items with no price row
+    const itemGroups = groupsByItem.get(it.id) ?? [];
+    // Allow $0 base only if a modifier group provides pricing
+    if (price === 0) {
+      const hasPricedModifier = itemGroups.some((g) => g.options.some((o) => (o.price ?? 0) > 0));
+      if (!hasPricedModifier) continue;
+    }
     const raw = (it.category ?? "").trim();
     const cat = validCatNames.has(raw) ? raw : FALLBACK_CATEGORY;
     items.push({
