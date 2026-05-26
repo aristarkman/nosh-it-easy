@@ -15,10 +15,10 @@ declare global {
   }
 }
 
-function fbq(event: string, params?: AnyObj) {
+function fbq(...args: unknown[]) {
   if (typeof window === "undefined" || typeof window.fbq !== "function") return;
   try {
-    window.fbq("track", event, params);
+    (window.fbq as (...a: unknown[]) => void)(...args);
   } catch {}
 }
 
