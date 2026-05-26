@@ -2,6 +2,8 @@
 // Scripts are injected from src/routes/__root.tsx. These helpers fire events.
 
 export const GOOGLE_ADS_ID = "AW-18036296296";
+export const GOOGLE_CONVERSION_LABEL = "sAuYCMKT6LMcEOiUsJhD";
+
 
 declare global {
   interface Window {
@@ -42,6 +44,11 @@ export function trackPurchase(input: { orderId: string; value: number }) {
     transaction_id: input.orderId,
     value: input.value,
     currency: "USD",
-    send_to: GOOGLE_ADS_ID,
+  });
+  gtag("event", "conversion", {
+    send_to: `${GOOGLE_ADS_ID}/${GOOGLE_CONVERSION_LABEL}`,
+    value: input.value,
+    currency: "USD",
+    transaction_id: input.orderId,
   });
 }
