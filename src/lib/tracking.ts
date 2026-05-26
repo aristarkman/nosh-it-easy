@@ -44,6 +44,11 @@ export function trackPurchase(input: { orderId: string; value: number }) {
     transaction_id: input.orderId,
     value: input.value,
     currency: "USD",
-    send_to: GOOGLE_ADS_ID,
+  });
+  gtag("event", "conversion", {
+    send_to: `${GOOGLE_ADS_ID}/${GOOGLE_CONVERSION_LABEL}`,
+    value: input.value,
+    currency: "USD",
+    transaction_id: input.orderId,
   });
 }
