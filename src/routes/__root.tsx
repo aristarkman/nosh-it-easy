@@ -194,6 +194,12 @@ function RootComponent() {
   const [queryClient] = useState(() => new QueryClient());
   const path = useLocation({ select: (l) => l.pathname });
   const isChromeless = path.startsWith("/tablet") || path.startsWith("/dispatch");
+  const firstPath = useState(path)[0];
+  // SPA page-view tracking on route changes (skip first; initial fired in head script)
+  useEffect(() => {
+    if (path === firstPath) return;
+    void import("@/lib/tracking").then((m) => m.trackPageView(path));
+  }, [path, firstPath]);
   return (
     <QueryClientProvider client={queryClient}>
       <OrderProvider>
