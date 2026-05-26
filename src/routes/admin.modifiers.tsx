@@ -154,7 +154,10 @@ function ModifiersAdmin() {
             return options.some((o) => o.group_id === g.id && o.name.toLowerCase().includes(q));
           })
           .map((g) => {
-          const opts = options.filter((o) => o.group_id === g.id);
+          const opts = options
+            .filter((o) => o.group_id === g.id)
+            .slice()
+            .sort((a, b) => a.sort_order - b.sort_order || a.name.localeCompare(b.name));
           return (
             <section key={g.id} className="rounded-2xl border border-border bg-card p-5">
               <div className="flex flex-wrap items-center justify-between gap-3">
