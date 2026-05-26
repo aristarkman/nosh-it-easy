@@ -224,6 +224,9 @@ function CheckoutPage() {
       locationId: location,
       orderType,
     });
+    void import("@/lib/tracking").then((m) =>
+      m.trackBeginCheckout({ value: subtotal, numItems: cart.reduce((n, l) => n + l.quantity, 0) })
+    );
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

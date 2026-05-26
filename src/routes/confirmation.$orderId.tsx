@@ -48,8 +48,19 @@ function Confirmation() {
 
   useEffect(() => {
     const raw = sessionStorage.getItem("kn-last-order");
-    if (raw) setOrder(JSON.parse(raw));
-  }, []);
+    if (raw) {
+      const parsed: LastOrder = JSON.parse(raw);
+      setOrder(parsed);
+      // Fire purchase conversion once per order
+      const firedKey = `kn-purchase-fired-${orderId}`;
+      if (!sessionStorage.getItem(firedKey)) {
+        sessionStorage.setItem(firedKey, "1");
+        void import("@/lib/tracking").then((m) =>
+          m.trackPurchase({ orderId, value: parsed.total })
+        );
+      }
+    }
+  }, [orderId]);
 
   // Poll Shipday tracking info for delivery orders
   useEffect(() => {
