@@ -109,6 +109,7 @@ export function OrderProvider({ children }: { children: ReactNode }) {
       locationId: state.location,
       orderType: state.orderType,
     });
+    trackAddToCart({ value: line.unitPrice * line.quantity, itemId: line.itemId, name: line.name, quantity: line.quantity });
   };
   const removeLine = (lineId: string) =>
     setState((s) => ({ ...s, cart: s.cart.filter((l) => l.lineId !== lineId) }));
