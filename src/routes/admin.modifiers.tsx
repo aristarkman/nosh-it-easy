@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Loader2, Plus, Trash2, Search } from "lucide-react";
+import { Loader2, Plus, Trash2, Search, ArrowUp, ArrowDown } from "lucide-react";
 import { ScrollToTop } from "@/components/scroll-to-top";
 
 export const Route = createFileRoute("/admin/modifiers")({
@@ -62,8 +62,38 @@ function ModifiersAdmin() {
   }
 
   async function addOption(group_id: string) {
-    const { error } = await supabase.from("modifier_options").insert({ group_id, name: "New option", price_delta: 0 });
+    const groupOpts = options.filter((o) => o.group_id === group_id);
+    const nextSort = groupOpts.reduce((m, o) => Math.max(m, o.sort_order), -1) + 1;
+    const { error } = await supabase.from("modifier_options").insert({ group_id, name: "New option", price_delta: 0, sort_order: nextSort });
     if (!error) load();
+  }
+
+  async function moveOption(group_id: string, id: string, dir: -1 | 1) {
+    const groupOpts = options
+      .filter((o) => o.group_id === group_id)
+      .slice()
+      .sort((a, b) => a.sort_order - b.sort_order || a.name.localeCompare(b.name));
+    const idx = groupOpts.findIndex((o) => o.id === id);
+    const swapIdx = idx + dir;
+    if (idx < 0 || swapIdx < 0 || swapIdx >= groupOpts.length) return;
+    const a = groupOpts[idx];
+    const b = groupOpts[swapIdx];
+    // Normalize sort_orders to indexes to avoid ties, then swap a and b.
+    const normalized = groupOpts.map((o, i) => ({ ...o, sort_order: i }));
+    const aSort = normalized[idx].sort_order;
+    const bSort = normalized[swapIdx].sort_order;
+    normalized[idx].sort_order = bSort;
+    normalized[swapIdx].sort_order = aSort;
+    setOptions((prev) => {
+      const map = new Map(normalized.map((o) => [o.id, o.sort_order]));
+      return prev.map((o) => (map.has(o.id) ? { ...o, sort_order: map.get(o.id)! } : o));
+    });
+    await Promise.all(
+      normalized.map((o) =>
+        supabase.from("modifier_options").update({ sort_order: o.sort_order }).eq("id", o.id)
+      )
+    );
+    void a; void b;
   }
 
   async function updateOption(id: string, patch: Partial<Option>) {
@@ -124,7 +154,10 @@ function ModifiersAdmin() {
             return options.some((o) => o.group_id === g.id && o.name.toLowerCase().includes(q));
           })
           .map((g) => {
-          const opts = options.filter((o) => o.group_id === g.id);
+          const opts = options
+            .filter((o) => o.group_id === g.id)
+            .slice()
+            .sort((a, b) => a.sort_order - b.sort_order || a.name.localeCompare(b.name));
           return (
             <section key={g.id} className="rounded-2xl border border-border bg-card p-5">
               <div className="flex flex-wrap items-center justify-between gap-3">
@@ -163,8 +196,26 @@ function ModifiersAdmin() {
                   <div className="text-sm text-muted-foreground">No options yet.</div>
                 ) : (
                   <ul className="space-y-2">
-                    {opts.map((o) => (
+                    {opts.map((o, i) => (
                       <li key={o.id} className="flex items-center gap-2">
+                        <div className="flex flex-col">
+                          <button
+                            onClick={() => moveOption(g.id, o.id, -1)}
+                            disabled={i === 0}
+                            aria-label="Move up"
+                            className="p-0.5 text-muted-foreground hover:text-foreground disabled:opacity-30 disabled:cursor-not-allowed"
+                          >
+                            <ArrowUp className="size-3.5" />
+                          </button>
+                          <button
+                            onClick={() => moveOption(g.id, o.id, 1)}
+                            disabled={i === opts.length - 1}
+                            aria-label="Move down"
+                            className="p-0.5 text-muted-foreground hover:text-foreground disabled:opacity-30 disabled:cursor-not-allowed"
+                          >
+                            <ArrowDown className="size-3.5" />
+                          </button>
+                        </div>
                         <input
                           defaultValue={o.name}
                           onBlur={(e) => { const v = e.target.value.trim(); if (v && v !== o.name) updateOption(o.id, { name: v }); }}
