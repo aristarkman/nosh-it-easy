@@ -196,8 +196,26 @@ function ModifiersAdmin() {
                   <div className="text-sm text-muted-foreground">No options yet.</div>
                 ) : (
                   <ul className="space-y-2">
-                    {opts.map((o) => (
+                    {opts.map((o, i) => (
                       <li key={o.id} className="flex items-center gap-2">
+                        <div className="flex flex-col">
+                          <button
+                            onClick={() => moveOption(g.id, o.id, -1)}
+                            disabled={i === 0}
+                            aria-label="Move up"
+                            className="p-0.5 text-muted-foreground hover:text-foreground disabled:opacity-30 disabled:cursor-not-allowed"
+                          >
+                            <ArrowUp className="size-3.5" />
+                          </button>
+                          <button
+                            onClick={() => moveOption(g.id, o.id, 1)}
+                            disabled={i === opts.length - 1}
+                            aria-label="Move down"
+                            className="p-0.5 text-muted-foreground hover:text-foreground disabled:opacity-30 disabled:cursor-not-allowed"
+                          >
+                            <ArrowDown className="size-3.5" />
+                          </button>
+                        </div>
                         <input
                           defaultValue={o.name}
                           onBlur={(e) => { const v = e.target.value.trim(); if (v && v !== o.name) updateOption(o.id, { name: v }); }}
