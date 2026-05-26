@@ -14,8 +14,6 @@ import {
   REWARD_VALUE,
   discountForRewards,
   maxRewardsRedeemable,
-  pointsEarnedFor,
-  pointsForRewards,
 } from "@/lib/loyalty";
 import { toast } from "sonner";
 import { geocodeAddress } from "@/lib/geocoding.functions";
@@ -580,23 +578,12 @@ function CheckoutPage() {
         },
       }).catch((e) => console.error("Promo redemption save failed:", e));
     }
-    // Loyalty: redeem (negative) and earn (positive on discounted subtotal)
+    // Loyalty: server-side compute (validates ownership + balance, prevents tampering)
     if (auth.userId) {
-      const earnPts = pointsEarnedFor(discountedSubtotal);
-      const redeemPts = pointsForRewards(effectiveRewards);
-      if (redeemPts > 0) {
-        supabase.from("loyalty_redemptions").insert({
-          user_id: auth.userId, order_id: data.id, amount: loyaltyDiscount, points_used: redeemPts,
-        }).then(({ error: e }) => e && console.error("Loyalty redemption save failed:", e));
-        supabase.from("loyalty_ledger").insert({
-          user_id: auth.userId, order_id: data.id, kind: "redeem", points: -redeemPts, note: `Redeemed ${effectiveRewards} reward(s)`,
-        }).then(({ error: e }) => e && console.error("Loyalty ledger redeem failed:", e));
-      }
-      if (earnPts > 0) {
-        supabase.from("loyalty_ledger").insert({
-          user_id: auth.userId, order_id: data.id, kind: "earn", points: earnPts, note: `Earned on order #${data.order_number}`,
-        }).then(({ error: e }) => e && console.error("Loyalty ledger earn failed:", e));
-      }
+      const { recordLoyaltyForOrder } = await import("@/server/loyalty.functions");
+      void recordLoyaltyForOrder({
+        data: { orderId: data.id, rewardsRedeemed: effectiveRewards },
+      }).catch((e) => console.error("Loyalty record failed:", e));
     }
 
     // Mark abandoned cart as recovered & track conversion
