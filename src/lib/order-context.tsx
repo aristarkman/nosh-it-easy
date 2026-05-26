@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import type { MenuItem, ModifierOption } from "./menu-types";
 import { syncAbandonedCart, track } from "./analytics";
+import { trackAddToCart } from "./tracking";
 import { supabase } from "@/integrations/supabase/client";
 
 export type LocationId = "glen-rock" | "cresskill";
