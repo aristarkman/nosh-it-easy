@@ -1,5 +1,5 @@
-import { supabase } from "@/integrations/supabase/client";
 import { sendOwnerErrorAlert } from "@/server/sms.functions";
+import { recordSystemAlert } from "@/server/system-alerts.functions";
 
 export type AlertKind =
   | "payment_failed"
@@ -23,13 +23,15 @@ export type ReportAlertInput = {
  */
 export async function reportSystemAlert(input: ReportAlertInput) {
   try {
-    await supabase.from("system_alerts").insert({
-      kind: input.kind,
-      message: input.message,
-      location_id: input.locationId ?? null,
-      order_number: input.orderNumber ?? null,
-      order_id: input.orderId ?? null,
-      details: (input.details ?? null) as never,
+    await recordSystemAlert({
+      data: {
+        kind: input.kind,
+        message: input.message,
+        locationId: input.locationId ?? null,
+        orderNumber: input.orderNumber ?? null,
+        orderId: input.orderId ?? null,
+        details: (input.details ?? null) as Record<string, unknown> | null,
+      },
     });
   } catch (e) {
     console.error("system_alerts insert failed:", e);
