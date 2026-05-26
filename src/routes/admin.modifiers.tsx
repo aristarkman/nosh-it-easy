@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Loader2, Plus, Trash2, Search } from "lucide-react";
+import { Loader2, Plus, Trash2, Search, ArrowUp, ArrowDown } from "lucide-react";
 import { ScrollToTop } from "@/components/scroll-to-top";
 
 export const Route = createFileRoute("/admin/modifiers")({
