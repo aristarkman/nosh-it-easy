@@ -1,6 +1,6 @@
 import { Outlet, Link, createRootRoute, HeadContent, Scripts, useLocation } from "@tanstack/react-router";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import appCss from "../styles.css?url";
 import { OrderProvider } from "@/lib/order-context";
 import { SiteHeader } from "@/components/site-header";
