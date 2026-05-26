@@ -78,7 +78,5 @@ export function trackPurchase(input: { orderId: string; value: number }) {
   fbq("track", "Purchase", {
     value: input.value,
     currency: "USD",
-    content_type: "product",
-    content_ids: [input.orderId],
   });
 }
