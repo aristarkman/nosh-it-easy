@@ -14,8 +14,6 @@ import {
   REWARD_VALUE,
   discountForRewards,
   maxRewardsRedeemable,
-  pointsEarnedFor,
-  pointsForRewards,
 } from "@/lib/loyalty";
 import { toast } from "sonner";
 import { geocodeAddress } from "@/lib/geocoding.functions";
