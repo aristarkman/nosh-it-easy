@@ -145,10 +145,8 @@ export const Route = createRootRoute({
       {
         children: `window.dataLayer = window.dataLayer || []; function gtag(){dataLayer.push(arguments);} gtag('js', new Date()); gtag('config', 'AW-18036296296');`,
       },
-  shellComponent: RootShell,
-  component: RootComponent,
-  notFoundComponent: NotFoundComponent,
-});
+    ],
+  }),
 
 function RootShell({ children }: { children: React.ReactNode }) {
   return (
