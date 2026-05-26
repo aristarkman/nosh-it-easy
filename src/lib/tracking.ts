@@ -34,12 +34,12 @@ function gtag(...args: unknown[]) {
 }
 
 export function trackPageView(path?: string) {
-  fbq("PageView");
+  fbq("track", "PageView");
   gtag("event", "page_view", { page_path: path ?? (typeof window !== "undefined" ? window.location.pathname : undefined) });
 }
 
 export function trackAddToCart(input: { value: number; itemId: string; name: string; quantity: number }) {
-  fbq("AddToCart", {
+  fbq("track", "AddToCart", {
     content_ids: [input.itemId],
     content_name: input.name,
     content_type: "product",
@@ -55,19 +55,18 @@ export function trackAddToCart(input: { value: number; itemId: string; name: str
 }
 
 export function trackBeginCheckout(input: { value: number; numItems: number }) {
-  fbq("InitiateCheckout", { value: input.value, currency: "USD", num_items: input.numItems });
+  fbq("track", "InitiateCheckout", { value: input.value, currency: "USD", num_items: input.numItems });
   gtag("event", "begin_checkout", { currency: "USD", value: input.value });
 }
 
 export function trackPurchase(input: { orderId: string; value: number }) {
-  fbq("Purchase", { value: input.value, currency: "USD" }, { eventID: input.orderId });
+  fbq("track", "Purchase", { value: input.value, currency: "USD" }, { eventID: input.orderId });
   gtag("event", "purchase", {
     transaction_id: input.orderId,
     value: input.value,
     currency: "USD",
     send_to: GOOGLE_ADS_ID,
   });
-  // Also fire a generic purchase event for GA4/GTM containers
   gtag("event", "purchase", {
     transaction_id: input.orderId,
     value: input.value,
