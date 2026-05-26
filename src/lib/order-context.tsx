@@ -1,8 +1,8 @@
-import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import type { MenuItem, ModifierOption } from "./menu-types";
-import { syncAbandonedCart, track } from "./analytics";
+import { track } from "./analytics";
 import { trackAddToCart } from "./tracking";
-import { supabase } from "@/integrations/supabase/client";
+import { useCartSync } from "./use-cart-sync";
 
 export type LocationId = "glen-rock" | "cresskill";
 export type OrderType = "pickup" | "delivery";
@@ -36,69 +36,90 @@ type Ctx = OrderState & {
 };
 
 const OrderContext = createContext<Ctx | null>(null);
-const KEY = "kn-order-v1";
+
+// ---------- Persisted state (versioned) ----------
+const STORAGE_KEY = "kn-order";
+const SCHEMA_VERSION = 2;
+const LEGACY_KEYS = ["kn-order-v1"];
+
+type Persisted = { v: number; state: OrderState };
+
+const EMPTY: OrderState = { location: null, orderType: null, cart: [] };
+
+function isOrderState(x: unknown): x is OrderState {
+  if (!x || typeof x !== "object") return false;
+  const o = x as Record<string, unknown>;
+  return "cart" in o && Array.isArray(o.cart);
+}
+
+function migrate(raw: unknown): OrderState | null {
+  // Current shape: { v, state }
+  if (raw && typeof raw === "object" && "v" in (raw as object) && "state" in (raw as object)) {
+    const p = raw as Partial<Persisted>;
+    if (p.v === SCHEMA_VERSION && isOrderState(p.state)) return p.state;
+    // Future migrations from older versioned shapes go here.
+    if (isOrderState(p.state)) return p.state;
+    return null;
+  }
+  // Legacy v1 stored the raw OrderState under "kn-order-v1".
+  if (isOrderState(raw)) return raw;
+  return null;
+}
+
+function loadState(): OrderState {
+  if (typeof window === "undefined") return EMPTY;
+  // Try current key.
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      const migrated = migrate(parsed);
+      if (migrated) return migrated;
+    }
+  } catch (e) {
+    console.warn("[order] failed to parse persisted cart, resetting", e);
+    try { localStorage.removeItem(STORAGE_KEY); } catch {}
+  }
+  // Try legacy keys (one-shot migration).
+  for (const key of LEGACY_KEYS) {
+    try {
+      const raw = localStorage.getItem(key);
+      if (!raw) continue;
+      const parsed = JSON.parse(raw);
+      const migrated = migrate(parsed);
+      localStorage.removeItem(key);
+      if (migrated) return migrated;
+    } catch {
+      try { localStorage.removeItem(key); } catch {}
+    }
+  }
+  return EMPTY;
+}
+
+function saveState(state: OrderState) {
+  if (typeof window === "undefined") return;
+  try {
+    const payload: Persisted = { v: SCHEMA_VERSION, state };
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+  } catch (e) {
+    console.warn("[order] failed to persist cart", e);
+  }
+}
 
 export function OrderProvider({ children }: { children: ReactNode }) {
-  const [state, setState] = useState<OrderState>({ location: null, orderType: null, cart: [] });
+  const [state, setState] = useState<OrderState>(EMPTY);
 
+  // Hydrate from storage after mount (avoid SSR mismatch).
   useEffect(() => {
-    try {
-      const raw = typeof window !== "undefined" ? localStorage.getItem(KEY) : null;
-      if (raw) setState(JSON.parse(raw));
-    } catch {}
+    setState(loadState());
   }, []);
+
   useEffect(() => {
-    try {
-      if (typeof window !== "undefined") localStorage.setItem(KEY, JSON.stringify(state));
-    } catch {}
+    saveState(state);
   }, [state]);
 
-  // Debounced abandoned-cart sync to Supabase
-  const syncTimer = useRef<number | null>(null);
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    if (syncTimer.current) window.clearTimeout(syncTimer.current);
-    const subtotalNow = state.cart.reduce((sum, l) => sum + l.unitPrice * l.quantity, 0);
-    syncTimer.current = window.setTimeout(async () => {
-      let email: string | null = null;
-      let phone: string | null = null;
-      let name: string | null = null;
-      let optEmail = false;
-      let optSms = false;
-      try {
-        const { data: sess } = await supabase.auth.getSession();
-        const uid = sess.session?.user.id;
-        if (uid) {
-          const { data: p } = await supabase
-            .from("customer_profiles")
-            .select("full_name,email,phone,marketing_email,marketing_sms")
-            .eq("user_id", uid)
-            .maybeSingle();
-          if (p) {
-            email = p.email;
-            phone = p.phone;
-            name = p.full_name;
-            optEmail = !!p.marketing_email;
-            optSms = !!p.marketing_sms;
-          }
-        }
-      } catch {}
-      void syncAbandonedCart({
-        cart: state.cart,
-        subtotal: subtotalNow,
-        locationId: state.location,
-        orderType: state.orderType,
-        customerName: name,
-        email,
-        phone,
-        marketingEmailOptIn: optEmail,
-        marketingSmsOptIn: optSms,
-      });
-    }, 1500);
-    return () => {
-      if (syncTimer.current) window.clearTimeout(syncTimer.current);
-    };
-  }, [state]);
+  // Abandoned-cart sync lives in its own hook now.
+  useCartSync({ cart: state.cart, location: state.location, orderType: state.orderType });
 
   const setLocation = (location: LocationId) => setState((s) => ({ ...s, location }));
   const setOrderType = (orderType: OrderType) => setState((s) => ({ ...s, orderType }));
