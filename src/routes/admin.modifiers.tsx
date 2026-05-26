@@ -62,8 +62,38 @@ function ModifiersAdmin() {
   }
 
   async function addOption(group_id: string) {
-    const { error } = await supabase.from("modifier_options").insert({ group_id, name: "New option", price_delta: 0 });
+    const groupOpts = options.filter((o) => o.group_id === group_id);
+    const nextSort = groupOpts.reduce((m, o) => Math.max(m, o.sort_order), -1) + 1;
+    const { error } = await supabase.from("modifier_options").insert({ group_id, name: "New option", price_delta: 0, sort_order: nextSort });
     if (!error) load();
+  }
+
+  async function moveOption(group_id: string, id: string, dir: -1 | 1) {
+    const groupOpts = options
+      .filter((o) => o.group_id === group_id)
+      .slice()
+      .sort((a, b) => a.sort_order - b.sort_order || a.name.localeCompare(b.name));
+    const idx = groupOpts.findIndex((o) => o.id === id);
+    const swapIdx = idx + dir;
+    if (idx < 0 || swapIdx < 0 || swapIdx >= groupOpts.length) return;
+    const a = groupOpts[idx];
+    const b = groupOpts[swapIdx];
+    // Normalize sort_orders to indexes to avoid ties, then swap a and b.
+    const normalized = groupOpts.map((o, i) => ({ ...o, sort_order: i }));
+    const aSort = normalized[idx].sort_order;
+    const bSort = normalized[swapIdx].sort_order;
+    normalized[idx].sort_order = bSort;
+    normalized[swapIdx].sort_order = aSort;
+    setOptions((prev) => {
+      const map = new Map(normalized.map((o) => [o.id, o.sort_order]));
+      return prev.map((o) => (map.has(o.id) ? { ...o, sort_order: map.get(o.id)! } : o));
+    });
+    await Promise.all(
+      normalized.map((o) =>
+        supabase.from("modifier_options").update({ sort_order: o.sort_order }).eq("id", o.id)
+      )
+    );
+    void a; void b;
   }
 
   async function updateOption(id: string, patch: Partial<Option>) {
