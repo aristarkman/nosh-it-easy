@@ -149,8 +149,16 @@ function MenuPage() {
                   <Link
                     to="/item/$itemId"
                     params={{ itemId: i.id }}
-                    className="group flex items-start justify-between gap-4 rounded-2xl border border-border bg-card p-5 transition hover:-translate-y-0.5 hover:border-primary hover:shadow-[var(--shadow-card)]"
+                    className="group flex items-start gap-4 rounded-2xl border border-border bg-card p-5 transition hover:-translate-y-0.5 hover:border-primary hover:shadow-[var(--shadow-card)]"
                   >
+                    {i.image ? (
+                      <img
+                        src={i.image}
+                        alt={i.name}
+                        loading="lazy"
+                        className="size-24 shrink-0 rounded-xl object-cover sm:size-28"
+                      />
+                    ) : null}
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2">
                         <h3 className="text-base font-semibold normal-case tracking-tight text-foreground" style={{ fontFamily: "var(--font-body)" }}>
@@ -183,6 +191,7 @@ function MenuPage() {
                   </Link>
                 </li>
               ))}
+
             </ul>
           </section>
         );
