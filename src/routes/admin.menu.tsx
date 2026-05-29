@@ -1,7 +1,8 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Loader2, Search } from "lucide-react";
+import { Loader2, Search, Trash2 } from "lucide-react";
+
 
 export const Route = createFileRoute("/admin/menu")({
   head: () => ({ meta: [{ title: "Menu items — Admin" }] }),
@@ -213,6 +214,38 @@ function MenuAdmin() {
     }
   }
 
+
+  async function deleteItem(it: Item) {
+    const ok = window.confirm(
+      `Delete "${it.name}"? This removes it from the online menu, including its price, availability, and modifier assignments. If this item still exists in Biyo, it may return on the next sync — disable it there too.`
+    );
+    if (!ok) return;
+    const prevItems = items;
+    const prevPrices = prices;
+    const prevAssigns = assigns;
+    setItems((p) => p.filter((x) => x.id !== it.id));
+    setPrices((p) => p.filter((x) => x.menu_item_id !== it.id));
+    setAssigns((p) => p.filter((x) => x.menu_item_id !== it.id));
+    const [a1, a2, a3, a4] = await Promise.all([
+      supabase.from("menu_item_modifier_groups").delete().eq("menu_item_id", it.id),
+      supabase.from("menu_item_prices").delete().eq("menu_item_id", it.id),
+      supabase.from("menu_item_availability").delete().eq("menu_item_id", it.id),
+      supabase.from("menu_item_modifiers").delete().eq("menu_item_id", it.id),
+    ]);
+    const childErr = a1.error || a2.error || a3.error || a4.error;
+    if (childErr) {
+      setItems(prevItems); setPrices(prevPrices); setAssigns(prevAssigns);
+      alert(childErr.message);
+      return;
+    }
+    const { error } = await supabase.from("menu_items").delete().eq("id", it.id);
+    if (error) {
+      setItems(prevItems); setPrices(prevPrices); setAssigns(prevAssigns);
+      alert(error.message);
+    }
+  }
+
+
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-3">
@@ -373,14 +406,24 @@ function MenuAdmin() {
                     )}
                   </td>
                   <td className="px-4 py-3">
-                    <button
-                      onClick={() => toggleActive(it)}
-                      className={`rounded-full px-3 py-1 text-xs font-bold uppercase tracking-wider ${
-                        it.active ? "bg-green-500/15 text-green-700 dark:text-green-300" : "bg-muted text-muted-foreground"
-                      }`}
-                    >
-                      {it.active ? "Active" : "Hidden"}
-                    </button>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => toggleActive(it)}
+                        className={`rounded-full px-3 py-1 text-xs font-bold uppercase tracking-wider ${
+                          it.active ? "bg-green-500/15 text-green-700 dark:text-green-300" : "bg-muted text-muted-foreground"
+                        }`}
+                      >
+                        {it.active ? "Active" : "Hidden"}
+                      </button>
+                      <button
+                        onClick={() => deleteItem(it)}
+                        title="Delete item"
+                        aria-label={`Delete ${it.name}`}
+                        className="rounded-full border border-border p-1.5 text-muted-foreground hover:border-destructive hover:text-destructive"
+                      >
+                        <Trash2 className="size-3.5" />
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
