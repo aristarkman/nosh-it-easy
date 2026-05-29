@@ -7,5 +7,5 @@ export function thumb(url: string | null | undefined, width = 224, quality = 70)
   if (idx === -1) return url;
   const base = url.slice(0, idx);
   const path = url.slice(idx + marker.length);
-  return `${base}/storage/v1/render/image/public/${path}?width=${width}&quality=${quality}`;
+  return `${base}/storage/v1/render/image/public/${path}?width=${width}&height=${width}&resize=contain&quality=${quality}`;
 }
