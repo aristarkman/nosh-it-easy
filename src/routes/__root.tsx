@@ -110,7 +110,7 @@ export const Route = createRootRoute({
       {
         name: "description",
         content:
-          "Order pastrami, knishes, matzo ball soup, and classic Jewish deli online from The Famous Kosher Nosh. Pickup and delivery in Glen Rock and Cresskill, NJ.",
+          "Order classic Jewish deli online from The Famous Kosher Nosh. Pickup and delivery in Glen Rock and Cresskill, NJ.",
       },
       { name: "robots", content: "index,follow,max-image-preview:large" },
       { name: "theme-color", content: "#b91c1c" },
