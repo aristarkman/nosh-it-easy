@@ -406,14 +406,24 @@ function MenuAdmin() {
                     )}
                   </td>
                   <td className="px-4 py-3">
-                    <button
-                      onClick={() => toggleActive(it)}
-                      className={`rounded-full px-3 py-1 text-xs font-bold uppercase tracking-wider ${
-                        it.active ? "bg-green-500/15 text-green-700 dark:text-green-300" : "bg-muted text-muted-foreground"
-                      }`}
-                    >
-                      {it.active ? "Active" : "Hidden"}
-                    </button>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => toggleActive(it)}
+                        className={`rounded-full px-3 py-1 text-xs font-bold uppercase tracking-wider ${
+                          it.active ? "bg-green-500/15 text-green-700 dark:text-green-300" : "bg-muted text-muted-foreground"
+                        }`}
+                      >
+                        {it.active ? "Active" : "Hidden"}
+                      </button>
+                      <button
+                        onClick={() => deleteItem(it)}
+                        title="Delete item"
+                        aria-label={`Delete ${it.name}`}
+                        className="rounded-full border border-border p-1.5 text-muted-foreground hover:border-destructive hover:text-destructive"
+                      >
+                        <Trash2 className="size-3.5" />
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
