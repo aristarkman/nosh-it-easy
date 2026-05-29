@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Search, ChevronRight, Flame } from "lucide-react";
 import { LOCATIONS, useOrder, fmt } from "@/lib/order-context";
 import { getMenu } from "@/lib/menu.functions";
+import { thumb } from "@/lib/image-url";
 import type { Category } from "@/lib/menu-types";
 
 export const Route = createFileRoute("/menu")({
