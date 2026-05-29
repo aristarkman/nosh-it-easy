@@ -75,12 +75,11 @@ function MenuAdmin() {
   const filtered = useMemo(() => {
     const s = q.trim().toLowerCase();
     return items.filter((it) => {
-      if (!cresskillHasPriceRow.has(it.id)) return false; // hide items with no online price row at all
       if (cat && it.category !== cat) return false;
       if (s && !it.name.toLowerCase().includes(s) && !(it.category ?? "").toLowerCase().includes(s)) return false;
       return true;
     });
-  }, [items, q, cat, cresskillHasPriceRow]);
+  }, [items, q, cat]);
 
   useEffect(() => { setPage(0); }, [q, cat]);
   const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
