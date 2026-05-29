@@ -8,14 +8,14 @@ import type { Category } from "@/lib/menu-types";
 export const Route = createFileRoute("/menu")({
   head: () => ({
     meta: [
-      { title: "Menu — The Famous Kosher Nosh | Pastrami, Knishes, Matzo Ball Soup" },
+      { title: "Menu — The Famous Kosher Nosh | Glen Rock & Cresskill, NJ" },
       {
         name: "description",
         content:
-          "Browse the full Kosher Nosh menu: pastrami, corned beef, matzo ball soup, knishes, latkes, smoked fish platters, and deli classics. Order pickup or delivery in Glen Rock & Cresskill, NJ.",
+          "Browse the full Kosher Nosh deli menu and order pickup or delivery in Glen Rock & Cresskill, NJ.",
       },
       { property: "og:title", content: "The Famous Kosher Nosh — Menu" },
-      { property: "og:description", content: "Pastrami, corned beef, matzo ball soup, knishes — order online." },
+      { property: "og:description", content: "Browse the full deli menu and order online." },
     ],
   }),
   beforeLoad: () => {
