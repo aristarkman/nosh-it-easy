@@ -1,7 +1,8 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Loader2, Search } from "lucide-react";
+import { Loader2, Search, Trash2 } from "lucide-react";
+
 
 export const Route = createFileRoute("/admin/menu")({
   head: () => ({ meta: [{ title: "Menu items — Admin" }] }),
