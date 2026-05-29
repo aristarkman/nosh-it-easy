@@ -212,7 +212,37 @@ function MenuAdmin() {
     } finally {
       setUploading(null);
     }
+
+  async function deleteItem(it: Item) {
+    const ok = window.confirm(
+      `Delete "${it.name}"? This removes it from the online menu, including its price, availability, and modifier assignments. If this item still exists in Biyo, it may return on the next sync — disable it there too.`
+    );
+    if (!ok) return;
+    const prevItems = items;
+    const prevPrices = prices;
+    const prevAssigns = assigns;
+    setItems((p) => p.filter((x) => x.id !== it.id));
+    setPrices((p) => p.filter((x) => x.menu_item_id !== it.id));
+    setAssigns((p) => p.filter((x) => x.menu_item_id !== it.id));
+    const [a1, a2, a3, a4] = await Promise.all([
+      supabase.from("menu_item_modifier_groups").delete().eq("menu_item_id", it.id),
+      supabase.from("menu_item_prices").delete().eq("menu_item_id", it.id),
+      supabase.from("menu_item_availability").delete().eq("menu_item_id", it.id),
+      supabase.from("menu_item_modifiers").delete().eq("menu_item_id", it.id),
+    ]);
+    const childErr = a1.error || a2.error || a3.error || a4.error;
+    if (childErr) {
+      setItems(prevItems); setPrices(prevPrices); setAssigns(prevAssigns);
+      alert(childErr.message);
+      return;
+    }
+    const { error } = await supabase.from("menu_items").delete().eq("id", it.id);
+    if (error) {
+      setItems(prevItems); setPrices(prevPrices); setAssigns(prevAssigns);
+      alert(error.message);
+    }
   }
+
 
   return (
     <div className="space-y-6">
