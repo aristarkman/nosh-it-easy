@@ -212,6 +212,8 @@ function MenuAdmin() {
     } finally {
       setUploading(null);
     }
+  }
+
 
   async function deleteItem(it: Item) {
     const ok = window.confirm(
