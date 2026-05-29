@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Search, ChevronRight, Flame } from "lucide-react";
 import { LOCATIONS, useOrder, fmt } from "@/lib/order-context";
 import { getMenu } from "@/lib/menu.functions";
+import { thumb } from "@/lib/image-url";
 import type { Category } from "@/lib/menu-types";
 
 export const Route = createFileRoute("/menu")({
@@ -144,7 +145,7 @@ function MenuPage() {
               )}
             </div>
             <ul className="grid gap-3 sm:grid-cols-2">
-              {catItems.map((i) => (
+              {catItems.map((i, idx) => (
                 <li key={i.id}>
                   <Link
                     to="/item/$itemId"
@@ -153,9 +154,13 @@ function MenuPage() {
                   >
                     {i.image ? (
                       <img
-                        src={i.image}
+                        src={thumb(i.image, 224)}
                         alt={i.name}
-                        loading="lazy"
+                        width={112}
+                        height={112}
+                        loading={idx < 4 ? "eager" : "lazy"}
+                        fetchPriority={idx < 2 ? "high" : "auto"}
+                        decoding="async"
                         className="size-24 shrink-0 rounded-xl object-cover sm:size-28"
                       />
                     ) : null}
