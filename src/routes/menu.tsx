@@ -161,7 +161,7 @@ function MenuPage() {
                         loading={idx < 4 ? "eager" : "lazy"}
                         fetchPriority={idx < 2 ? "high" : "auto"}
                         decoding="async"
-                        className="size-24 shrink-0 rounded-xl object-cover sm:size-28"
+                        className="size-24 shrink-0 rounded-xl bg-muted object-contain sm:size-28"
                       />
                     ) : null}
                     <div className="min-w-0 flex-1">
