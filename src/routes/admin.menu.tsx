@@ -110,6 +110,30 @@ function MenuAdmin() {
     return assignsByItem.get(itemId)?.size ?? 0;
   }
 
+  async function savePrice(itemId: string, locId: string, raw: string) {
+    const trimmed = raw.trim();
+    if (trimmed === "") return;
+    const next = Number(trimmed);
+    if (!Number.isFinite(next) || next < 0) { alert("Enter a valid price"); return; }
+    const rounded = Math.round(next * 100) / 100;
+    const current = priceFor(itemId, locId);
+    if (current != null && Math.abs(current - rounded) < 0.005) return;
+    const prev = current;
+    setPrices((p) => {
+      const without = p.filter((x) => !(x.menu_item_id === itemId && x.location_id === locId));
+      return [...without, { menu_item_id: itemId, location_id: locId, price: rounded }];
+    });
+    const { error } = await supabase.from("menu_item_prices")
+      .upsert({ menu_item_id: itemId, location_id: locId, price: rounded }, { onConflict: "menu_item_id,location_id" });
+    if (error) {
+      setPrices((p) => {
+        const without = p.filter((x) => !(x.menu_item_id === itemId && x.location_id === locId));
+        return prev == null ? without : [...without, { menu_item_id: itemId, location_id: locId, price: prev }];
+      });
+      alert(error.message);
+    }
+  }
+
   async function saveName(it: Item, name: string) {
     const trimmed = name.trim();
     if (!trimmed || trimmed === it.name) return;
@@ -174,6 +198,75 @@ function MenuAdmin() {
   const [newCat, setNewCat] = useState("");
   const [newPrice, setNewPrice] = useState("");
   const [saving, setSaving] = useState(false);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [bulkCat, setBulkCat] = useState("");
+  const [bulkBusy, setBulkBusy] = useState(false);
+
+  function toggleSelect(id: string) {
+    setSelected((p) => {
+      const n = new Set(p);
+      if (n.has(id)) n.delete(id); else n.add(id);
+      return n;
+    });
+  }
+  function togglePageSelect(on: boolean) {
+    setSelected((p) => {
+      const n = new Set(p);
+      for (const it of paged) { if (on) n.add(it.id); else n.delete(it.id); }
+      return n;
+    });
+  }
+  const allPageSelected = paged.length > 0 && paged.every((it) => selected.has(it.id));
+
+  async function bulkDelete() {
+    const ids = Array.from(selected);
+    if (ids.length === 0) return;
+    if (!window.confirm(`Delete ${ids.length} item${ids.length === 1 ? "" : "s"}? This removes them from the online menu, prices, availability, and modifier assignments. If they still exist in Biyo, they may return on next sync — disable them there too.`)) return;
+    setBulkBusy(true);
+    const prevItems = items, prevPrices = prices, prevAssigns = assigns;
+    setItems((p) => p.filter((x) => !selected.has(x.id)));
+    setPrices((p) => p.filter((x) => !selected.has(x.menu_item_id)));
+    setAssigns((p) => p.filter((x) => !selected.has(x.menu_item_id)));
+    const [a1, a2, a3, a4] = await Promise.all([
+      supabase.from("menu_item_modifier_groups").delete().in("menu_item_id", ids),
+      supabase.from("menu_item_prices").delete().in("menu_item_id", ids),
+      supabase.from("menu_item_availability").delete().in("menu_item_id", ids),
+      supabase.from("menu_item_modifiers").delete().in("menu_item_id", ids),
+    ]);
+    const childErr = a1.error || a2.error || a3.error || a4.error;
+    if (childErr) {
+      setItems(prevItems); setPrices(prevPrices); setAssigns(prevAssigns);
+      setBulkBusy(false);
+      alert(childErr.message);
+      return;
+    }
+    const { error } = await supabase.from("menu_items").delete().in("id", ids);
+    if (error) {
+      setItems(prevItems); setPrices(prevPrices); setAssigns(prevAssigns);
+      alert(error.message);
+    } else {
+      setSelected(new Set());
+    }
+    setBulkBusy(false);
+  }
+
+  async function bulkRecategorize() {
+    const ids = Array.from(selected);
+    if (ids.length === 0) return;
+    const next = bulkCat || null;
+    setBulkBusy(true);
+    const prev = items;
+    setItems((p) => p.map((x) => selected.has(x.id) ? { ...x, category: next } : x));
+    const { error } = await supabase.from("menu_items").update({ category: next }).in("id", ids);
+    if (error) {
+      setItems(prev);
+      alert(error.message);
+    } else {
+      setSelected(new Set());
+      setBulkCat("");
+    }
+    setBulkBusy(false);
+  }
 
   async function createItem() {
     const name = newName.trim();
@@ -299,6 +392,31 @@ function MenuAdmin() {
         </div>
       )}
 
+      {selected.size > 0 && (
+        <div className="sticky top-2 z-10 flex flex-wrap items-center gap-3 rounded-2xl border border-primary/40 bg-card p-3 shadow-md">
+          <span className="text-sm font-medium">{selected.size} selected</span>
+          <button onClick={() => setSelected(new Set())}
+            className="rounded border border-border px-2 py-1 text-xs hover:border-primary">Clear</button>
+          <div className="ml-auto flex flex-wrap items-center gap-2">
+            <select value={bulkCat} onChange={(e) => setBulkCat(e.target.value)}
+              className="rounded border border-border bg-background px-2 py-1.5 text-sm">
+              <option value="">— Move to category —</option>
+              {catRows.map((c) => <option key={c.id} value={c.name}>{c.name}</option>)}
+            </select>
+            <button onClick={bulkRecategorize} disabled={bulkBusy}
+              className="rounded border border-border px-3 py-1.5 text-sm font-bold hover:border-primary disabled:opacity-50">
+              Apply category
+            </button>
+            <button onClick={bulkDelete} disabled={bulkBusy}
+              className="rounded border border-destructive bg-destructive px-3 py-1.5 text-sm font-bold text-destructive-foreground hover:opacity-90 disabled:opacity-50">
+              <Trash2 className="mr-1 inline size-3.5" /> Delete
+            </button>
+          </div>
+        </div>
+      )}
+
+
+
       <div className="rounded-2xl border border-border bg-card">
         {loading ? (
           <div className="flex items-center gap-2 p-5 text-sm text-muted-foreground"><Loader2 className="size-4 animate-spin" /> Loading…</div>
@@ -308,6 +426,10 @@ function MenuAdmin() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-border text-left text-xs uppercase tracking-wider text-muted-foreground">
+                <th className="px-3 py-3">
+                  <input type="checkbox" checked={allPageSelected}
+                    onChange={(e) => togglePageSelect(e.target.checked)} aria-label="Select all on page" />
+                </th>
                 <th className="px-4 py-3">Photo</th>
                 <th className="px-4 py-3">Category</th>
                 <th className="px-4 py-3">Menu item</th>
@@ -320,7 +442,11 @@ function MenuAdmin() {
             </thead>
             <tbody>
               {paged.map((it) => (
-                <tr key={it.id} className="border-b border-border last:border-0">
+                <tr key={it.id} className={`border-b border-border last:border-0 ${selected.has(it.id) ? "bg-primary/5" : ""}`}>
+                  <td className="px-3 py-3">
+                    <input type="checkbox" checked={selected.has(it.id)}
+                      onChange={() => toggleSelect(it.id)} aria-label={`Select ${it.name}`} />
+                  </td>
                   <td className="px-4 py-3">
                     <label className="block size-14 cursor-pointer overflow-hidden rounded-lg border border-border bg-muted hover:border-primary">
                       {it.photo_url ? (
@@ -376,11 +502,25 @@ function MenuAdmin() {
                       className="mt-1 w-64 rounded border border-transparent bg-transparent px-2 py-1 text-xs text-muted-foreground hover:border-border focus:border-primary focus:bg-background focus:text-foreground focus:outline-none"
                     />
                   </td>
-                  {locs.map((l) => (
-                    <td key={l.location_id} className="px-4 py-3 tabular-nums text-muted-foreground">
-                      {fmt(priceFor(it.id, l.location_id))}
-                    </td>
-                  ))}
+                  {locs.map((l) => {
+                    const cur = priceFor(it.id, l.location_id);
+                    return (
+                      <td key={l.location_id} className="px-4 py-3 tabular-nums">
+                        <div className="flex items-center gap-1">
+                          <span className="text-muted-foreground">$</span>
+                          <input
+                            key={`price-${it.id}-${l.location_id}-${cur ?? ""}`}
+                            defaultValue={cur != null ? Number(cur).toFixed(2) : ""}
+                            inputMode="decimal"
+                            placeholder="0.00"
+                            onBlur={(e) => savePrice(it.id, l.location_id, e.target.value)}
+                            onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }}
+                            className="w-20 rounded border border-transparent bg-transparent px-2 py-1 text-right hover:border-border focus:border-primary focus:bg-background focus:outline-none"
+                          />
+                        </div>
+                      </td>
+                    );
+                  })}
                   <td className="px-4 py-3">
                     <button
                       onClick={() => setEditingMods(editingMods === it.id ? null : it.id)}
