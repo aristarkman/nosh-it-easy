@@ -110,6 +110,30 @@ function MenuAdmin() {
     return assignsByItem.get(itemId)?.size ?? 0;
   }
 
+  async function savePrice(itemId: string, locId: string, raw: string) {
+    const trimmed = raw.trim();
+    if (trimmed === "") return;
+    const next = Number(trimmed);
+    if (!Number.isFinite(next) || next < 0) { alert("Enter a valid price"); return; }
+    const rounded = Math.round(next * 100) / 100;
+    const current = priceFor(itemId, locId);
+    if (current != null && Math.abs(current - rounded) < 0.005) return;
+    const prev = current;
+    setPrices((p) => {
+      const without = p.filter((x) => !(x.menu_item_id === itemId && x.location_id === locId));
+      return [...without, { menu_item_id: itemId, location_id: locId, price: rounded }];
+    });
+    const { error } = await supabase.from("menu_item_prices")
+      .upsert({ menu_item_id: itemId, location_id: locId, price: rounded }, { onConflict: "menu_item_id,location_id" });
+    if (error) {
+      setPrices((p) => {
+        const without = p.filter((x) => !(x.menu_item_id === itemId && x.location_id === locId));
+        return prev == null ? without : [...without, { menu_item_id: itemId, location_id: locId, price: prev }];
+      });
+      alert(error.message);
+    }
+  }
+
   async function saveName(it: Item, name: string) {
     const trimmed = name.trim();
     if (!trimmed || trimmed === it.name) return;
