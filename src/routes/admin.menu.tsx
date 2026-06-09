@@ -198,6 +198,75 @@ function MenuAdmin() {
   const [newCat, setNewCat] = useState("");
   const [newPrice, setNewPrice] = useState("");
   const [saving, setSaving] = useState(false);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [bulkCat, setBulkCat] = useState("");
+  const [bulkBusy, setBulkBusy] = useState(false);
+
+  function toggleSelect(id: string) {
+    setSelected((p) => {
+      const n = new Set(p);
+      if (n.has(id)) n.delete(id); else n.add(id);
+      return n;
+    });
+  }
+  function togglePageSelect(on: boolean) {
+    setSelected((p) => {
+      const n = new Set(p);
+      for (const it of paged) { if (on) n.add(it.id); else n.delete(it.id); }
+      return n;
+    });
+  }
+  const allPageSelected = paged.length > 0 && paged.every((it) => selected.has(it.id));
+
+  async function bulkDelete() {
+    const ids = Array.from(selected);
+    if (ids.length === 0) return;
+    if (!window.confirm(`Delete ${ids.length} item${ids.length === 1 ? "" : "s"}? This removes them from the online menu, prices, availability, and modifier assignments. If they still exist in Biyo, they may return on next sync — disable them there too.`)) return;
+    setBulkBusy(true);
+    const prevItems = items, prevPrices = prices, prevAssigns = assigns;
+    setItems((p) => p.filter((x) => !selected.has(x.id)));
+    setPrices((p) => p.filter((x) => !selected.has(x.menu_item_id)));
+    setAssigns((p) => p.filter((x) => !selected.has(x.menu_item_id)));
+    const [a1, a2, a3, a4] = await Promise.all([
+      supabase.from("menu_item_modifier_groups").delete().in("menu_item_id", ids),
+      supabase.from("menu_item_prices").delete().in("menu_item_id", ids),
+      supabase.from("menu_item_availability").delete().in("menu_item_id", ids),
+      supabase.from("menu_item_modifiers").delete().in("menu_item_id", ids),
+    ]);
+    const childErr = a1.error || a2.error || a3.error || a4.error;
+    if (childErr) {
+      setItems(prevItems); setPrices(prevPrices); setAssigns(prevAssigns);
+      setBulkBusy(false);
+      alert(childErr.message);
+      return;
+    }
+    const { error } = await supabase.from("menu_items").delete().in("id", ids);
+    if (error) {
+      setItems(prevItems); setPrices(prevPrices); setAssigns(prevAssigns);
+      alert(error.message);
+    } else {
+      setSelected(new Set());
+    }
+    setBulkBusy(false);
+  }
+
+  async function bulkRecategorize() {
+    const ids = Array.from(selected);
+    if (ids.length === 0) return;
+    const next = bulkCat || null;
+    setBulkBusy(true);
+    const prev = items;
+    setItems((p) => p.map((x) => selected.has(x.id) ? { ...x, category: next } : x));
+    const { error } = await supabase.from("menu_items").update({ category: next }).in("id", ids);
+    if (error) {
+      setItems(prev);
+      alert(error.message);
+    } else {
+      setSelected(new Set());
+      setBulkCat("");
+    }
+    setBulkBusy(false);
+  }
 
   async function createItem() {
     const name = newName.trim();
