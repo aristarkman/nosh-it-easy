@@ -51,7 +51,7 @@ export type AbandonedCartUpsert = {
 export async function syncAbandonedCart(input: AbandonedCartUpsert) {
   if (typeof window === "undefined") return;
   try {
-    const { upsertAbandonedCart } = await import("@/server/abandoned-cart.functions");
+    const { upsertAbandonedCart } = await import("@/lib/abandoned-cart.functions");
     const sid = getSessionId();
     const { data: sess } = await supabase.auth.getSession();
     const userId = sess.session?.user.id ?? null;
@@ -81,7 +81,7 @@ export async function syncAbandonedCart(input: AbandonedCartUpsert) {
 export async function markCartRecovered(orderId: string) {
   if (typeof window === "undefined") return;
   try {
-    const { markAbandonedCartRecovered } = await import("@/server/abandoned-cart.functions");
+    const { markAbandonedCartRecovered } = await import("@/lib/abandoned-cart.functions");
     const sid = getSessionId();
     await markAbandonedCartRecovered({ data: { sessionId: sid, orderId } });
   } catch (e) {
