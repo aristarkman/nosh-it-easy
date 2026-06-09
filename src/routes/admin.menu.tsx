@@ -392,6 +392,31 @@ function MenuAdmin() {
         </div>
       )}
 
+      {selected.size > 0 && (
+        <div className="sticky top-2 z-10 flex flex-wrap items-center gap-3 rounded-2xl border border-primary/40 bg-card p-3 shadow-md">
+          <span className="text-sm font-medium">{selected.size} selected</span>
+          <button onClick={() => setSelected(new Set())}
+            className="rounded border border-border px-2 py-1 text-xs hover:border-primary">Clear</button>
+          <div className="ml-auto flex flex-wrap items-center gap-2">
+            <select value={bulkCat} onChange={(e) => setBulkCat(e.target.value)}
+              className="rounded border border-border bg-background px-2 py-1.5 text-sm">
+              <option value="">— Move to category —</option>
+              {catRows.map((c) => <option key={c.id} value={c.name}>{c.name}</option>)}
+            </select>
+            <button onClick={bulkRecategorize} disabled={bulkBusy}
+              className="rounded border border-border px-3 py-1.5 text-sm font-bold hover:border-primary disabled:opacity-50">
+              Apply category
+            </button>
+            <button onClick={bulkDelete} disabled={bulkBusy}
+              className="rounded border border-destructive bg-destructive px-3 py-1.5 text-sm font-bold text-destructive-foreground hover:opacity-90 disabled:opacity-50">
+              <Trash2 className="mr-1 inline size-3.5" /> Delete
+            </button>
+          </div>
+        </div>
+      )}
+
+
+
       <div className="rounded-2xl border border-border bg-card">
         {loading ? (
           <div className="flex items-center gap-2 p-5 text-sm text-muted-foreground"><Loader2 className="size-4 animate-spin" /> Loading…</div>
