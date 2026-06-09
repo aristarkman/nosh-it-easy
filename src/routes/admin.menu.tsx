@@ -477,11 +477,25 @@ function MenuAdmin() {
                       className="mt-1 w-64 rounded border border-transparent bg-transparent px-2 py-1 text-xs text-muted-foreground hover:border-border focus:border-primary focus:bg-background focus:text-foreground focus:outline-none"
                     />
                   </td>
-                  {locs.map((l) => (
-                    <td key={l.location_id} className="px-4 py-3 tabular-nums text-muted-foreground">
-                      {fmt(priceFor(it.id, l.location_id))}
-                    </td>
-                  ))}
+                  {locs.map((l) => {
+                    const cur = priceFor(it.id, l.location_id);
+                    return (
+                      <td key={l.location_id} className="px-4 py-3 tabular-nums">
+                        <div className="flex items-center gap-1">
+                          <span className="text-muted-foreground">$</span>
+                          <input
+                            key={`price-${it.id}-${l.location_id}-${cur ?? ""}`}
+                            defaultValue={cur != null ? Number(cur).toFixed(2) : ""}
+                            inputMode="decimal"
+                            placeholder="0.00"
+                            onBlur={(e) => savePrice(it.id, l.location_id, e.target.value)}
+                            onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }}
+                            className="w-20 rounded border border-transparent bg-transparent px-2 py-1 text-right hover:border-border focus:border-primary focus:bg-background focus:outline-none"
+                          />
+                        </div>
+                      </td>
+                    );
+                  })}
                   <td className="px-4 py-3">
                     <button
                       onClick={() => setEditingMods(editingMods === it.id ? null : it.id)}
