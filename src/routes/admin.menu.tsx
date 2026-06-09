@@ -401,6 +401,10 @@ function MenuAdmin() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-border text-left text-xs uppercase tracking-wider text-muted-foreground">
+                <th className="px-3 py-3">
+                  <input type="checkbox" checked={allPageSelected}
+                    onChange={(e) => togglePageSelect(e.target.checked)} aria-label="Select all on page" />
+                </th>
                 <th className="px-4 py-3">Photo</th>
                 <th className="px-4 py-3">Category</th>
                 <th className="px-4 py-3">Menu item</th>
@@ -413,7 +417,11 @@ function MenuAdmin() {
             </thead>
             <tbody>
               {paged.map((it) => (
-                <tr key={it.id} className="border-b border-border last:border-0">
+                <tr key={it.id} className={`border-b border-border last:border-0 ${selected.has(it.id) ? "bg-primary/5" : ""}`}>
+                  <td className="px-3 py-3">
+                    <input type="checkbox" checked={selected.has(it.id)}
+                      onChange={() => toggleSelect(it.id)} aria-label={`Select ${it.name}`} />
+                  </td>
                   <td className="px-4 py-3">
                     <label className="block size-14 cursor-pointer overflow-hidden rounded-lg border border-border bg-muted hover:border-primary">
                       {it.photo_url ? (
