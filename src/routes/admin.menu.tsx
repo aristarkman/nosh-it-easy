@@ -515,7 +515,7 @@ function MenuAdmin() {
                             placeholder="0.00"
                             onBlur={(e) => savePrice(it.id, l.location_id, e.target.value)}
                             onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }}
-                            className="w-20 rounded border border-transparent bg-transparent px-2 py-1 text-right hover:border-border focus:border-primary focus:bg-background focus:outline-none"
+                            className="w-24 rounded border border-border bg-background px-2 py-1 text-right hover:border-primary focus:border-primary focus:ring-2 focus:ring-primary/30 focus:outline-none"
                           />
                         </div>
                       </td>
