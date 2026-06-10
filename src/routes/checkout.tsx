@@ -5,8 +5,8 @@ import { useOrder, fmt, LOCATIONS } from "@/lib/order-context";
 import { useCustomerAuth } from "@/lib/customer-auth";
 import { supabase } from "@/integrations/supabase/client";
 import { chargeWithToken, getFtdConfig } from "@/lib/ipospays.functions";
-import { sendOrderStatusSms, sendStaffNewOrderAlert } from "@/server/sms.functions";
-import { dispatchShipday, quoteShipday } from "@/server/shipday.functions";
+import { sendOrderStatusSms, sendStaffNewOrderAlert } from "@/lib/sms.functions";
+import { dispatchShipday, quoteShipday } from "@/lib/shipday.functions";
 import { reportSystemAlert } from "@/lib/system-alerts";
 import { markCartRecovered, track } from "@/lib/analytics";
 import {
@@ -580,7 +580,7 @@ function CheckoutPage() {
     }
     // Loyalty: server-side compute (validates ownership + balance, prevents tampering)
     if (auth.userId) {
-      const { recordLoyaltyForOrder } = await import("@/server/loyalty.functions");
+      const { recordLoyaltyForOrder } = await import("@/lib/loyalty.functions");
       void recordLoyaltyForOrder({
         data: { orderId: data.id, rewardsRedeemed: effectiveRewards },
       }).catch((e) => console.error("Loyalty record failed:", e));

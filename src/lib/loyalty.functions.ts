@@ -1,7 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import {
   POINTS_PER_DOLLAR,
   POINTS_PER_REWARD,
@@ -17,6 +16,7 @@ export const recordLoyaltyForOrder = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: z.infer<typeof Schema>) => Schema.parse(input))
   .handler(async ({ data, context }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const userId = (context as { userId: string }).userId;
 
     // Verify the order belongs to the user

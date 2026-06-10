@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { syncBiyoNow } from "@/server/biyo-sync.functions";
+import { syncBiyoNow } from "@/lib/biyo-sync.functions";
 import { useServerFn } from "@tanstack/react-start";
 import { Loader2, RefreshCw, CheckCircle2, AlertCircle } from "lucide-react";
 

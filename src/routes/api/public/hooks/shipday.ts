@@ -1,5 +1,4 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { supabaseAdmin } from "@/integrations/supabase/client.server";
 
 // Shipday → our webhook. Shipday sends a "token" header that must match one of
 // our per-store tokens. Both stores hit this same URL; we accept either token.
@@ -26,6 +25,7 @@ export const Route = createFileRoute("/api/public/hooks/shipday")({
   server: {
     handlers: {
       POST: async ({ request }) => {
+        const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
         const token =
           request.headers.get("token") ||
           request.headers.get("Token") ||

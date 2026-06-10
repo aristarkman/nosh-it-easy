@@ -1,12 +1,12 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import type { MenuItem, ModifierGroup, ModifierOption, Category } from "@/lib/menu-types";
 
 const PRICE_LOCATION = "cresskill"; // single source of truth for prices
 const FALLBACK_CATEGORY = "More from the Deli";
 
 async function buildMenu(): Promise<{ items: MenuItem[]; categories: Category[] }> {
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   const [itemsRes, pricesRes, availRes, migRes, mgRes, moRes, catsRes] = await Promise.all([
     supabaseAdmin
       .from("menu_items")

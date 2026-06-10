@@ -1,11 +1,11 @@
 import { createServerFn } from "@tanstack/react-start";
-import { supabaseAdmin } from "@/integrations/supabase/client.server";
-import { runBiyoSync } from "./biyo-sync.server";
 
 // Admin-triggered manual sync. Client passes the user's access token in `data`.
 export const syncBiyoNow = createServerFn({ method: "POST" })
   .inputValidator((data: { accessToken: string }) => data)
   .handler(async ({ data }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { runBiyoSync } = await import("@/server/biyo-sync.server");
     const { data: userData, error: userErr } = await supabaseAdmin.auth.getUser(data.accessToken);
     if (userErr || !userData?.user) {
       return { ok: false as const, error: "Not authenticated" };

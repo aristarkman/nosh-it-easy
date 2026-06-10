@@ -1,6 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { supabaseAdmin } from "@/integrations/supabase/client.server";
 
 const CartLine = z.object({
   itemId: z.string().optional(),
@@ -27,6 +26,7 @@ const UpsertSchema = z.object({
 export const upsertAbandonedCart = createServerFn({ method: "POST" })
   .inputValidator((input: z.infer<typeof UpsertSchema>) => UpsertSchema.parse(input))
   .handler(async ({ data }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     if (data.items.length === 0) {
       await supabaseAdmin
         .from("abandoned_carts")
@@ -65,6 +65,7 @@ const RecoverSchema = z.object({
 export const markAbandonedCartRecovered = createServerFn({ method: "POST" })
   .inputValidator((input: z.infer<typeof RecoverSchema>) => RecoverSchema.parse(input))
   .handler(async ({ data }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     await supabaseAdmin
       .from("abandoned_carts")
       .update({ recovered: true, recovered_order_id: data.orderId })

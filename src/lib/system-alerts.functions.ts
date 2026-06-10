@@ -1,6 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { supabaseAdmin } from "@/integrations/supabase/client.server";
 
 const AlertKind = z.enum([
   "payment_failed",
@@ -21,6 +20,7 @@ const Schema = z.object({
 export const recordSystemAlert = createServerFn({ method: "POST" })
   .inputValidator((input: z.infer<typeof Schema>) => Schema.parse(input))
   .handler(async ({ data }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { error } = await supabaseAdmin.from("system_alerts").insert({
       kind: data.kind,
       message: data.message,
