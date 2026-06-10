@@ -1,6 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { supabaseAdmin } from "@/integrations/supabase/client.server";
 
 const InputSchema = z.object({
   promoCodeId: z.string().uuid(),
@@ -13,6 +12,7 @@ const InputSchema = z.object({
 export const recordPromoRedemption = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => InputSchema.parse(input))
   .handler(async ({ data }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     // Verify order exists and pull subtotal to bound the discount
     const { data: order, error: orderErr } = await supabaseAdmin
       .from("orders")
