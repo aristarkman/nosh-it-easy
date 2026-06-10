@@ -4,7 +4,7 @@ import { ArrowLeft, CreditCard, Wallet, Apple, AlertTriangle, Lock, Tag, Gift } 
 import { useOrder, fmt, LOCATIONS } from "@/lib/order-context";
 import { useCustomerAuth } from "@/lib/customer-auth";
 import { supabase } from "@/integrations/supabase/client";
-import { chargeWithToken, getFtdConfig } from "@/server/ipospays.functions";
+import { chargeWithToken, getFtdConfig } from "@/lib/ipospays.functions";
 import { sendOrderStatusSms, sendStaffNewOrderAlert } from "@/server/sms.functions";
 import { dispatchShipday, quoteShipday } from "@/server/shipday.functions";
 import { reportSystemAlert } from "@/lib/system-alerts";
