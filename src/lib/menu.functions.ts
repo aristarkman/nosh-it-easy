@@ -86,7 +86,8 @@ async function buildMenu(): Promise<{ items: MenuItem[]; categories: Category[] 
       if (!hasPricedModifier) continue;
     }
     const raw = (it.category ?? "").trim();
-    const cat = validCatNames.has(raw) ? raw : FALLBACK_CATEGORY;
+    if (!validCatNames.has(raw)) continue; // hide items whose category isn't in admin Categories
+    const cat = raw;
     items.push({
       id: it.id,
       name: it.name,
