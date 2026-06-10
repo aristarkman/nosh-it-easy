@@ -1,5 +1,5 @@
-import { sendOwnerErrorAlert } from "@/server/sms.functions";
-import { recordSystemAlert } from "@/server/system-alerts.functions";
+import { sendOwnerErrorAlert } from "@/lib/sms.functions";
+import { recordSystemAlert } from "@/lib/system-alerts.functions";
 
 export type AlertKind =
   | "payment_failed"

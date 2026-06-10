@@ -9,7 +9,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { ExternalLink, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { sendRefundIssuedSms } from "@/server/sms.functions";
+import { sendRefundIssuedSms } from "@/lib/sms.functions";
 import { fmt, type CartLine } from "@/lib/order-context";
 
 type Props = {
