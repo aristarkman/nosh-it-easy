@@ -66,17 +66,14 @@ async function buildMenu(): Promise<{ items: MenuItem[]; categories: Category[] 
     groupsByItem.set(a.menu_item_id, arr);
   }
 
-  // Build category list. Use admin-defined categories; ensure a fallback bucket exists.
+  // Build category list strictly from admin-defined categories.
+  // Items whose category does not match an admin category are hidden.
   const categories: Category[] = (catsRes.data ?? []).map((c) => ({
     id: c.name, // use name as the id since menu_items.category is free text
     name: c.name,
     blurb: c.blurb ?? undefined,
   }));
   const validCatNames = new Set(categories.map((c) => c.name));
-  if (!validCatNames.has(FALLBACK_CATEGORY)) {
-    categories.push({ id: FALLBACK_CATEGORY, name: FALLBACK_CATEGORY });
-    validCatNames.add(FALLBACK_CATEGORY);
-  }
 
   const items: MenuItem[] = [];
   for (const it of itemsRes.data ?? []) {
