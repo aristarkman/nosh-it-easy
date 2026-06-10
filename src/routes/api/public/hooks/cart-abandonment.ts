@@ -1,5 +1,4 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { supabaseAdmin } from "@/integrations/supabase/client.server";
 
 // Called by pg_cron every 15 min. Sends SMS to abandoned carts >60min stale,
 // not yet reminded, with marketing_sms_opt_in=true.
@@ -7,6 +6,7 @@ export const Route = createFileRoute("/api/public/hooks/cart-abandonment")({
   server: {
     handlers: {
       POST: async ({ request }) => {
+        const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
         const apikey = request.headers.get("apikey");
         if (apikey !== process.env.SUPABASE_PUBLISHABLE_KEY) {
           return new Response("Unauthorized", { status: 401 });
