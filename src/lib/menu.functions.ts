@@ -76,6 +76,13 @@ async function buildMenu(): Promise<{ items: MenuItem[]; categories: Category[] 
   }));
   const validCatNames = new Set(categories.map((c) => c.name));
 
+  const photosByItem = new Map<string, string[]>();
+  for (const ph of photosRes.data ?? []) {
+    const arr = photosByItem.get(ph.menu_item_id) ?? [];
+    arr.push(ph.url);
+    photosByItem.set(ph.menu_item_id, arr);
+  }
+
   const items: MenuItem[] = [];
   for (const it of itemsRes.data ?? []) {
     const price = priceById.get(it.id);
@@ -89,6 +96,8 @@ async function buildMenu(): Promise<{ items: MenuItem[]; categories: Category[] 
     const raw = (it.category ?? "").trim();
     if (!validCatNames.has(raw)) continue; // hide items whose category isn't in admin Categories
     const cat = raw;
+    const photos = photosByItem.get(it.id) ?? [];
+    const primary = photos[0] ?? it.photo_url ?? undefined;
     items.push({
       id: it.id,
       name: it.name,
@@ -96,7 +105,8 @@ async function buildMenu(): Promise<{ items: MenuItem[]; categories: Category[] 
       price,
       category: cat,
       rawCategory: it.category,
-      image: it.photo_url ?? undefined,
+      image: primary,
+      images: photos.length > 0 ? photos : (it.photo_url ? [it.photo_url] : []),
       popular: !!it.popular,
       soldOut: soldOut.has(it.id),
       modifierGroups: groupsByItem.get(it.id) ?? [],
