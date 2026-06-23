@@ -10,7 +10,7 @@ async function buildMenu(): Promise<{ items: MenuItem[]; categories: Category[] 
   const [itemsRes, pricesRes, availRes, migRes, mgRes, moRes, catsRes, photosRes] = await Promise.all([
     supabaseAdmin
       .from("menu_items")
-      .select("id,name,description,category,popular,photo_url,sort_order")
+      .select("id,name,slug,description,category,popular,photo_url,sort_order")
       .eq("active", true)
       .order("sort_order")
       .order("name"),

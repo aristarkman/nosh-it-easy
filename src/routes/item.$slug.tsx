@@ -6,7 +6,7 @@ import { useOrder, fmt, buildLineFromItem } from "@/lib/order-context";
 import { getMenuItem } from "@/lib/menu.functions";
 import { thumb } from "@/lib/image-url";
 
-export const Route = createFileRoute("/item/$itemId")({
+export const Route = createFileRoute("/item/$slug")({
   loader: async ({ params }) => {
     const { item } = await getMenuItem({ data: { id: params.itemId } });
     if (!item) throw notFound();
