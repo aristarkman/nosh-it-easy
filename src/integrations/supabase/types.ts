@@ -605,6 +605,7 @@ export type Database = {
           name: string
           photo_url: string | null
           popular: boolean
+          slug: string
           sort_order: number
           updated_at: string
         }
@@ -619,6 +620,7 @@ export type Database = {
           name: string
           photo_url?: string | null
           popular?: boolean
+          slug: string
           sort_order?: number
           updated_at?: string
         }
@@ -633,6 +635,7 @@ export type Database = {
           name?: string
           photo_url?: string | null
           popular?: boolean
+          slug?: string
           sort_order?: number
           updated_at?: string
         }
