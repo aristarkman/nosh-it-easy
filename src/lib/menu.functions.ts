@@ -7,7 +7,7 @@ const FALLBACK_CATEGORY = "More from the Deli";
 
 async function buildMenu(): Promise<{ items: MenuItem[]; categories: Category[] }> {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-  const [itemsRes, pricesRes, availRes, migRes, mgRes, moRes, catsRes] = await Promise.all([
+  const [itemsRes, pricesRes, availRes, migRes, mgRes, moRes, catsRes, photosRes] = await Promise.all([
     supabaseAdmin
       .from("menu_items")
       .select("id,name,description,category,popular,photo_url,sort_order")
@@ -27,6 +27,7 @@ async function buildMenu(): Promise<{ items: MenuItem[]; categories: Category[] 
     supabaseAdmin.from("modifier_groups").select("id,name,required,min_select,max_select"),
     supabaseAdmin.from("modifier_options").select("id,group_id,name,price_delta,sort_order").order("sort_order"),
     supabaseAdmin.from("menu_categories").select("id,name,blurb,sort_order").eq("active", true).order("sort_order").order("name"),
+    supabaseAdmin.from("menu_item_photos").select("menu_item_id,url,sort_order").order("sort_order"),
   ]);
 
   if (itemsRes.error) throw itemsRes.error;

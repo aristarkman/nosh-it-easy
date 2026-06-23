@@ -15,6 +15,7 @@ export type MenuItem = {
   category: string; // curated bucket label
   rawCategory: string | null; // original DB category
   image?: string;
+  images?: string[];
   popular?: boolean;
   soldOut?: boolean;
   modifierGroups?: ModifierGroup[];
