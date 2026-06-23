@@ -104,9 +104,10 @@ export const replacePhotoBackground = createServerFn({ method: "POST" })
     const outBytes = Buffer.from(outB64, "base64");
     const ext = outMime.includes("png") ? "png" : outMime.includes("webp") ? "webp" : "jpg";
     const path = `bg-${photo.menu_item_id}-${Date.now()}.${ext}`;
+    const blob = new Blob([outBytes], { type: outMime });
     const { error: upErr } = await supabaseAdmin.storage
       .from("menu-photos")
-      .upload(path, outBytes, { upsert: true, contentType: outMime });
+      .upload(path, blob, { upsert: true, contentType: outMime });
     if (upErr) throw new Error(upErr.message);
     const { data: pub } = supabaseAdmin.storage.from("menu-photos").getPublicUrl(path);
     const newUrl = pub.publicUrl;
