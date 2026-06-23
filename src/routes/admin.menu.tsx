@@ -480,18 +480,30 @@ function MenuAdmin() {
                       onChange={() => toggleSelect(it.id)} aria-label={`Select ${it.name}`} />
                   </td>
                   <td className="px-4 py-3">
-                    <label className="block size-14 cursor-pointer overflow-hidden rounded-lg border border-border bg-muted hover:border-primary">
-                      {it.photo_url ? (
-                        <img src={it.photo_url} alt={it.name} className="size-full object-cover" />
-                      ) : (
-                        <span className="grid size-full place-items-center text-[10px] uppercase tracking-wider text-muted-foreground">
-                          {uploading === it.id ? "…" : "Add"}
-                        </span>
-                      )}
-                      <input type="file" accept="image/*" className="hidden"
-                        onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadPhoto(it, f); e.target.value = ""; }}
-                      />
-                    </label>
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      {photos
+                        .filter((p) => p.menu_item_id === it.id)
+                        .sort((a, b) => a.sort_order - b.sort_order)
+                        .map((p) => (
+                          <div key={p.id} className="group relative size-14 overflow-hidden rounded-lg border border-border bg-muted">
+                            <img src={thumb(p.url, 112)} alt="" className="size-full object-cover" />
+                            <button
+                              type="button"
+                              onClick={() => deletePhoto(p)}
+                              title="Remove photo"
+                              className="absolute right-0.5 top-0.5 grid size-4 place-items-center rounded-full bg-background/90 text-destructive opacity-0 shadow group-hover:opacity-100"
+                            >
+                              <X className="size-3" />
+                            </button>
+                          </div>
+                        ))}
+                      <label className="grid size-14 cursor-pointer place-items-center overflow-hidden rounded-lg border border-dashed border-border bg-muted text-[10px] uppercase tracking-wider text-muted-foreground hover:border-primary hover:text-primary">
+                        {uploading === it.id ? "…" : "+ Add"}
+                        <input type="file" accept="image/*" className="hidden"
+                          onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadPhoto(it, f); e.target.value = ""; }}
+                        />
+                      </label>
+                    </div>
                   </td>
                   <td className="px-4 py-3">
                     <select
