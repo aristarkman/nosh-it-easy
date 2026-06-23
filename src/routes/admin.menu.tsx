@@ -1,10 +1,13 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
+import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
-import { Loader2, Search, Trash2, X } from "lucide-react";
+import { Loader2, Search, Sparkles, Trash2, X } from "lucide-react";
 import { toWebP } from "@/lib/image-convert";
 import { thumb } from "@/lib/image-url";
 import { slugify } from "@/lib/slugify";
+import { replacePhotoBackground } from "@/lib/photo-bg.functions";
+
 
 
 export const Route = createFileRoute("/admin/menu")({
@@ -208,6 +211,37 @@ function MenuAdmin() {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [bulkCat, setBulkCat] = useState("");
   const [bulkBusy, setBulkBusy] = useState(false);
+  const [bgJob, setBgJob] = useState<{ done: number; total: number; failed: number; current: string | null } | null>(null);
+  const replaceBgFn = useServerFn(replacePhotoBackground);
+
+  async function runMatchBackgrounds() {
+    const all = [...photos].sort((a, b) => a.menu_item_id.localeCompare(b.menu_item_id) || a.sort_order - b.sort_order);
+    if (all.length === 0) { alert("No photos to process."); return; }
+    const ok = window.confirm(
+      `Replace the background on ${all.length} menu photo${all.length === 1 ? "" : "s"} with the cream backdrop?\n\n` +
+      `This rewrites each photo in place using AI. Originals will be replaced. This can take a few minutes and uses AI credits.`
+    );
+    if (!ok) return;
+    setBgJob({ done: 0, total: all.length, failed: 0, current: null });
+    let failed = 0;
+    for (let i = 0; i < all.length; i++) {
+      const ph = all[i];
+      const it = items.find((x) => x.id === ph.menu_item_id);
+      setBgJob({ done: i, total: all.length, failed, current: it?.name ?? ph.menu_item_id });
+      try {
+        const res = await replaceBgFn({ data: { photoId: ph.id } });
+        setPhotos((prev) => prev.map((p) => p.id === ph.id ? { ...p, url: res.newUrl } : p));
+        if (ph.sort_order === 0) {
+          setItems((prev) => prev.map((x) => x.id === ph.menu_item_id ? { ...x, photo_url: res.newUrl } : x));
+        }
+      } catch (e: any) {
+        console.error("Background replace failed for", ph.id, e);
+        failed += 1;
+      }
+    }
+    setBgJob({ done: all.length, total: all.length, failed, current: null });
+    setTimeout(() => setBgJob(null), 4000);
+  }
 
   function toggleSelect(id: string) {
     setSelected((p) => {
@@ -387,6 +421,15 @@ function MenuAdmin() {
             className="rounded border border-primary bg-primary px-3 py-1.5 text-sm font-bold text-primary-foreground hover:opacity-90">
             {creating ? "Cancel" : "+ New item"}
           </button>
+          <button
+            onClick={runMatchBackgrounds}
+            disabled={!!bgJob}
+            title="Use AI to replace the background of every menu photo with a cream backdrop"
+            className="inline-flex items-center gap-1 rounded border border-border px-3 py-1.5 text-sm font-bold hover:border-primary disabled:opacity-50"
+          >
+            <Sparkles className="size-3.5" />
+            {bgJob ? `Matching… ${bgJob.done}/${bgJob.total}` : "Match photo backgrounds"}
+          </button>
           <select value={cat} onChange={(e) => setCat(e.target.value)} className="rounded border border-border bg-background px-2 py-1.5 text-sm">
             <option value="">All categories</option>
             {cats.map((c) => <option key={c} value={c}>{c}</option>)}
@@ -398,6 +441,23 @@ function MenuAdmin() {
           </div>
         </div>
       </div>
+
+      {bgJob && (
+        <div className="rounded-2xl border border-primary/40 bg-card p-3 text-sm">
+          <div className="flex items-center justify-between gap-3">
+            <span className="font-medium">
+              Matching backgrounds: {bgJob.done}/{bgJob.total}
+              {bgJob.failed > 0 && <span className="ml-2 text-destructive">({bgJob.failed} failed)</span>}
+            </span>
+            {bgJob.current && <span className="truncate text-muted-foreground">Now: {bgJob.current}</span>}
+          </div>
+          <div className="mt-2 h-1.5 w-full overflow-hidden rounded bg-muted">
+            <div className="h-full bg-primary transition-all" style={{ width: `${(bgJob.done / Math.max(1, bgJob.total)) * 100}%` }} />
+          </div>
+        </div>
+      )}
+
+
 
       {creating && (
         <div className="flex flex-wrap items-end gap-2 rounded-2xl border border-border bg-card p-4">
