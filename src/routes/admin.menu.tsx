@@ -421,6 +421,15 @@ function MenuAdmin() {
             className="rounded border border-primary bg-primary px-3 py-1.5 text-sm font-bold text-primary-foreground hover:opacity-90">
             {creating ? "Cancel" : "+ New item"}
           </button>
+          <button
+            onClick={runMatchBackgrounds}
+            disabled={!!bgJob}
+            title="Use AI to replace the background of every menu photo with a cream backdrop"
+            className="inline-flex items-center gap-1 rounded border border-border px-3 py-1.5 text-sm font-bold hover:border-primary disabled:opacity-50"
+          >
+            <Sparkles className="size-3.5" />
+            {bgJob ? `Matching… ${bgJob.done}/${bgJob.total}` : "Match photo backgrounds"}
+          </button>
           <select value={cat} onChange={(e) => setCat(e.target.value)} className="rounded border border-border bg-background px-2 py-1.5 text-sm">
             <option value="">All categories</option>
             {cats.map((c) => <option key={c} value={c}>{c}</option>)}
