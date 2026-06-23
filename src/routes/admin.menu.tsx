@@ -1,10 +1,13 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
+import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
-import { Loader2, Search, Trash2, X } from "lucide-react";
+import { Loader2, Search, Sparkles, Trash2, X } from "lucide-react";
 import { toWebP } from "@/lib/image-convert";
 import { thumb } from "@/lib/image-url";
 import { slugify } from "@/lib/slugify";
+import { replacePhotoBackground } from "@/lib/photo-bg.functions";
+
 
 
 export const Route = createFileRoute("/admin/menu")({
@@ -208,6 +211,37 @@ function MenuAdmin() {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [bulkCat, setBulkCat] = useState("");
   const [bulkBusy, setBulkBusy] = useState(false);
+  const [bgJob, setBgJob] = useState<{ done: number; total: number; failed: number; current: string | null } | null>(null);
+  const replaceBgFn = useServerFn(replacePhotoBackground);
+
+  async function runMatchBackgrounds() {
+    const all = [...photos].sort((a, b) => a.menu_item_id.localeCompare(b.menu_item_id) || a.sort_order - b.sort_order);
+    if (all.length === 0) { alert("No photos to process."); return; }
+    const ok = window.confirm(
+      `Replace the background on ${all.length} menu photo${all.length === 1 ? "" : "s"} with the cream backdrop?\n\n` +
+      `This rewrites each photo in place using AI. Originals will be replaced. This can take a few minutes and uses AI credits.`
+    );
+    if (!ok) return;
+    setBgJob({ done: 0, total: all.length, failed: 0, current: null });
+    let failed = 0;
+    for (let i = 0; i < all.length; i++) {
+      const ph = all[i];
+      const it = items.find((x) => x.id === ph.menu_item_id);
+      setBgJob({ done: i, total: all.length, failed, current: it?.name ?? ph.menu_item_id });
+      try {
+        const res = await replaceBgFn({ data: { photoId: ph.id } });
+        setPhotos((prev) => prev.map((p) => p.id === ph.id ? { ...p, url: res.newUrl } : p));
+        if (ph.sort_order === 0) {
+          setItems((prev) => prev.map((x) => x.id === ph.menu_item_id ? { ...x, photo_url: res.newUrl } : x));
+        }
+      } catch (e: any) {
+        console.error("Background replace failed for", ph.id, e);
+        failed += 1;
+      }
+    }
+    setBgJob({ done: all.length, total: all.length, failed, current: null });
+    setTimeout(() => setBgJob(null), 4000);
+  }
 
   function toggleSelect(id: string) {
     setSelected((p) => {
