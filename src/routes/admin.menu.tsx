@@ -442,6 +442,23 @@ function MenuAdmin() {
         </div>
       </div>
 
+      {bgJob && (
+        <div className="rounded-2xl border border-primary/40 bg-card p-3 text-sm">
+          <div className="flex items-center justify-between gap-3">
+            <span className="font-medium">
+              Matching backgrounds: {bgJob.done}/{bgJob.total}
+              {bgJob.failed > 0 && <span className="ml-2 text-destructive">({bgJob.failed} failed)</span>}
+            </span>
+            {bgJob.current && <span className="truncate text-muted-foreground">Now: {bgJob.current}</span>}
+          </div>
+          <div className="mt-2 h-1.5 w-full overflow-hidden rounded bg-muted">
+            <div className="h-full bg-primary transition-all" style={{ width: `${(bgJob.done / Math.max(1, bgJob.total)) * 100}%` }} />
+          </div>
+        </div>
+      )}
+
+
+
       {creating && (
         <div className="flex flex-wrap items-end gap-2 rounded-2xl border border-border bg-card p-4">
           <div className="flex flex-col">
