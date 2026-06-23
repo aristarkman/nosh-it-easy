@@ -10,7 +10,7 @@ async function buildMenu(): Promise<{ items: MenuItem[]; categories: Category[] 
   const [itemsRes, pricesRes, availRes, migRes, mgRes, moRes, catsRes, photosRes] = await Promise.all([
     supabaseAdmin
       .from("menu_items")
-      .select("id,name,description,category,popular,photo_url,sort_order")
+      .select("id,name,slug,description,category,popular,photo_url,sort_order")
       .eq("active", true)
       .order("sort_order")
       .order("name"),
@@ -100,6 +100,7 @@ async function buildMenu(): Promise<{ items: MenuItem[]; categories: Category[] 
     const primary = photos[0] ?? it.photo_url ?? undefined;
     items.push({
       id: it.id,
+      slug: it.slug,
       name: it.name,
       description: it.description ?? "",
       price,
@@ -120,9 +121,10 @@ export const getMenu = createServerFn({ method: "GET" }).handler(async () => {
 });
 
 export const getMenuItem = createServerFn({ method: "GET" })
-  .inputValidator((input) => z.object({ id: z.string().uuid() }).parse(input))
+  .inputValidator((input) => z.object({ slug: z.string().min(1) }).parse(input))
   .handler(async ({ data }) => {
     const { items } = await buildMenu();
-    const item = items.find((i) => i.id === data.id) ?? null;
+    const item = items.find((i) => i.slug === data.slug) ?? null;
     return { item };
   });
+

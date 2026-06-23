@@ -148,8 +148,8 @@ function MenuPage() {
               {catItems.map((i, idx) => (
                 <li key={i.id}>
                   <Link
-                    to="/item/$itemId"
-                    params={{ itemId: i.id }}
+                    to="/item/$slug"
+                    params={{ slug: i.slug }}
                     className="group flex items-start gap-4 rounded-2xl border border-border bg-card p-5 transition hover:-translate-y-0.5 hover:border-primary hover:shadow-[var(--shadow-card)]"
                   >
                     {i.image ? (

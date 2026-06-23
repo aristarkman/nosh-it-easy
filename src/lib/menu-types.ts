@@ -9,6 +9,7 @@ export type ModifierGroup = {
 };
 export type MenuItem = {
   id: string;
+  slug: string;
   name: string;
   description: string;
   price: number;

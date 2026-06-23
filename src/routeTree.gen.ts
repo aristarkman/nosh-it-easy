@@ -28,7 +28,7 @@ import { Route as AccountRouteImport } from './routes/account'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AdminIndexRouteImport } from './routes/admin.index'
 import { Route as StaffLoginRouteImport } from './routes/staff.login'
-import { Route as ItemItemIdRouteImport } from './routes/item.$itemId'
+import { Route as ItemSlugRouteImport } from './routes/item.$slug'
 import { Route as ConfirmationOrderIdRouteImport } from './routes/confirmation.$orderId'
 import { Route as AdminZonesRouteImport } from './routes/admin.zones'
 import { Route as AdminThrottleRouteImport } from './routes/admin.throttle'
@@ -141,9 +141,9 @@ const StaffLoginRoute = StaffLoginRouteImport.update({
   path: '/staff/login',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ItemItemIdRoute = ItemItemIdRouteImport.update({
-  id: '/item/$itemId',
-  path: '/item/$itemId',
+const ItemSlugRoute = ItemSlugRouteImport.update({
+  id: '/item/$slug',
+  path: '/item/$slug',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ConfirmationOrderIdRoute = ConfirmationOrderIdRouteImport.update({
@@ -259,7 +259,7 @@ export interface FileRoutesByFullPath {
   '/admin/throttle': typeof AdminThrottleRoute
   '/admin/zones': typeof AdminZonesRoute
   '/confirmation/$orderId': typeof ConfirmationOrderIdRoute
-  '/item/$itemId': typeof ItemItemIdRoute
+  '/item/$slug': typeof ItemSlugRoute
   '/staff/login': typeof StaffLoginRoute
   '/admin/': typeof AdminIndexRoute
   '/api/public/hooks/cart-abandonment': typeof ApiPublicHooksCartAbandonmentRoute
@@ -296,7 +296,7 @@ export interface FileRoutesByTo {
   '/admin/throttle': typeof AdminThrottleRoute
   '/admin/zones': typeof AdminZonesRoute
   '/confirmation/$orderId': typeof ConfirmationOrderIdRoute
-  '/item/$itemId': typeof ItemItemIdRoute
+  '/item/$slug': typeof ItemSlugRoute
   '/staff/login': typeof StaffLoginRoute
   '/admin': typeof AdminIndexRoute
   '/api/public/hooks/cart-abandonment': typeof ApiPublicHooksCartAbandonmentRoute
@@ -335,7 +335,7 @@ export interface FileRoutesById {
   '/admin/throttle': typeof AdminThrottleRoute
   '/admin/zones': typeof AdminZonesRoute
   '/confirmation/$orderId': typeof ConfirmationOrderIdRoute
-  '/item/$itemId': typeof ItemItemIdRoute
+  '/item/$slug': typeof ItemSlugRoute
   '/staff/login': typeof StaffLoginRoute
   '/admin/': typeof AdminIndexRoute
   '/api/public/hooks/cart-abandonment': typeof ApiPublicHooksCartAbandonmentRoute
@@ -375,7 +375,7 @@ export interface FileRouteTypes {
     | '/admin/throttle'
     | '/admin/zones'
     | '/confirmation/$orderId'
-    | '/item/$itemId'
+    | '/item/$slug'
     | '/staff/login'
     | '/admin/'
     | '/api/public/hooks/cart-abandonment'
@@ -412,7 +412,7 @@ export interface FileRouteTypes {
     | '/admin/throttle'
     | '/admin/zones'
     | '/confirmation/$orderId'
-    | '/item/$itemId'
+    | '/item/$slug'
     | '/staff/login'
     | '/admin'
     | '/api/public/hooks/cart-abandonment'
@@ -450,7 +450,7 @@ export interface FileRouteTypes {
     | '/admin/throttle'
     | '/admin/zones'
     | '/confirmation/$orderId'
-    | '/item/$itemId'
+    | '/item/$slug'
     | '/staff/login'
     | '/admin/'
     | '/api/public/hooks/cart-abandonment'
@@ -477,7 +477,7 @@ export interface RootRouteChildren {
   TabletRoute: typeof TabletRoute
   TermsRoute: typeof TermsRoute
   ConfirmationOrderIdRoute: typeof ConfirmationOrderIdRoute
-  ItemItemIdRoute: typeof ItemItemIdRoute
+  ItemSlugRoute: typeof ItemSlugRoute
   StaffLoginRoute: typeof StaffLoginRoute
   ApiPublicHooksCartAbandonmentRoute: typeof ApiPublicHooksCartAbandonmentRoute
   ApiPublicHooksShipdayRoute: typeof ApiPublicHooksShipdayRoute
@@ -619,11 +619,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof StaffLoginRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/item/$itemId': {
-      id: '/item/$itemId'
-      path: '/item/$itemId'
-      fullPath: '/item/$itemId'
-      preLoaderRoute: typeof ItemItemIdRouteImport
+    '/item/$slug': {
+      id: '/item/$slug'
+      path: '/item/$slug'
+      fullPath: '/item/$slug'
+      preLoaderRoute: typeof ItemSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/confirmation/$orderId': {
@@ -794,7 +794,7 @@ const rootRouteChildren: RootRouteChildren = {
   TabletRoute: TabletRoute,
   TermsRoute: TermsRoute,
   ConfirmationOrderIdRoute: ConfirmationOrderIdRoute,
-  ItemItemIdRoute: ItemItemIdRoute,
+  ItemSlugRoute: ItemSlugRoute,
   StaffLoginRoute: StaffLoginRoute,
   ApiPublicHooksCartAbandonmentRoute: ApiPublicHooksCartAbandonmentRoute,
   ApiPublicHooksShipdayRoute: ApiPublicHooksShipdayRoute,
