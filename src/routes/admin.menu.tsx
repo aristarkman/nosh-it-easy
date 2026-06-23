@@ -298,18 +298,44 @@ function MenuAdmin() {
   async function uploadPhoto(it: Item, file: File) {
     setUploading(it.id);
     try {
-      const ext = file.name.split(".").pop() || "jpg";
-      const path = `${it.id}-${Date.now()}.${ext}`;
-      const { error: upErr } = await supabase.storage.from("menu-photos").upload(path, file, { upsert: true, contentType: file.type });
+      const converted = await toWebP(file);
+      const ext = converted.name.split(".").pop() || "webp";
+      const path = `${it.id}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+      const { error: upErr } = await supabase.storage.from("menu-photos").upload(path, converted, { upsert: true, contentType: converted.type });
       if (upErr) { alert(upErr.message); return; }
       const { data: pub } = supabase.storage.from("menu-photos").getPublicUrl(path);
       const url = pub.publicUrl;
-      const { error: dbErr } = await supabase.from("menu_items").update({ photo_url: url }).eq("id", it.id);
-      if (dbErr) { alert(dbErr.message); return; }
-      setItems((prev) => prev.map((x) => x.id === it.id ? { ...x, photo_url: url } : x));
+      const existing = photos.filter((p) => p.menu_item_id === it.id);
+      const nextOrder = existing.length === 0 ? 0 : Math.max(...existing.map((p) => p.sort_order)) + 1;
+      const { data: ins, error: insErr } = await supabase
+        .from("menu_item_photos")
+        .insert({ menu_item_id: it.id, url, sort_order: nextOrder })
+        .select("id,menu_item_id,url,sort_order")
+        .single();
+      if (insErr || !ins) { alert(insErr?.message ?? "Failed to save photo"); return; }
+      setPhotos((prev) => [...prev, ins as Photo]);
+      // Keep menu_items.photo_url in sync with the primary (first) photo
+      if (existing.length === 0) {
+        await supabase.from("menu_items").update({ photo_url: url }).eq("id", it.id);
+        setItems((prev) => prev.map((x) => x.id === it.id ? { ...x, photo_url: url } : x));
+      }
     } finally {
       setUploading(null);
     }
+  }
+
+  async function deletePhoto(photo: Photo) {
+    const prev = photos;
+    const next = photos.filter((p) => p.id !== photo.id);
+    setPhotos(next);
+    const { error } = await supabase.from("menu_item_photos").delete().eq("id", photo.id);
+    if (error) { setPhotos(prev); alert(error.message); return; }
+    // Update primary photo_url to whatever's now first (or null)
+    const remaining = next.filter((p) => p.menu_item_id === photo.menu_item_id)
+      .sort((a, b) => a.sort_order - b.sort_order);
+    const newPrimary = remaining[0]?.url ?? null;
+    await supabase.from("menu_items").update({ photo_url: newPrimary }).eq("id", photo.menu_item_id);
+    setItems((prev) => prev.map((x) => x.id === photo.menu_item_id ? { ...x, photo_url: newPrimary } : x));
   }
 
 
