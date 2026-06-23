@@ -1,7 +1,9 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Loader2, Search, Trash2 } from "lucide-react";
+import { Loader2, Search, Trash2, X } from "lucide-react";
+import { toWebP } from "@/lib/image-convert";
+import { thumb } from "@/lib/image-url";
 
 
 export const Route = createFileRoute("/admin/menu")({
@@ -23,6 +25,7 @@ type Loc = { location_id: string; display_name: string | null };
 type Group = { id: string; name: string };
 type CatRow = { id: string; name: string; sort_order: number };
 type Assign = { menu_item_id: string; modifier_group_id: string };
+type Photo = { id: string; menu_item_id: string; url: string; sort_order: number };
 
 function fmt(n: number | undefined) {
   if (n == null) return "—";
@@ -36,6 +39,7 @@ function MenuAdmin() {
   const [groups, setGroups] = useState<Group[]>([]);
   const [catRows, setCatRows] = useState<CatRow[]>([]);
   const [assigns, setAssigns] = useState<Assign[]>([]);
+  const [photos, setPhotos] = useState<Photo[]>([]);
   const [loading, setLoading] = useState(true);
   const [q, setQ] = useState("");
   const [cat, setCat] = useState<string>("");
@@ -44,13 +48,14 @@ function MenuAdmin() {
 
   async function load() {
     setLoading(true);
-    const [i, p, l, g, a, c] = await Promise.all([
+    const [i, p, l, g, a, c, ph] = await Promise.all([
       supabase.from("menu_items").select("id,name,category,active,sort_order,photo_url,description").order("category").order("sort_order").order("name"),
       supabase.from("menu_item_prices").select("menu_item_id,location_id,price"),
       supabase.from("biyo_locations").select("location_id,display_name").order("location_id"),
       supabase.from("modifier_groups").select("id,name").order("name"),
       supabase.from("menu_item_modifier_groups").select("menu_item_id,modifier_group_id"),
       supabase.from("menu_categories").select("id,name,sort_order").eq("active", true).order("sort_order").order("name"),
+      supabase.from("menu_item_photos").select("id,menu_item_id,url,sort_order").order("sort_order"),
     ]);
     setItems((i.data ?? []) as Item[]);
     setPrices((p.data ?? []) as Price[]);
@@ -58,6 +63,7 @@ function MenuAdmin() {
     setGroups((g.data ?? []) as Group[]);
     setAssigns((a.data ?? []) as Assign[]);
     setCatRows((c.data ?? []) as CatRow[]);
+    setPhotos((ph.data ?? []) as Photo[]);
     setLoading(false);
   }
   useEffect(() => { load(); }, []);
@@ -292,18 +298,44 @@ function MenuAdmin() {
   async function uploadPhoto(it: Item, file: File) {
     setUploading(it.id);
     try {
-      const ext = file.name.split(".").pop() || "jpg";
-      const path = `${it.id}-${Date.now()}.${ext}`;
-      const { error: upErr } = await supabase.storage.from("menu-photos").upload(path, file, { upsert: true, contentType: file.type });
+      const converted = await toWebP(file);
+      const ext = converted.name.split(".").pop() || "webp";
+      const path = `${it.id}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+      const { error: upErr } = await supabase.storage.from("menu-photos").upload(path, converted, { upsert: true, contentType: converted.type });
       if (upErr) { alert(upErr.message); return; }
       const { data: pub } = supabase.storage.from("menu-photos").getPublicUrl(path);
       const url = pub.publicUrl;
-      const { error: dbErr } = await supabase.from("menu_items").update({ photo_url: url }).eq("id", it.id);
-      if (dbErr) { alert(dbErr.message); return; }
-      setItems((prev) => prev.map((x) => x.id === it.id ? { ...x, photo_url: url } : x));
+      const existing = photos.filter((p) => p.menu_item_id === it.id);
+      const nextOrder = existing.length === 0 ? 0 : Math.max(...existing.map((p) => p.sort_order)) + 1;
+      const { data: ins, error: insErr } = await supabase
+        .from("menu_item_photos")
+        .insert({ menu_item_id: it.id, url, sort_order: nextOrder })
+        .select("id,menu_item_id,url,sort_order")
+        .single();
+      if (insErr || !ins) { alert(insErr?.message ?? "Failed to save photo"); return; }
+      setPhotos((prev) => [...prev, ins as Photo]);
+      // Keep menu_items.photo_url in sync with the primary (first) photo
+      if (existing.length === 0) {
+        await supabase.from("menu_items").update({ photo_url: url }).eq("id", it.id);
+        setItems((prev) => prev.map((x) => x.id === it.id ? { ...x, photo_url: url } : x));
+      }
     } finally {
       setUploading(null);
     }
+  }
+
+  async function deletePhoto(photo: Photo) {
+    const prev = photos;
+    const next = photos.filter((p) => p.id !== photo.id);
+    setPhotos(next);
+    const { error } = await supabase.from("menu_item_photos").delete().eq("id", photo.id);
+    if (error) { setPhotos(prev); alert(error.message); return; }
+    // Update primary photo_url to whatever's now first (or null)
+    const remaining = next.filter((p) => p.menu_item_id === photo.menu_item_id)
+      .sort((a, b) => a.sort_order - b.sort_order);
+    const newPrimary = remaining[0]?.url ?? null;
+    await supabase.from("menu_items").update({ photo_url: newPrimary }).eq("id", photo.menu_item_id);
+    setItems((prev) => prev.map((x) => x.id === photo.menu_item_id ? { ...x, photo_url: newPrimary } : x));
   }
 
 
@@ -448,18 +480,30 @@ function MenuAdmin() {
                       onChange={() => toggleSelect(it.id)} aria-label={`Select ${it.name}`} />
                   </td>
                   <td className="px-4 py-3">
-                    <label className="block size-14 cursor-pointer overflow-hidden rounded-lg border border-border bg-muted hover:border-primary">
-                      {it.photo_url ? (
-                        <img src={it.photo_url} alt={it.name} className="size-full object-cover" />
-                      ) : (
-                        <span className="grid size-full place-items-center text-[10px] uppercase tracking-wider text-muted-foreground">
-                          {uploading === it.id ? "…" : "Add"}
-                        </span>
-                      )}
-                      <input type="file" accept="image/*" className="hidden"
-                        onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadPhoto(it, f); e.target.value = ""; }}
-                      />
-                    </label>
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      {photos
+                        .filter((p) => p.menu_item_id === it.id)
+                        .sort((a, b) => a.sort_order - b.sort_order)
+                        .map((p) => (
+                          <div key={p.id} className="group relative size-14 overflow-hidden rounded-lg border border-border bg-muted">
+                            <img src={thumb(p.url, 112)} alt="" className="size-full object-cover" />
+                            <button
+                              type="button"
+                              onClick={() => deletePhoto(p)}
+                              title="Remove photo"
+                              className="absolute right-0.5 top-0.5 grid size-4 place-items-center rounded-full bg-background/90 text-destructive opacity-0 shadow group-hover:opacity-100"
+                            >
+                              <X className="size-3" />
+                            </button>
+                          </div>
+                        ))}
+                      <label className="grid size-14 cursor-pointer place-items-center overflow-hidden rounded-lg border border-dashed border-border bg-muted text-[10px] uppercase tracking-wider text-muted-foreground hover:border-primary hover:text-primary">
+                        {uploading === it.id ? "…" : "+ Add"}
+                        <input type="file" accept="image/*" className="hidden"
+                          onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadPhoto(it, f); e.target.value = ""; }}
+                        />
+                      </label>
+                    </div>
                   </td>
                   <td className="px-4 py-3">
                     <select

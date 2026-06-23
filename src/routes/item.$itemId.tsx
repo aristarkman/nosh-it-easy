@@ -4,6 +4,7 @@ import { ArrowLeft, Minus, Plus } from "lucide-react";
 import type { MenuItem, ModifierGroup, ModifierOption } from "@/lib/menu-types";
 import { useOrder, fmt, buildLineFromItem } from "@/lib/order-context";
 import { getMenuItem } from "@/lib/menu.functions";
+import { thumb } from "@/lib/image-url";
 
 export const Route = createFileRoute("/item/$itemId")({
   loader: async ({ params }) => {
@@ -51,6 +52,8 @@ function ItemPage() {
   });
   const [qty, setQty] = useState(1);
   const [notes, setNotes] = useState("");
+  const photos = item.images && item.images.length > 0 ? item.images : (item.image ? [item.image] : []);
+  const [activePhoto, setActivePhoto] = useState(0);
 
   const toggle = (g: ModifierGroup, o: ModifierOption) => {
     setSelections((prev) => {
@@ -89,6 +92,33 @@ function ItemPage() {
       </Link>
 
       <div className="mt-4">
+        {photos.length > 0 && (
+          <div className="mb-5">
+            <div className="overflow-hidden rounded-2xl border border-border bg-muted">
+              <img
+                src={thumb(photos[activePhoto], 1024, 80)}
+                alt={item.name}
+                className="aspect-square w-full object-cover"
+              />
+            </div>
+            {photos.length > 1 && (
+              <div className="mt-3 flex gap-2 overflow-x-auto pb-1">
+                {photos.map((p, i) => (
+                  <button
+                    key={p + i}
+                    onClick={() => setActivePhoto(i)}
+                    className={`size-16 shrink-0 overflow-hidden rounded-lg border-2 ${
+                      i === activePhoto ? "border-primary" : "border-border"
+                    }`}
+                    aria-label={`Photo ${i + 1}`}
+                  >
+                    <img src={thumb(p, 160)} alt="" className="size-full object-cover" />
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
         <h1 className="font-display text-4xl font-black sm:text-5xl">{item.name}</h1>
         <p className="mt-2 text-muted-foreground">{item.description}</p>
         <div className="mt-3 text-lg font-semibold">{fmt(item.price)}</div>

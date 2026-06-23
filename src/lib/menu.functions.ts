@@ -7,7 +7,7 @@ const FALLBACK_CATEGORY = "More from the Deli";
 
 async function buildMenu(): Promise<{ items: MenuItem[]; categories: Category[] }> {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-  const [itemsRes, pricesRes, availRes, migRes, mgRes, moRes, catsRes] = await Promise.all([
+  const [itemsRes, pricesRes, availRes, migRes, mgRes, moRes, catsRes, photosRes] = await Promise.all([
     supabaseAdmin
       .from("menu_items")
       .select("id,name,description,category,popular,photo_url,sort_order")
@@ -27,6 +27,7 @@ async function buildMenu(): Promise<{ items: MenuItem[]; categories: Category[] 
     supabaseAdmin.from("modifier_groups").select("id,name,required,min_select,max_select"),
     supabaseAdmin.from("modifier_options").select("id,group_id,name,price_delta,sort_order").order("sort_order"),
     supabaseAdmin.from("menu_categories").select("id,name,blurb,sort_order").eq("active", true).order("sort_order").order("name"),
+    supabaseAdmin.from("menu_item_photos").select("menu_item_id,url,sort_order").order("sort_order"),
   ]);
 
   if (itemsRes.error) throw itemsRes.error;
@@ -75,6 +76,13 @@ async function buildMenu(): Promise<{ items: MenuItem[]; categories: Category[] 
   }));
   const validCatNames = new Set(categories.map((c) => c.name));
 
+  const photosByItem = new Map<string, string[]>();
+  for (const ph of photosRes.data ?? []) {
+    const arr = photosByItem.get(ph.menu_item_id) ?? [];
+    arr.push(ph.url);
+    photosByItem.set(ph.menu_item_id, arr);
+  }
+
   const items: MenuItem[] = [];
   for (const it of itemsRes.data ?? []) {
     const price = priceById.get(it.id);
@@ -88,6 +96,8 @@ async function buildMenu(): Promise<{ items: MenuItem[]; categories: Category[] 
     const raw = (it.category ?? "").trim();
     if (!validCatNames.has(raw)) continue; // hide items whose category isn't in admin Categories
     const cat = raw;
+    const photos = photosByItem.get(it.id) ?? [];
+    const primary = photos[0] ?? it.photo_url ?? undefined;
     items.push({
       id: it.id,
       name: it.name,
@@ -95,7 +105,8 @@ async function buildMenu(): Promise<{ items: MenuItem[]; categories: Category[] 
       price,
       category: cat,
       rawCategory: it.category,
-      image: it.photo_url ?? undefined,
+      image: primary,
+      images: photos.length > 0 ? photos : (it.photo_url ? [it.photo_url] : []),
       popular: !!it.popular,
       soldOut: soldOut.has(it.id),
       modifierGroups: groupsByItem.get(it.id) ?? [],
