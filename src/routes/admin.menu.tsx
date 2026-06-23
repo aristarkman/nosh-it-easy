@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Loader2, Search, Trash2, X } from "lucide-react";
 import { toWebP } from "@/lib/image-convert";
 import { thumb } from "@/lib/image-url";
+import { slugify } from "@/lib/slugify";
 
 
 export const Route = createFileRoute("/admin/menu")({
@@ -282,8 +283,9 @@ function MenuAdmin() {
     setSaving(true);
     try {
       const biyo_product_id = `manual-${crypto.randomUUID()}`;
+      const slug = `${slugify(name)}-${biyo_product_id.slice(-6)}`;
       const { data: ins, error } = await supabase.from("menu_items")
-        .insert({ name, category: newCat || null, biyo_product_id, active: true })
+        .insert({ name, category: newCat || null, biyo_product_id, active: true, slug })
         .select("id,name,category,active,sort_order,photo_url,description").single();
       if (error || !ins) { alert(error?.message ?? "Failed"); return; }
       const { error: pErr } = await supabase.from("menu_item_prices")

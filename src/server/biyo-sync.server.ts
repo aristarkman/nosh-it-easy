@@ -1,5 +1,6 @@
 // Server-only Biyo helpers. Do NOT import from client code.
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
+import { slugify } from "@/lib/slugify";
 
 const BIYO_BASE = "https://koshernosh.biyo.co/api/v1";
 
@@ -210,6 +211,7 @@ export async function runBiyoSync(): Promise<{
       .map((p) => ({
         biyo_product_id: String(p.id),
         name: p.name,
+        slug: `${slugify(p.name)}-${String(p.id).slice(-6)}`,
         category: pickCategory(p.categories),
         description: p.description ?? null,
         photo_url: p.image ?? null,
