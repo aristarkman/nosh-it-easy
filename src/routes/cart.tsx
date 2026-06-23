@@ -185,8 +185,8 @@ function CartPage() {
                   </div>
                   {hasModifiers ? (
                     <Link
-                      to="/item/$itemId"
-                      params={{ itemId: u.id }}
+                      to="/item/$slug"
+                      params={{ slug: u.slug }}
                       className="rounded-full bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground hover:opacity-90"
                     >
                       Add
