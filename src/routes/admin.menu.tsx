@@ -1,7 +1,9 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Loader2, Search, Trash2 } from "lucide-react";
+import { Loader2, Search, Trash2, X } from "lucide-react";
+import { toWebP } from "@/lib/image-convert";
+import { thumb } from "@/lib/image-url";
 
 
 export const Route = createFileRoute("/admin/menu")({
@@ -23,6 +25,7 @@ type Loc = { location_id: string; display_name: string | null };
 type Group = { id: string; name: string };
 type CatRow = { id: string; name: string; sort_order: number };
 type Assign = { menu_item_id: string; modifier_group_id: string };
+type Photo = { id: string; menu_item_id: string; url: string; sort_order: number };
 
 function fmt(n: number | undefined) {
   if (n == null) return "—";
@@ -36,6 +39,7 @@ function MenuAdmin() {
   const [groups, setGroups] = useState<Group[]>([]);
   const [catRows, setCatRows] = useState<CatRow[]>([]);
   const [assigns, setAssigns] = useState<Assign[]>([]);
+  const [photos, setPhotos] = useState<Photo[]>([]);
   const [loading, setLoading] = useState(true);
   const [q, setQ] = useState("");
   const [cat, setCat] = useState<string>("");
@@ -44,13 +48,14 @@ function MenuAdmin() {
 
   async function load() {
     setLoading(true);
-    const [i, p, l, g, a, c] = await Promise.all([
+    const [i, p, l, g, a, c, ph] = await Promise.all([
       supabase.from("menu_items").select("id,name,category,active,sort_order,photo_url,description").order("category").order("sort_order").order("name"),
       supabase.from("menu_item_prices").select("menu_item_id,location_id,price"),
       supabase.from("biyo_locations").select("location_id,display_name").order("location_id"),
       supabase.from("modifier_groups").select("id,name").order("name"),
       supabase.from("menu_item_modifier_groups").select("menu_item_id,modifier_group_id"),
       supabase.from("menu_categories").select("id,name,sort_order").eq("active", true).order("sort_order").order("name"),
+      supabase.from("menu_item_photos").select("id,menu_item_id,url,sort_order").order("sort_order"),
     ]);
     setItems((i.data ?? []) as Item[]);
     setPrices((p.data ?? []) as Price[]);
@@ -58,6 +63,7 @@ function MenuAdmin() {
     setGroups((g.data ?? []) as Group[]);
     setAssigns((a.data ?? []) as Assign[]);
     setCatRows((c.data ?? []) as CatRow[]);
+    setPhotos((ph.data ?? []) as Photo[]);
     setLoading(false);
   }
   useEffect(() => { load(); }, []);
