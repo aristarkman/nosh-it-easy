@@ -1,0 +1,2 @@
+UPDATE public.menu_item_photos SET url = 'https://ihqeuyvovhleamkowjpg.supabase.co/storage/v1/object/public/menu-photos/bg-79c09ede-1f60-49e7-a2c1-ae804ccc14f5-shabbat1.png' WHERE id = 'fffa1e71-4a3c-4d3b-9b6a-8739363c3728';
+UPDATE public.menu_items SET photo_url = 'https://ihqeuyvovhleamkowjpg.supabase.co/storage/v1/object/public/menu-photos/bg-79c09ede-1f60-49e7-a2c1-ae804ccc14f5-shabbat1.png' WHERE id = '79c09ede-1f60-49e7-a2c1-ae804ccc14f5';
