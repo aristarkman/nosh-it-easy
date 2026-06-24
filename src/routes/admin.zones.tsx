@@ -137,6 +137,9 @@ function ZoneEditor({ locationId }: { locationId: string }) {
           void onPolygonDrawn(poly);
         });
 
+        if (!g.maps.drawing?.OverlayType?.POLYGON) {
+          throw new Error("Google Maps polygon drawing mode is unavailable");
+        }
         setMapReady(true);
       })
       .catch((e) => toast.error(`Map load failed: ${e.message}`));
