@@ -37,6 +37,61 @@ export const Route = createFileRoute("/item/$slug")({
   component: ItemPage,
 });
 
+function ModifierSection({
+  g,
+  selections,
+  toggle,
+}: {
+  g: ModifierGroup;
+  selections: Record<string, ModifierOption[]>;
+  toggle: (g: ModifierGroup, o: ModifierOption) => void;
+}) {
+  const selected = selections[g.id] ?? [];
+  return (
+    <section>
+      <div className="flex items-baseline justify-between">
+        <h2 className="font-display text-xl font-bold">{g.name}</h2>
+        <span className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+          {g.required ? "Required" : "Optional"}
+          {g.max > 1 && ` · pick up to ${g.max}`}
+        </span>
+      </div>
+      <div className="mt-3 divide-y divide-border overflow-hidden rounded-xl border border-border bg-card">
+        {g.options.map((o) => {
+          const isSelected = !!selected.find((x) => x.id === o.id);
+          return (
+            <button
+              key={o.id}
+              onClick={() => toggle(g, o)}
+              className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left transition hover:bg-muted/40"
+            >
+              <div className="flex items-center gap-3">
+                <span
+                  className={`flex size-5 shrink-0 items-center justify-center rounded-${
+                    g.max === 1 ? "full" : "md"
+                  } border-2 ${
+                    isSelected ? "border-primary bg-primary text-primary-foreground" : "border-border"
+                  }`}
+                >
+                  {isSelected && (
+                    <span className={`block ${g.max === 1 ? "size-2 rounded-full bg-primary-foreground" : "text-[11px] font-black"}`}>
+                      {g.max === 1 ? "" : "✓"}
+                    </span>
+                  )}
+                </span>
+                <span className="font-medium">{o.name}</span>
+              </div>
+              {o.price ? (
+                <span className="text-sm text-muted-foreground">+{fmt(o.price)}</span>
+              ) : null}
+            </button>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
 function ItemPage() {
   const { item } = Route.useLoaderData() as { item: MenuItem };
   const { addToCart } = useOrder();
@@ -91,9 +146,9 @@ function ItemPage() {
         <ArrowLeft className="size-4" /> Back to menu
       </Link>
 
-      <div className="mt-4">
+      <div className="mt-4 grid gap-6 md:grid-cols-2">
         {photos.length > 0 && (
-          <div className="mb-5">
+          <div className="md:mb-0">
             <div className="overflow-hidden rounded-2xl border border-border bg-muted">
               <img
                 src={thumb(photos[activePhoto], 1024, 80)}
@@ -119,54 +174,26 @@ function ItemPage() {
             )}
           </div>
         )}
-        <h1 className="font-display text-4xl font-black sm:text-5xl">{item.name}</h1>
-        <p className="mt-2 text-muted-foreground">{item.description}</p>
-        <div className="mt-3 text-lg font-semibold">{fmt(item.price)}</div>
+        <div className={photos.length > 0 ? "" : "md:col-span-2"}>
+          <h1 className="font-display text-4xl font-black sm:text-5xl">{item.name}</h1>
+          <p className="mt-2 text-muted-foreground">{item.description}</p>
+          <div className="mt-3 text-lg font-semibold">{fmt(item.price)}</div>
+        </div>
       </div>
 
-      {item.modifierGroups?.map((g) => (
-        <section key={g.id} className="mt-8">
-          <div className="flex items-baseline justify-between">
-            <h2 className="font-display text-xl font-bold">{g.name}</h2>
-            <span className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
-              {g.required ? "Required" : "Optional"}
-              {g.max > 1 && ` · pick up to ${g.max}`}
-            </span>
-          </div>
-          <div className="mt-3 divide-y divide-border overflow-hidden rounded-xl border border-border bg-card">
-            {g.options.map((o) => {
-              const selected = !!selections[g.id]?.find((x) => x.id === o.id);
-              return (
-                <button
-                  key={o.id}
-                  onClick={() => toggle(g, o)}
-                  className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left transition hover:bg-muted/40"
-                >
-                  <div className="flex items-center gap-3">
-                    <span
-                      className={`flex size-5 shrink-0 items-center justify-center rounded-${
-                        g.max === 1 ? "full" : "md"
-                      } border-2 ${
-                        selected ? "border-primary bg-primary text-primary-foreground" : "border-border"
-                      }`}
-                    >
-                      {selected && (
-                        <span className={`block ${g.max === 1 ? "size-2 rounded-full bg-primary-foreground" : "text-[11px] font-black"}`}>
-                          {g.max === 1 ? "" : "✓"}
-                        </span>
-                      )}
-                    </span>
-                    <span className="font-medium">{o.name}</span>
-                  </div>
-                  {o.price ? (
-                    <span className="text-sm text-muted-foreground">+{fmt(o.price)}</span>
-                  ) : null}
-                </button>
-              );
-            })}
-          </div>
-        </section>
-      ))}
+      {item.modifierGroups && item.modifierGroups.length > 1 ? (
+        <div className="mt-8 grid gap-6 md:grid-cols-2">
+          {item.modifierGroups.map((g) => (
+            <ModifierSection key={g.id} g={g} selections={selections} toggle={toggle} />
+          ))}
+        </div>
+      ) : (
+        <div className="mt-8 space-y-6">
+          {item.modifierGroups?.map((g) => (
+            <ModifierSection key={g.id} g={g} selections={selections} toggle={toggle} />
+          ))}
+        </div>
+      )}
 
       <section className="mt-8">
         <h2 className="font-display text-xl font-bold">Special instructions</h2>
