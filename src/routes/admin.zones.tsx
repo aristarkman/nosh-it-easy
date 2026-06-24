@@ -29,7 +29,7 @@ const PALETTE = ["#ef4444", "#3b82f6", "#10b981", "#f59e0b", "#8b5cf6", "#ec4899
 // Rough centers for the two known stores; map will recenter to drawn polygons if any
 const LOCATION_CENTERS: Record<string, { lat: number; lng: number }> = {
   "glen-rock": { lat: 40.9626, lng: -74.1326 },
-  "cresskill": { lat: 40.9412, lng: -73.9594 },
+  cresskill: { lat: 40.9412, lng: -73.9594 },
 };
 
 const TILE_SIZE = 256;
@@ -72,8 +72,8 @@ function ZonesPage() {
         </div>
       </div>
       <p className="text-sm text-muted-foreground">
-        Draw delivery areas directly on the map. Each zone has its own delivery fee and minimum
-        order. Customer addresses are matched to the smallest containing zone at checkout.
+        Draw delivery areas directly on the map. Each zone has its own delivery fee and minimum order. Customer
+        addresses are matched to the smallest containing zone at checkout.
       </p>
       <ZoneEditor key={activeLoc} locationId={activeLoc} />
     </div>
@@ -170,9 +170,7 @@ function ZoneEditor({ locationId }: { locationId: string }) {
     const rect = el.getBoundingClientRect();
     const scale = 2 ** (zoom ?? 12);
     const fallbackCenter = LOCATION_CENTERS[locationId] ?? { lat: 40.9, lng: -74.0 };
-    const worldCenter = latLngToWorld(
-      center ? { lat: center.lat(), lng: center.lng() } : fallbackCenter,
-    );
+    const worldCenter = latLngToWorld(center ? { lat: center.lat(), lng: center.lng() } : fallbackCenter);
     const worldPoint = {
       x: worldCenter.x + (clientX - rect.left - rect.width / 2) / scale,
       y: worldCenter.y + (clientY - rect.top - rect.height / 2) / scale,
@@ -186,10 +184,7 @@ function ZoneEditor({ locationId }: { locationId: string }) {
     const point = clientPointToLatLng(e.clientX, e.clientY);
     if (!point) return toast.error("Map is still loading");
     const rect = e.currentTarget.getBoundingClientRect();
-    setDraftOverlayPoints((prev) => [
-      ...prev,
-      { x: e.clientX - rect.left, y: e.clientY - rect.top },
-    ]);
+    setDraftOverlayPoints((prev) => [...prev, { x: e.clientX - rect.left, y: e.clientY - rect.top }]);
     addDraftPoint(point);
   };
 
@@ -372,10 +367,7 @@ function ZoneEditor({ locationId }: { locationId: string }) {
       .getPath()
       .getArray()
       .map((p) => ({ lat: p.lat(), lng: p.lng() }));
-    const { error } = await supabase
-      .from("delivery_zone_polygons")
-      .update({ polygon: path })
-      .eq("id", id);
+    const { error } = await supabase.from("delivery_zone_polygons").update({ polygon: path }).eq("id", id);
     if (error) toast.error(error.message);
   };
 
@@ -425,9 +417,7 @@ function ZoneEditor({ locationId }: { locationId: string }) {
     <div className="grid gap-4 lg:grid-cols-[1fr_360px]">
       <div className="overflow-hidden rounded-2xl border border-border bg-card">
         <div className="flex items-center justify-between border-b border-border bg-muted/30 px-4 py-2">
-          <div className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-            Map
-          </div>
+          <div className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Map</div>
           {drawing ? (
             <div className="flex gap-2">
               <button
@@ -447,9 +437,10 @@ function ZoneEditor({ locationId }: { locationId: string }) {
           ) : (
             <button
               onClick={startDrawing}
+              disabled={!mapReady || !mapInstance.current}
               className="inline-flex items-center gap-1.5 rounded-full bg-primary px-3 py-1.5 text-xs font-bold uppercase tracking-wider text-primary-foreground"
             >
-              <Plus className="size-3.5" /> Draw new zone
+              <Plus className="size-3.5" /> {mapReady ? "Draw new zone" : "Loading map…"}
             </button>
           )}
         </div>
@@ -477,20 +468,8 @@ function ZoneEditor({ locationId }: { locationId: string }) {
                 )}
                 {draftOverlayPoints.map((p, i) => (
                   <g key={`${p.x}-${p.y}-${i}`}>
-                    <circle
-                      cx={p.x}
-                      cy={p.y}
-                      r="10"
-                      fill={draftColor.current}
-                      stroke="white"
-                      strokeWidth="2"
-                    />
-                    <text
-                      x={p.x}
-                      y={p.y + 4}
-                      textAnchor="middle"
-                      className="fill-white text-[10px] font-bold"
-                    >
+                    <circle cx={p.x} cy={p.y} r="10" fill={draftColor.current} stroke="white" strokeWidth="2" />
+                    <text x={p.x} y={p.y + 4} textAnchor="middle" className="fill-white text-[10px] font-bold">
                       {i + 1}
                     </text>
                   </g>
@@ -513,8 +492,8 @@ function ZoneEditor({ locationId }: { locationId: string }) {
           </div>
           {zones.length === 0 ? (
             <p className="mt-3 text-sm text-muted-foreground">
-              No zones yet. Click <span className="font-semibold">Draw new zone</span> to outline
-              a delivery area on the map.
+              No zones yet. Click <span className="font-semibold">Draw new zone</span> to outline a delivery area on the
+              map.
             </p>
           ) : (
             <ul className="mt-3 space-y-2">
@@ -583,10 +562,7 @@ function ZoneEditor({ locationId }: { locationId: string }) {
                       </div>
                     ) : (
                       <div className="flex items-center gap-3">
-                        <span
-                          className="size-4 shrink-0 rounded"
-                          style={{ background: z.color }}
-                        />
+                        <span className="size-4 shrink-0 rounded" style={{ background: z.color }} />
                         <div className="min-w-0 flex-1">
                           <div className="truncate font-semibold">{z.name}</div>
                           <div className="text-xs text-muted-foreground">
