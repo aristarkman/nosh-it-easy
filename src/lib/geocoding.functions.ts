@@ -11,10 +11,14 @@ export const geocodeAddress = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => InputSchema.parse(input))
   .handler(async ({ data }) => {
     const LOVABLE_API_KEY = process.env.LOVABLE_API_KEY;
+    // Prefer the managed connector key for server-side Geocoding through the
+    // gateway. User-supplied custom keys (KEY_1 / KEY_2) are typically
+    // referrer-restricted browser keys and Google rejects them server-side
+    // with REQUEST_DENIED.
     const GOOGLE_MAPS_API_KEY =
-      process.env.GOOGLE_MAPS_API_KEY_2 ??
+      process.env.GOOGLE_MAPS_API_KEY ??
       process.env.GOOGLE_MAPS_API_KEY_1 ??
-      process.env.GOOGLE_MAPS_API_KEY;
+      process.env.GOOGLE_MAPS_API_KEY_2;
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
     if (!GOOGLE_MAPS_API_KEY) throw new Error("GOOGLE_MAPS_API_KEY is not configured");
 
