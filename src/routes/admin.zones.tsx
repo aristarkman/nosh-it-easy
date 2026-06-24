@@ -400,7 +400,10 @@ function ZoneEditor({ locationId }: { locationId: string }) {
   };
 
   const startDrawing = () => {
-    setMapReady(true);
+    if (!mapInstance.current || !window.google) {
+      toast.error("Map is still loading, please wait");
+      return;
+    }
     setDrawing(true);
     try {
       startPolygonDrawing(window.google);
