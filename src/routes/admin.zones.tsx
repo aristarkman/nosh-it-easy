@@ -412,12 +412,21 @@ function ZoneEditor({ locationId }: { locationId: string }) {
             Map
           </div>
           {drawing ? (
-            <button
-              onClick={stopDrawing}
-              className="inline-flex items-center gap-1.5 rounded-full bg-destructive px-3 py-1.5 text-xs font-bold uppercase tracking-wider text-destructive-foreground"
-            >
-              <X className="size-3.5" /> Cancel drawing
-            </button>
+            <div className="flex gap-2">
+              <button
+                onClick={finishDraftDrawing}
+                disabled={draftPointCount < 3}
+                className="inline-flex items-center gap-1.5 rounded-full bg-primary px-3 py-1.5 text-xs font-bold uppercase tracking-wider text-primary-foreground disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <Save className="size-3.5" /> Finish zone
+              </button>
+              <button
+                onClick={stopDrawing}
+                className="inline-flex items-center gap-1.5 rounded-full bg-destructive px-3 py-1.5 text-xs font-bold uppercase tracking-wider text-destructive-foreground"
+              >
+                <X className="size-3.5" /> Cancel drawing
+              </button>
+            </div>
           ) : (
             <button
               onClick={startDrawing}
@@ -427,10 +436,22 @@ function ZoneEditor({ locationId }: { locationId: string }) {
             </button>
           )}
         </div>
-        <div ref={mapRef} className="h-[560px] w-full" />
+        <div className="relative h-[560px] w-full">
+          <div ref={mapRef} className="h-full w-full" />
+          {drawing && (
+            <div
+              className="absolute inset-0 z-20 cursor-crosshair"
+              role="button"
+              tabIndex={0}
+              aria-label="Click map points for delivery zone"
+              onClick={onDraftOverlayClick}
+              onDoubleClick={onDraftOverlayDoubleClick}
+            />
+          )}
+        </div>
         {drawing && (
           <div className="border-t border-border bg-primary/5 px-4 py-2 text-xs text-foreground">
-            Click on the map to drop polygon points. Click marker 1 or double-click the map to close the shape.
+            Click on the map to drop polygon points, then click Finish zone. Points added: {draftPointCount}.
           </div>
         )}
       </div>
