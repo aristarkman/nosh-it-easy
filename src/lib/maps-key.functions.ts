@@ -30,7 +30,10 @@ export const getMapsBrowserKey = createServerFn({ method: "GET" }).handler(async
     host.startsWith("localhost:");
 
   const managed = process.env.GOOGLE_MAPS_BROWSER_KEY ?? "";
-  const custom = process.env.GOOGLE_MAPS_BROWSER_KEY_1 ?? "";
+  const custom =
+    process.env.GOOGLE_MAPS_BROWSER_KEY_2 ||
+    process.env.GOOGLE_MAPS_BROWSER_KEY_1 ||
+    "";
   const trackingId = process.env.GOOGLE_MAPS_TRACKING_ID ?? "";
 
   const isKnownCustomDomain = CUSTOM_DOMAIN_SUFFIXES.some(
