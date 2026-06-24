@@ -70,6 +70,8 @@ function ZoneEditor({ locationId }: { locationId: string }) {
   const drawingListeners = useRef<google.maps.MapsEventListener[]>([]);
   const draftMarkers = useRef<google.maps.Marker[]>([]);
   const draftLine = useRef<google.maps.Polyline | null>(null);
+  const draftPoints = useRef<LatLng[]>([]);
+  const draftColor = useRef(PALETTE[0]);
   const polysRef = useRef<Map<string, google.maps.Polygon>>(new Map());
 
   const [zones, setZones] = useState<Zone[]>([]);
@@ -79,6 +81,7 @@ function ZoneEditor({ locationId }: { locationId: string }) {
   const [editMin, setEditMin] = useState("");
   const [mapReady, setMapReady] = useState(false);
   const [drawing, setDrawing] = useState(false);
+  const [draftPointCount, setDraftPointCount] = useState(0);
 
   const clearDraft = () => {
     drawingListeners.current.forEach((listener) => listener.remove());
@@ -87,6 +90,8 @@ function ZoneEditor({ locationId }: { locationId: string }) {
     draftMarkers.current = [];
     draftLine.current?.setMap(null);
     draftLine.current = null;
+    draftPoints.current = [];
+    setDraftPointCount(0);
   };
 
   const startPolygonDrawing = (g: typeof google = window.google) => {
@@ -94,10 +99,10 @@ function ZoneEditor({ locationId }: { locationId: string }) {
     if (!mapInstance.current) throw new Error("Map is still loading");
     if (!g?.maps?.Map || !g.maps.Polyline || !g.maps.Marker || !g.maps.Polygon) throw new Error("Google Maps tools are unavailable");
 
-    const points: LatLng[] = [];
     const map = mapInstance.current;
     const nextIdx = zones.length;
     const color = PALETTE[nextIdx % PALETTE.length];
+    draftColor.current = color;
     const line = new g.maps.Polyline({
       map,
       path: [],
@@ -106,41 +111,65 @@ function ZoneEditor({ locationId }: { locationId: string }) {
       strokeWeight: 2,
     });
     draftLine.current = line;
-
-    const finish = () => {
-      if (points.length < 3) {
-        toast.error("Add at least 3 points to create a zone");
-        return;
-      }
-      const path = [...points];
-      clearDraft();
-      setDrawing(false);
-      void createZoneFromPath(path);
-    };
-
-    drawingListeners.current.push(g.maps.event.addListener(map, "click", (event: google.maps.MapMouseEvent) => {
-      if (!event.latLng) return;
-      const point = { lat: event.latLng.lat(), lng: event.latLng.lng() };
-      points.push(point);
-      line.setPath(points);
-
-      const marker = new g.maps.Marker({
-        map,
-        position: point,
-        label: String(points.length),
-        title: points.length === 1 ? "Click to close zone" : "Zone point",
-      });
-      if (points.length === 1) {
-        drawingListeners.current.push(g.maps.event.addListener(marker, "click", finish));
-      }
-      draftMarkers.current.push(marker);
-    }));
-
-    drawingListeners.current.push(g.maps.event.addListener(map, "dblclick", () => {
-      finish();
-    }));
-
     map.setOptions({ draggableCursor: "crosshair" });
+  };
+
+  const addDraftPoint = (point: LatLng) => {
+    if (!window.google || !mapInstance.current) return;
+    const points = [...draftPoints.current, point];
+    draftPoints.current = points;
+    setDraftPointCount(points.length);
+    draftLine.current?.setPath(points);
+
+    const marker = new window.google.maps.Marker({
+      map: mapInstance.current,
+      position: point,
+      label: String(points.length),
+      title: "Zone point",
+    });
+    draftMarkers.current.push(marker);
+  };
+
+  const finishDraftDrawing = () => {
+    if (draftPoints.current.length < 3) {
+      toast.error("Add at least 3 points to create a zone");
+      return;
+    }
+    const path = [...draftPoints.current];
+    clearDraft();
+    mapInstance.current?.setOptions({ draggableCursor: null });
+    setDrawing(false);
+    void createZoneFromPath(path);
+  };
+
+  const clientPointToLatLng = (clientX: number, clientY: number): LatLng | null => {
+    const map = mapInstance.current;
+    const el = mapRef.current;
+    const center = map?.getCenter();
+    const zoom = map?.getZoom();
+    if (!map || !el || !center || zoom == null) return null;
+
+    const rect = el.getBoundingClientRect();
+    const scale = 2 ** zoom;
+    const worldCenter = latLngToWorld({ lat: center.lat(), lng: center.lng() });
+    const worldPoint = {
+      x: worldCenter.x + (clientX - rect.left - rect.width / 2) / scale,
+      y: worldCenter.y + (clientY - rect.top - rect.height / 2) / scale,
+    };
+    return worldToLatLng(worldPoint);
+  };
+
+  const onDraftOverlayClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (e.detail > 1) return;
+    const point = clientPointToLatLng(e.clientX, e.clientY);
+    if (!point) return toast.error("Map is still loading");
+    addDraftPoint(point);
+  };
+
+  const onDraftOverlayDoubleClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    finishDraftDrawing();
   };
 
   const stopPolygonDrawing = () => {
