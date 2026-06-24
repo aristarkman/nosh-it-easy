@@ -155,10 +155,6 @@ function ZoneEditor({ locationId }: { locationId: string }) {
       mapInstance.current?.setOptions({ draggableCursor: null });
     };
   }, []);
-    });
-
-    return dm;
-  };
 
   const load = async () => {
     const { data, error } = await supabase
