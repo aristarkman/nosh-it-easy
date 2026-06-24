@@ -283,35 +283,41 @@ function ZoneEditor({ locationId }: { locationId: string }) {
     // Add/update polygons
     const bounds = new google.maps.LatLngBounds();
     zones.forEach((z) => {
-      const path = z.polygon.map((p) => ({ lat: p.lat, lng: p.lng }));
-      path.forEach((p) => bounds.extend(p));
-      let poly = polysRef.current.get(z.id);
-      if (!poly) {
-        poly = new google.maps.Polygon({
-          paths: path,
-          strokeColor: z.color,
-          fillColor: z.color,
-          fillOpacity: editingId === z.id ? 0.35 : 0.2,
-          strokeWeight: 2,
-          editable: editingId === z.id,
-          map,
-        });
-        polysRef.current.set(z.id, poly);
-        google.maps.event.addListener(poly, "click", () => beginEdit(z.id));
-        // persist edits when path changes
-        const path0 = poly.getPath();
-        const save = () => void persistGeometry(z.id);
-        google.maps.event.addListener(path0, "set_at", save);
-        google.maps.event.addListener(path0, "insert_at", save);
-        google.maps.event.addListener(path0, "remove_at", save);
-      } else {
-        poly.setPath(path);
-        poly.setOptions({
-          strokeColor: z.color,
-          fillColor: z.color,
-          editable: editingId === z.id,
-          fillOpacity: editingId === z.id ? 0.35 : 0.2,
-        });
+      try {
+        const path = z.polygon.map((p) => ({ lat: p.lat, lng: p.lng }));
+        path.forEach((p) => bounds.extend(p));
+        let poly = polysRef.current.get(z.id);
+        if (!poly) {
+          poly = new google.maps.Polygon({
+            paths: path,
+            strokeColor: z.color,
+            fillColor: z.color,
+            fillOpacity: editingId === z.id ? 0.35 : 0.2,
+            strokeWeight: 2,
+            editable: editingId === z.id,
+            map,
+          });
+          polysRef.current.set(z.id, poly);
+          google.maps.event.addListener(poly, "click", () => beginEdit(z.id));
+          // persist edits when path changes
+          const path0 = poly.getPath();
+          const save = () => void persistGeometry(z.id);
+          google.maps.event.addListener(path0, "set_at", save);
+          google.maps.event.addListener(path0, "insert_at", save);
+          google.maps.event.addListener(path0, "remove_at", save);
+        } else {
+          poly.setPath(path);
+          poly.setOptions({
+            strokeColor: z.color,
+            fillColor: z.color,
+            editable: editingId === z.id,
+            fillOpacity: editingId === z.id ? 0.35 : 0.2,
+          });
+        }
+      } catch (e) {
+        polysRef.current.get(z.id)?.setMap(null);
+        polysRef.current.delete(z.id);
+        console.warn("Unable to render delivery zone on the map", e);
       }
     });
 
