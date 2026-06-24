@@ -4,7 +4,12 @@ import { getRequestHost } from "@tanstack/react-start/server";
 const CUSTOM_DOMAIN_SUFFIXES = ["koshernosh.com"];
 
 function normalizeHost(host: string) {
-  return host.trim().toLowerCase().replace(/:\d+$/, "");
+  return host
+    .trim()
+    .toLowerCase()
+    .replace(/^https?:\/\//, "")
+    .replace(/\/.*$/, "")
+    .replace(/:\d+$/, "");
 }
 
 // Returns the right browser key for the current host.
