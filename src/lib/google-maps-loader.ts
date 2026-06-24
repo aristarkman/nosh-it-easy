@@ -57,6 +57,7 @@ export function loadGoogleMaps(): Promise<typeof google> {
       const params = new URLSearchParams({
         key,
         loading: "async",
+        libraries: "drawing,geometry",
         callback: "__gmapsInit",
       });
       if (trackingId) params.set("channel", trackingId);
