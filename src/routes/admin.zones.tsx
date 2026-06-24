@@ -248,10 +248,8 @@ function ZoneEditor({ locationId }: { locationId: string }) {
         });
         mapInstance.current = map;
 
-        mapInstance.current = map;
-
         // Draw 9-mile dashed radius boundary
-        const center = LOCATION_CENTERS[locationId] ?? { lat: 40.9, lng: -74.0 };
+
         const radiusMeters = 9 * 1609.34;
         const circlePoints: google.maps.LatLngLiteral[] = [];
         for (let i = 0; i <= 360; i += 2) {
