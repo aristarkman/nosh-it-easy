@@ -1,6 +1,6 @@
 /// <reference types="google.maps" />
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useRef, useState, type MouseEvent } from "react";
+import { useEffect, useRef, useState, type MouseEvent, type PointerEvent } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { LOCATIONS, fmt } from "@/lib/order-context";
 import { toast } from "sonner";
@@ -98,6 +98,7 @@ function ZoneEditor({ locationId }: { locationId: string }) {
   const [mapReady, setMapReady] = useState(false);
   const [drawing, setDrawing] = useState(false);
   const [draftPointCount, setDraftPointCount] = useState(0);
+  const [draftOverlayPoints, setDraftOverlayPoints] = useState<{ x: number; y: number }[]>([]);
 
   const clearDraft = () => {
     drawingListeners.current.forEach((listener) => listener.remove());
@@ -108,12 +109,12 @@ function ZoneEditor({ locationId }: { locationId: string }) {
     draftLine.current = null;
     draftPoints.current = [];
     setDraftPointCount(0);
+    setDraftOverlayPoints([]);
   };
 
   const startPolygonDrawing = (g: typeof google = window.google) => {
     clearDraft();
-    if (!mapInstance.current) throw new Error("Map is still loading");
-    if (!g?.maps?.Map || !g.maps.Polyline || !g.maps.Marker || !g.maps.Polygon) throw new Error("Google Maps tools are unavailable");
+    if (!mapInstance.current || !g?.maps?.Polyline) return;
 
     const map = mapInstance.current;
     const nextIdx = zones.length;
@@ -131,19 +132,20 @@ function ZoneEditor({ locationId }: { locationId: string }) {
   };
 
   const addDraftPoint = (point: LatLng) => {
-    if (!window.google || !mapInstance.current) return;
     const points = [...draftPoints.current, point];
     draftPoints.current = points;
     setDraftPointCount(points.length);
     draftLine.current?.setPath(points);
 
-    const marker = new window.google.maps.Marker({
-      map: mapInstance.current,
-      position: point,
-      label: String(points.length),
-      title: "Zone point",
-    });
-    draftMarkers.current.push(marker);
+    if (window.google?.maps?.Marker && mapInstance.current) {
+      const marker = new window.google.maps.Marker({
+        map: mapInstance.current,
+        position: point,
+        label: String(points.length),
+        title: "Zone point",
+      });
+      draftMarkers.current.push(marker);
+    }
   };
 
   const finishDraftDrawing = () => {
@@ -163,11 +165,14 @@ function ZoneEditor({ locationId }: { locationId: string }) {
     const el = mapRef.current;
     const center = map?.getCenter();
     const zoom = map?.getZoom();
-    if (!map || !el || !center || zoom == null) return null;
+    if (!el) return null;
 
     const rect = el.getBoundingClientRect();
-    const scale = 2 ** zoom;
-    const worldCenter = latLngToWorld({ lat: center.lat(), lng: center.lng() });
+    const scale = 2 ** (zoom ?? 12);
+    const fallbackCenter = LOCATION_CENTERS[locationId] ?? { lat: 40.9, lng: -74.0 };
+    const worldCenter = latLngToWorld(
+      center ? { lat: center.lat(), lng: center.lng() } : fallbackCenter,
+    );
     const worldPoint = {
       x: worldCenter.x + (clientX - rect.left - rect.width / 2) / scale,
       y: worldCenter.y + (clientY - rect.top - rect.height / 2) / scale,
@@ -175,11 +180,16 @@ function ZoneEditor({ locationId }: { locationId: string }) {
     return worldToLatLng(worldPoint);
   };
 
-  const onDraftOverlayClick = (e: MouseEvent<HTMLDivElement>) => {
+  const onDraftOverlayPointerDown = (e: PointerEvent<HTMLDivElement>) => {
     e.preventDefault();
     e.stopPropagation();
     const point = clientPointToLatLng(e.clientX, e.clientY);
     if (!point) return toast.error("Map is still loading");
+    const rect = e.currentTarget.getBoundingClientRect();
+    setDraftOverlayPoints((prev) => [
+      ...prev,
+      { x: e.clientX - rect.left, y: e.clientY - rect.top },
+    ]);
     addDraftPoint(point);
   };
 
@@ -392,12 +402,12 @@ function ZoneEditor({ locationId }: { locationId: string }) {
   };
 
   const startDrawing = () => {
+    setMapReady(true);
+    setDrawing(true);
     try {
-      setMapReady(true);
-      setDrawing(true);
       startPolygonDrawing(window.google);
     } catch (e) {
-      toast.error(`Drawing unavailable: ${(e as Error).message}`);
+      console.warn("Map drawing overlay unavailable; using click capture only", e);
     }
   };
 
@@ -442,10 +452,45 @@ function ZoneEditor({ locationId }: { locationId: string }) {
           {drawing && (
             <div
               className="absolute inset-0 z-[1000001] block cursor-crosshair bg-transparent"
+              role="button"
+              tabIndex={0}
               aria-label="Click map points for delivery zone"
-              onMouseDown={onDraftOverlayClick}
+              onPointerDown={onDraftOverlayPointerDown}
               onDoubleClick={onDraftOverlayDoubleClick}
-            />
+            >
+              <svg className="pointer-events-none absolute inset-0 h-full w-full">
+                {draftOverlayPoints.length > 1 && (
+                  <polyline
+                    points={draftOverlayPoints.map((p) => `${p.x},${p.y}`).join(" ")}
+                    fill="none"
+                    stroke={draftColor.current}
+                    strokeWidth="3"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                )}
+                {draftOverlayPoints.map((p, i) => (
+                  <g key={`${p.x}-${p.y}-${i}`}>
+                    <circle
+                      cx={p.x}
+                      cy={p.y}
+                      r="10"
+                      fill={draftColor.current}
+                      stroke="white"
+                      strokeWidth="2"
+                    />
+                    <text
+                      x={p.x}
+                      y={p.y + 4}
+                      textAnchor="middle"
+                      className="fill-white text-[10px] font-bold"
+                    >
+                      {i + 1}
+                    </text>
+                  </g>
+                ))}
+              </svg>
+            </div>
           )}
         </div>
         {drawing && (
