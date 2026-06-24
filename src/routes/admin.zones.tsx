@@ -176,7 +176,8 @@ function ZoneEditor({ locationId }: { locationId: string }) {
   };
 
   const onDraftOverlayClick = (e: MouseEvent<HTMLDivElement>) => {
-    if (e.detail > 1) return;
+    e.preventDefault();
+    e.stopPropagation();
     const point = clientPointToLatLng(e.clientX, e.clientY);
     if (!point) return toast.error("Map is still loading");
     addDraftPoint(point);
@@ -444,7 +445,7 @@ function ZoneEditor({ locationId }: { locationId: string }) {
               role="button"
               tabIndex={0}
               aria-label="Click map points for delivery zone"
-              onClick={onDraftOverlayClick}
+              onMouseDown={onDraftOverlayClick}
               onDoubleClick={onDraftOverlayDoubleClick}
             />
           )}
