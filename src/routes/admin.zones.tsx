@@ -67,7 +67,9 @@ function ZonesPage() {
 function ZoneEditor({ locationId }: { locationId: string }) {
   const mapRef = useRef<HTMLDivElement | null>(null);
   const mapInstance = useRef<google.maps.Map | null>(null);
-  const drawingMgr = useRef<google.maps.drawing.DrawingManager | null>(null);
+  const drawingListeners = useRef<google.maps.MapsEventListener[]>([]);
+  const draftMarkers = useRef<google.maps.Marker[]>([]);
+  const draftLine = useRef<google.maps.Polyline | null>(null);
   const polysRef = useRef<Map<string, google.maps.Polygon>>(new Map());
 
   const [zones, setZones] = useState<Zone[]>([]);
@@ -78,29 +80,81 @@ function ZoneEditor({ locationId }: { locationId: string }) {
   const [mapReady, setMapReady] = useState(false);
   const [drawing, setDrawing] = useState(false);
 
-  const ensureDrawingManager = (g: typeof google = window.google) => {
-    if (drawingMgr.current) return drawingMgr.current;
+  const clearDraft = () => {
+    drawingListeners.current.forEach((listener) => listener.remove());
+    drawingListeners.current = [];
+    draftMarkers.current.forEach((marker) => marker.setMap(null));
+    draftMarkers.current = [];
+    draftLine.current?.setMap(null);
+    draftLine.current = null;
+  };
+
+  const startPolygonDrawing = (g: typeof google = window.google) => {
+    clearDraft();
     if (!mapInstance.current) throw new Error("Map is still loading");
-    if (!g?.maps?.drawing?.DrawingManager || !g.maps.drawing?.OverlayType?.POLYGON) {
-      throw new Error("Google Maps drawing tools are unavailable");
-    }
+    if (!g?.maps?.Map || !g.maps.Polyline || !g.maps.Marker || !g.maps.Polygon) throw new Error("Google Maps tools are unavailable");
 
-    const dm = new g.maps.drawing.DrawingManager({
-      drawingControl: false,
-      polygonOptions: {
-        fillOpacity: 0.25,
-        strokeWeight: 2,
-        editable: true,
-        draggable: false,
-      },
+    const points: LatLng[] = [];
+    const map = mapInstance.current;
+    const nextIdx = zones.length;
+    const color = PALETTE[nextIdx % PALETTE.length];
+    const line = new g.maps.Polyline({
+      map,
+      path: [],
+      strokeColor: color,
+      strokeOpacity: 0.9,
+      strokeWeight: 2,
     });
-    dm.setMap(mapInstance.current);
-    drawingMgr.current = dm;
+    draftLine.current = line;
 
-    g.maps.event.addListener(dm, "polygoncomplete", (poly: google.maps.Polygon) => {
-      dm.setDrawingMode(null);
+    const finish = () => {
+      if (points.length < 3) {
+        toast.error("Add at least 3 points to create a zone");
+        return;
+      }
+      const path = [...points];
+      clearDraft();
       setDrawing(false);
-      void onPolygonDrawn(poly);
+      void createZoneFromPath(path);
+    };
+
+    drawingListeners.current.push(g.maps.event.addListener(map, "click", (event: google.maps.MapMouseEvent) => {
+      if (!event.latLng) return;
+      const point = { lat: event.latLng.lat(), lng: event.latLng.lng() };
+      points.push(point);
+      line.setPath(points);
+
+      const marker = new g.maps.Marker({
+        map,
+        position: point,
+        label: String(points.length),
+        title: points.length === 1 ? "Click to close zone" : "Zone point",
+      });
+      if (points.length === 1) {
+        drawingListeners.current.push(g.maps.event.addListener(marker, "click", finish));
+      }
+      draftMarkers.current.push(marker);
+    }));
+
+    drawingListeners.current.push(g.maps.event.addListener(map, "dblclick", () => {
+      finish();
+    }));
+
+    map.setOptions({ draggableCursor: "crosshair" });
+  };
+
+  const stopPolygonDrawing = () => {
+    clearDraft();
+    mapInstance.current?.setOptions({ draggableCursor: null });
+    setDrawing(false);
+  };
+
+  useEffect(() => {
+    return () => {
+      clearDraft();
+      mapInstance.current?.setOptions({ draggableCursor: null });
+    };
+  }, []);
     });
 
     return dm;
@@ -147,7 +201,6 @@ function ZoneEditor({ locationId }: { locationId: string }) {
         });
         mapInstance.current = map;
 
-        ensureDrawingManager(g);
         setMapReady(true);
       })
       .catch((e) => toast.error(`Map load failed: ${e.message}`));
@@ -229,13 +282,7 @@ function ZoneEditor({ locationId }: { locationId: string }) {
     setEditingId(null);
   };
 
-  const onPolygonDrawn = async (poly: google.maps.Polygon) => {
-    const path = poly
-      .getPath()
-      .getArray()
-      .map((p) => ({ lat: p.lat(), lng: p.lng() }));
-    poly.setMap(null); // remove the temp polygon; we'll re-render from state
-
+  const createZoneFromPath = async (path: LatLng[]) => {
     const nextIdx = zones.length;
     const color = PALETTE[nextIdx % PALETTE.length];
     const { data, error } = await supabase
@@ -304,19 +351,16 @@ function ZoneEditor({ locationId }: { locationId: string }) {
 
   const startDrawing = () => {
     try {
-      const dm = ensureDrawingManager(window.google);
       setMapReady(true);
       setDrawing(true);
-      dm.setDrawingMode(window.google.maps.drawing.OverlayType.POLYGON);
+      startPolygonDrawing(window.google);
     } catch (e) {
       toast.error(`Drawing unavailable: ${(e as Error).message}`);
     }
   };
 
   const stopDrawing = () => {
-    if (!drawingMgr.current) return;
-    drawingMgr.current.setDrawingMode(null);
-    setDrawing(false);
+    stopPolygonDrawing();
   };
 
   return (
@@ -345,8 +389,7 @@ function ZoneEditor({ locationId }: { locationId: string }) {
         <div ref={mapRef} className="h-[560px] w-full" />
         {drawing && (
           <div className="border-t border-border bg-primary/5 px-4 py-2 text-xs text-foreground">
-            Click on the map to drop polygon points. Click the first point again to close the
-            shape.
+            Click on the map to drop polygon points. Click marker 1 or double-click the map to close the shape.
           </div>
         )}
       </div>
