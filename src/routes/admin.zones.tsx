@@ -441,9 +441,7 @@ function ZoneEditor({ locationId }: { locationId: string }) {
           <div ref={mapRef} className="h-full w-full" />
           {drawing && (
             <div
-              className="absolute inset-0 z-[1000001] cursor-crosshair"
-              role="button"
-              tabIndex={0}
+              className="absolute inset-0 z-[1000001] block cursor-crosshair bg-transparent"
               aria-label="Click map points for delivery zone"
               onMouseDown={onDraftOverlayClick}
               onDoubleClick={onDraftOverlayDoubleClick}
