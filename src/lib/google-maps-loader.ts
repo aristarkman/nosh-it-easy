@@ -13,7 +13,9 @@ import { getMapsBrowserKey } from "./maps-key.functions";
 
 export function loadGoogleMaps(): Promise<typeof google> {
   if (typeof window === "undefined") return Promise.reject(new Error("SSR"));
-  if (window.google?.maps) return Promise.resolve(window.google);
+  if (window.google?.maps?.drawing?.DrawingManager && window.google.maps.geometry) {
+    return Promise.resolve(window.google);
+  }
   if (loadPromise) return loadPromise;
 
   loadPromise = (async () => {
@@ -30,14 +32,30 @@ export function loadGoogleMaps(): Promise<typeof google> {
           ),
         );
       };
-      window.__gmapsInit = () => resolve(window.google);
+      window.__gmapsInit = () => {
+        if (!window.google?.maps?.drawing?.DrawingManager || !window.google.maps.geometry) {
+          reject(new Error("Google Maps drawing tools did not load"));
+          return;
+        }
+        resolve(window.google);
+      };
       const s = document.createElement("script");
-      s.src = `https://maps.googleapis.com/maps/api/js?key=${key}&loading=async&libraries=drawing,geometry&callback=__gmapsInit${trackingId ? `&channel=${trackingId}` : ""}`;
+      const params = new URLSearchParams({
+        key,
+        loading: "async",
+        libraries: "drawing,geometry",
+        callback: "__gmapsInit",
+      });
+      if (trackingId) params.set("channel", trackingId);
+      s.src = `https://maps.googleapis.com/maps/api/js?${params.toString()}`;
       s.async = true;
       s.defer = true;
       s.onerror = () => reject(new Error("Failed to load Google Maps"));
       document.head.appendChild(s);
     });
-  })();
+  })().catch((error) => {
+    loadPromise = null;
+    throw error;
+  });
   return loadPromise;
 }
