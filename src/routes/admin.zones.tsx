@@ -1,6 +1,6 @@
 /// <reference types="google.maps" />
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type MouseEvent, type PointerEvent } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { LOCATIONS, fmt } from "@/lib/order-context";
 import { toast } from "sonner";
@@ -31,6 +31,22 @@ const LOCATION_CENTERS: Record<string, { lat: number; lng: number }> = {
   "glen-rock": { lat: 40.9626, lng: -74.1326 },
   "cresskill": { lat: 40.9412, lng: -73.9594 },
 };
+
+const TILE_SIZE = 256;
+
+function latLngToWorld(point: LatLng) {
+  const siny = Math.min(Math.max(Math.sin((point.lat * Math.PI) / 180), -0.9999), 0.9999);
+  return {
+    x: TILE_SIZE * (0.5 + point.lng / 360),
+    y: TILE_SIZE * (0.5 - Math.log((1 + siny) / (1 - siny)) / (4 * Math.PI)),
+  };
+}
+
+function worldToLatLng(point: { x: number; y: number }): LatLng {
+  const lng = (point.x / TILE_SIZE - 0.5) * 360;
+  const latRadians = Math.atan(Math.sinh(Math.PI - (2 * Math.PI * point.y) / TILE_SIZE));
+  return { lat: (latRadians * 180) / Math.PI, lng };
+}
 
 function ZonesPage() {
   const [activeLoc, setActiveLoc] = useState<string>(LOCATIONS[0].id);
@@ -67,7 +83,11 @@ function ZonesPage() {
 function ZoneEditor({ locationId }: { locationId: string }) {
   const mapRef = useRef<HTMLDivElement | null>(null);
   const mapInstance = useRef<google.maps.Map | null>(null);
-  const drawingMgr = useRef<google.maps.drawing.DrawingManager | null>(null);
+  const drawingListeners = useRef<google.maps.MapsEventListener[]>([]);
+  const draftMarkers = useRef<google.maps.Marker[]>([]);
+  const draftLine = useRef<google.maps.Polyline | null>(null);
+  const draftPoints = useRef<LatLng[]>([]);
+  const draftColor = useRef(PALETTE[0]);
   const polysRef = useRef<Map<string, google.maps.Polygon>>(new Map());
 
   const [zones, setZones] = useState<Zone[]>([]);
@@ -77,34 +97,120 @@ function ZoneEditor({ locationId }: { locationId: string }) {
   const [editMin, setEditMin] = useState("");
   const [mapReady, setMapReady] = useState(false);
   const [drawing, setDrawing] = useState(false);
+  const [draftPointCount, setDraftPointCount] = useState(0);
+  const [draftOverlayPoints, setDraftOverlayPoints] = useState<{ x: number; y: number }[]>([]);
 
-  const ensureDrawingManager = (g: typeof google = window.google) => {
-    if (drawingMgr.current) return drawingMgr.current;
-    if (!mapInstance.current) throw new Error("Map is still loading");
-    if (!g?.maps?.drawing?.DrawingManager || !g.maps.drawing?.OverlayType?.POLYGON) {
-      throw new Error("Google Maps drawing tools are unavailable");
-    }
-
-    const dm = new g.maps.drawing.DrawingManager({
-      drawingControl: false,
-      polygonOptions: {
-        fillOpacity: 0.25,
-        strokeWeight: 2,
-        editable: true,
-        draggable: false,
-      },
-    });
-    dm.setMap(mapInstance.current);
-    drawingMgr.current = dm;
-
-    g.maps.event.addListener(dm, "polygoncomplete", (poly: google.maps.Polygon) => {
-      dm.setDrawingMode(null);
-      setDrawing(false);
-      void onPolygonDrawn(poly);
-    });
-
-    return dm;
+  const clearDraft = () => {
+    drawingListeners.current.forEach((listener) => listener.remove());
+    drawingListeners.current = [];
+    draftMarkers.current.forEach((marker) => marker.setMap(null));
+    draftMarkers.current = [];
+    draftLine.current?.setMap(null);
+    draftLine.current = null;
+    draftPoints.current = [];
+    setDraftPointCount(0);
+    setDraftOverlayPoints([]);
   };
+
+  const startPolygonDrawing = (g: typeof google = window.google) => {
+    clearDraft();
+    if (!mapInstance.current || !g?.maps?.Polyline) return;
+
+    const map = mapInstance.current;
+    const nextIdx = zones.length;
+    const color = PALETTE[nextIdx % PALETTE.length];
+    draftColor.current = color;
+    const line = new g.maps.Polyline({
+      map,
+      path: [],
+      strokeColor: color,
+      strokeOpacity: 0.9,
+      strokeWeight: 2,
+    });
+    draftLine.current = line;
+    map.setOptions({ draggableCursor: "crosshair" });
+  };
+
+  const addDraftPoint = (point: LatLng) => {
+    const points = [...draftPoints.current, point];
+    draftPoints.current = points;
+    setDraftPointCount(points.length);
+    draftLine.current?.setPath(points);
+
+    if (window.google?.maps?.Marker && mapInstance.current) {
+      const marker = new window.google.maps.Marker({
+        map: mapInstance.current,
+        position: point,
+        label: String(points.length),
+        title: "Zone point",
+      });
+      draftMarkers.current.push(marker);
+    }
+  };
+
+  const finishDraftDrawing = () => {
+    if (draftPoints.current.length < 3) {
+      toast.error("Add at least 3 points to create a zone");
+      return;
+    }
+    const path = [...draftPoints.current];
+    clearDraft();
+    mapInstance.current?.setOptions({ draggableCursor: null });
+    setDrawing(false);
+    void createZoneFromPath(path);
+  };
+
+  const clientPointToLatLng = (clientX: number, clientY: number): LatLng | null => {
+    const map = mapInstance.current;
+    const el = mapRef.current;
+    const center = map?.getCenter();
+    const zoom = map?.getZoom();
+    if (!el) return null;
+
+    const rect = el.getBoundingClientRect();
+    const scale = 2 ** (zoom ?? 12);
+    const fallbackCenter = LOCATION_CENTERS[locationId] ?? { lat: 40.9, lng: -74.0 };
+    const worldCenter = latLngToWorld(
+      center ? { lat: center.lat(), lng: center.lng() } : fallbackCenter,
+    );
+    const worldPoint = {
+      x: worldCenter.x + (clientX - rect.left - rect.width / 2) / scale,
+      y: worldCenter.y + (clientY - rect.top - rect.height / 2) / scale,
+    };
+    return worldToLatLng(worldPoint);
+  };
+
+  const onDraftOverlayPointerDown = (e: PointerEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const point = clientPointToLatLng(e.clientX, e.clientY);
+    if (!point) return toast.error("Map is still loading");
+    const rect = e.currentTarget.getBoundingClientRect();
+    setDraftOverlayPoints((prev) => [
+      ...prev,
+      { x: e.clientX - rect.left, y: e.clientY - rect.top },
+    ]);
+    addDraftPoint(point);
+  };
+
+  const onDraftOverlayDoubleClick = (e: MouseEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    finishDraftDrawing();
+  };
+
+  const stopPolygonDrawing = () => {
+    clearDraft();
+    mapInstance.current?.setOptions({ draggableCursor: null });
+    setDrawing(false);
+  };
+
+  useEffect(() => {
+    return () => {
+      clearDraft();
+      mapInstance.current?.setOptions({ draggableCursor: null });
+    };
+  }, []);
 
   const load = async () => {
     const { data, error } = await supabase
@@ -147,7 +253,6 @@ function ZoneEditor({ locationId }: { locationId: string }) {
         });
         mapInstance.current = map;
 
-        ensureDrawingManager(g);
         setMapReady(true);
       })
       .catch((e) => toast.error(`Map load failed: ${e.message}`));
@@ -178,35 +283,41 @@ function ZoneEditor({ locationId }: { locationId: string }) {
     // Add/update polygons
     const bounds = new google.maps.LatLngBounds();
     zones.forEach((z) => {
-      const path = z.polygon.map((p) => ({ lat: p.lat, lng: p.lng }));
-      path.forEach((p) => bounds.extend(p));
-      let poly = polysRef.current.get(z.id);
-      if (!poly) {
-        poly = new google.maps.Polygon({
-          paths: path,
-          strokeColor: z.color,
-          fillColor: z.color,
-          fillOpacity: editingId === z.id ? 0.35 : 0.2,
-          strokeWeight: 2,
-          editable: editingId === z.id,
-          map,
-        });
-        polysRef.current.set(z.id, poly);
-        google.maps.event.addListener(poly, "click", () => beginEdit(z.id));
-        // persist edits when path changes
-        const path0 = poly.getPath();
-        const save = () => void persistGeometry(z.id);
-        google.maps.event.addListener(path0, "set_at", save);
-        google.maps.event.addListener(path0, "insert_at", save);
-        google.maps.event.addListener(path0, "remove_at", save);
-      } else {
-        poly.setPath(path);
-        poly.setOptions({
-          strokeColor: z.color,
-          fillColor: z.color,
-          editable: editingId === z.id,
-          fillOpacity: editingId === z.id ? 0.35 : 0.2,
-        });
+      try {
+        const path = z.polygon.map((p) => ({ lat: p.lat, lng: p.lng }));
+        path.forEach((p) => bounds.extend(p));
+        let poly = polysRef.current.get(z.id);
+        if (!poly) {
+          poly = new google.maps.Polygon({
+            paths: path,
+            strokeColor: z.color,
+            fillColor: z.color,
+            fillOpacity: editingId === z.id ? 0.35 : 0.2,
+            strokeWeight: 2,
+            editable: editingId === z.id,
+            map,
+          });
+          polysRef.current.set(z.id, poly);
+          google.maps.event.addListener(poly, "click", () => beginEdit(z.id));
+          // persist edits when path changes
+          const path0 = poly.getPath();
+          const save = () => void persistGeometry(z.id);
+          google.maps.event.addListener(path0, "set_at", save);
+          google.maps.event.addListener(path0, "insert_at", save);
+          google.maps.event.addListener(path0, "remove_at", save);
+        } else {
+          poly.setPath(path);
+          poly.setOptions({
+            strokeColor: z.color,
+            fillColor: z.color,
+            editable: editingId === z.id,
+            fillOpacity: editingId === z.id ? 0.35 : 0.2,
+          });
+        }
+      } catch (e) {
+        polysRef.current.get(z.id)?.setMap(null);
+        polysRef.current.delete(z.id);
+        console.warn("Unable to render delivery zone on the map", e);
       }
     });
 
@@ -229,13 +340,7 @@ function ZoneEditor({ locationId }: { locationId: string }) {
     setEditingId(null);
   };
 
-  const onPolygonDrawn = async (poly: google.maps.Polygon) => {
-    const path = poly
-      .getPath()
-      .getArray()
-      .map((p) => ({ lat: p.lat(), lng: p.lng() }));
-    poly.setMap(null); // remove the temp polygon; we'll re-render from state
-
+  const createZoneFromPath = async (path: LatLng[]) => {
     const nextIdx = zones.length;
     const color = PALETTE[nextIdx % PALETTE.length];
     const { data, error } = await supabase
@@ -303,20 +408,17 @@ function ZoneEditor({ locationId }: { locationId: string }) {
   };
 
   const startDrawing = () => {
+    setMapReady(true);
+    setDrawing(true);
     try {
-      const dm = ensureDrawingManager(window.google);
-      setMapReady(true);
-      setDrawing(true);
-      dm.setDrawingMode(window.google.maps.drawing.OverlayType.POLYGON);
+      startPolygonDrawing(window.google);
     } catch (e) {
-      toast.error(`Drawing unavailable: ${(e as Error).message}`);
+      console.warn("Map drawing overlay unavailable; using click capture only", e);
     }
   };
 
   const stopDrawing = () => {
-    if (!drawingMgr.current) return;
-    drawingMgr.current.setDrawingMode(null);
-    setDrawing(false);
+    stopPolygonDrawing();
   };
 
   return (
@@ -327,12 +429,21 @@ function ZoneEditor({ locationId }: { locationId: string }) {
             Map
           </div>
           {drawing ? (
-            <button
-              onClick={stopDrawing}
-              className="inline-flex items-center gap-1.5 rounded-full bg-destructive px-3 py-1.5 text-xs font-bold uppercase tracking-wider text-destructive-foreground"
-            >
-              <X className="size-3.5" /> Cancel drawing
-            </button>
+            <div className="flex gap-2">
+              <button
+                onClick={finishDraftDrawing}
+                disabled={draftPointCount < 3}
+                className="inline-flex items-center gap-1.5 rounded-full bg-primary px-3 py-1.5 text-xs font-bold uppercase tracking-wider text-primary-foreground disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <Save className="size-3.5" /> Finish zone
+              </button>
+              <button
+                onClick={stopDrawing}
+                className="inline-flex items-center gap-1.5 rounded-full bg-destructive px-3 py-1.5 text-xs font-bold uppercase tracking-wider text-destructive-foreground"
+              >
+                <X className="size-3.5" /> Cancel drawing
+              </button>
+            </div>
           ) : (
             <button
               onClick={startDrawing}
@@ -342,11 +453,55 @@ function ZoneEditor({ locationId }: { locationId: string }) {
             </button>
           )}
         </div>
-        <div ref={mapRef} className="h-[560px] w-full" />
+        <div className="relative h-[560px] w-full">
+          <div ref={mapRef} className="h-full w-full" />
+          {drawing && (
+            <div
+              className="absolute inset-0 z-[1000001] block cursor-crosshair bg-transparent"
+              role="button"
+              tabIndex={0}
+              aria-label="Click map points for delivery zone"
+              onPointerDown={onDraftOverlayPointerDown}
+              onDoubleClick={onDraftOverlayDoubleClick}
+            >
+              <svg className="pointer-events-none absolute inset-0 h-full w-full">
+                {draftOverlayPoints.length > 1 && (
+                  <polyline
+                    points={draftOverlayPoints.map((p) => `${p.x},${p.y}`).join(" ")}
+                    fill="none"
+                    stroke={draftColor.current}
+                    strokeWidth="3"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                )}
+                {draftOverlayPoints.map((p, i) => (
+                  <g key={`${p.x}-${p.y}-${i}`}>
+                    <circle
+                      cx={p.x}
+                      cy={p.y}
+                      r="10"
+                      fill={draftColor.current}
+                      stroke="white"
+                      strokeWidth="2"
+                    />
+                    <text
+                      x={p.x}
+                      y={p.y + 4}
+                      textAnchor="middle"
+                      className="fill-white text-[10px] font-bold"
+                    >
+                      {i + 1}
+                    </text>
+                  </g>
+                ))}
+              </svg>
+            </div>
+          )}
+        </div>
         {drawing && (
           <div className="border-t border-border bg-primary/5 px-4 py-2 text-xs text-foreground">
-            Click on the map to drop polygon points. Click the first point again to close the
-            shape.
+            Click on the map to drop polygon points, then click Finish zone. Points added: {draftPointCount}.
           </div>
         )}
       </div>
