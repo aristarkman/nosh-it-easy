@@ -11,6 +11,26 @@ declare global {
 
 import { getMapsBrowserKey } from "./maps-key.functions";
 
+function isPreviewHost(host: string) {
+  const normalized = host.toLowerCase().replace(/:\d+$/, "");
+  return (
+    normalized === "localhost" ||
+    normalized.endsWith(".lovable.app") ||
+    normalized.endsWith(".lovableproject.com")
+  );
+}
+
+async function resolveMapsKey() {
+  const previewKey = import.meta.env.VITE_LOVABLE_CONNECTOR_GOOGLE_MAPS_BROWSER_KEY ?? "";
+  const previewTrackingId = import.meta.env.VITE_LOVABLE_CONNECTOR_GOOGLE_MAPS_TRACKING_ID ?? "";
+
+  if (isPreviewHost(window.location.host) && previewKey) {
+    return { key: previewKey, trackingId: previewTrackingId };
+  }
+
+  return getMapsBrowserKey();
+}
+
 async function ensureMapsReady() {
   if (!window.google?.maps) throw new Error("Google Maps did not initialize");
 
@@ -37,7 +57,7 @@ export function loadGoogleMaps(): Promise<typeof google> {
   if (loadPromise) return loadPromise;
 
   loadPromise = (async () => {
-    const { key, trackingId } = await getMapsBrowserKey();
+    const { key, trackingId } = await resolveMapsKey();
     if (!key) throw new Error("Google Maps browser key missing");
     return new Promise<typeof google>((resolve, reject) => {
       // Google calls window.gm_authFailure when the API key is rejected
