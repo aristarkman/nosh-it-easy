@@ -308,6 +308,15 @@ function ZoneEditor({ locationId }: { locationId: string }) {
             editable: editingId === z.id,
             fillOpacity: editingId === z.id ? 0.35 : 0.2,
           });
+          // Re-attach path listeners since setPath replaces the path object
+          const newPath = poly.getPath();
+          const save = () => void persistGeometry(z.id);
+          google.maps.event.clearListeners(newPath, "set_at");
+          google.maps.event.clearListeners(newPath, "insert_at");
+          google.maps.event.clearListeners(newPath, "remove_at");
+          google.maps.event.addListener(newPath, "set_at", save);
+          google.maps.event.addListener(newPath, "insert_at", save);
+          google.maps.event.addListener(newPath, "remove_at", save);
         }
       } catch (e) {
         polysRef.current.get(z.id)?.setMap(null);
