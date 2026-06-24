@@ -1,6 +1,6 @@
 /// <reference types="google.maps" />
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type MouseEvent } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { LOCATIONS, fmt } from "@/lib/order-context";
 import { toast } from "sonner";
@@ -31,6 +31,22 @@ const LOCATION_CENTERS: Record<string, { lat: number; lng: number }> = {
   "glen-rock": { lat: 40.9626, lng: -74.1326 },
   "cresskill": { lat: 40.9412, lng: -73.9594 },
 };
+
+const TILE_SIZE = 256;
+
+function latLngToWorld(point: LatLng) {
+  const siny = Math.min(Math.max(Math.sin((point.lat * Math.PI) / 180), -0.9999), 0.9999);
+  return {
+    x: TILE_SIZE * (0.5 + point.lng / 360),
+    y: TILE_SIZE * (0.5 - Math.log((1 + siny) / (1 - siny)) / (4 * Math.PI)),
+  };
+}
+
+function worldToLatLng(point: { x: number; y: number }): LatLng {
+  const lng = (point.x / TILE_SIZE - 0.5) * 360;
+  const latRadians = Math.atan(Math.sinh(Math.PI - (2 * Math.PI * point.y) / TILE_SIZE));
+  return { lat: (latRadians * 180) / Math.PI, lng };
+}
 
 function ZonesPage() {
   const [activeLoc, setActiveLoc] = useState<string>(LOCATIONS[0].id);
@@ -159,14 +175,14 @@ function ZoneEditor({ locationId }: { locationId: string }) {
     return worldToLatLng(worldPoint);
   };
 
-  const onDraftOverlayClick = (e: React.MouseEvent<HTMLDivElement>) => {
+  const onDraftOverlayClick = (e: MouseEvent<HTMLDivElement>) => {
     if (e.detail > 1) return;
     const point = clientPointToLatLng(e.clientX, e.clientY);
     if (!point) return toast.error("Map is still loading");
     addDraftPoint(point);
   };
 
-  const onDraftOverlayDoubleClick = (e: React.MouseEvent<HTMLDivElement>) => {
+  const onDraftOverlayDoubleClick = (e: MouseEvent<HTMLDivElement>) => {
     e.preventDefault();
     e.stopPropagation();
     finishDraftDrawing();
