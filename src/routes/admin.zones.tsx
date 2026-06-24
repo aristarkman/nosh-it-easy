@@ -248,6 +248,39 @@ function ZoneEditor({ locationId }: { locationId: string }) {
         });
         mapInstance.current = map;
 
+        mapInstance.current = map;
+
+        // Draw 9-mile dashed radius boundary
+        const center = LOCATION_CENTERS[locationId] ?? { lat: 40.9, lng: -74.0 };
+        const radiusMeters = 9 * 1609.34;
+        const circlePoints: google.maps.LatLngLiteral[] = [];
+        for (let i = 0; i <= 360; i += 2) {
+          const point = google.maps.geometry.spherical.computeOffset(
+            new google.maps.LatLng(center.lat, center.lng),
+            radiusMeters,
+            i,
+          );
+          circlePoints.push({ lat: point.lat(), lng: point.lng() });
+        }
+        new google.maps.Polyline({
+          map,
+          path: circlePoints,
+          strokeColor: "#6b7280",
+          strokeOpacity: 0,
+          strokeWeight: 3,
+          icons: [
+            {
+              icon: {
+                path: "M 0,-1 0,1",
+                strokeOpacity: 0.7,
+                scale: 3,
+              },
+              offset: "0",
+              repeat: "16px",
+            },
+          ],
+        });
+
         setMapReady(true);
       })
       .catch((e) => toast.error(`Map load failed: ${e.message}`));
