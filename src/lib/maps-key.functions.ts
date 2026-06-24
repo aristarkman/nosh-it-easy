@@ -14,8 +14,8 @@ function normalizeHost(host: string) {
 
 // Returns the right browser key for the current host.
 // Custom domains (e.g. takeout.koshernosh.com) use the user-provided key
-// (GOOGLE_MAPS_BROWSER_KEY_1); *.lovable.app / lovableproject.com use the
-// managed key (GOOGLE_MAPS_BROWSER_KEY).
+// when available; local preview and *.lovable.app / lovableproject.com use
+// the managed key first.
 export const getMapsBrowserKey = createServerFn({ method: "GET" }).handler(async () => {
   let host = "";
   try {
@@ -23,11 +23,10 @@ export const getMapsBrowserKey = createServerFn({ method: "GET" }).handler(async
   } catch {
     host = "";
   }
+  const isLocalHost = host === "localhost" || host.startsWith("localhost:");
   const isLovableHost =
     host.endsWith(".lovable.app") ||
-    host.endsWith(".lovableproject.com") ||
-    host === "localhost" ||
-    host.startsWith("localhost:");
+    host.endsWith(".lovableproject.com");
 
   const managed = process.env.GOOGLE_MAPS_BROWSER_KEY ?? "";
   const custom =
@@ -39,6 +38,6 @@ export const getMapsBrowserKey = createServerFn({ method: "GET" }).handler(async
   const isKnownCustomDomain = CUSTOM_DOMAIN_SUFFIXES.some(
     (domain) => host === domain || host.endsWith(`.${domain}`),
   );
-  const key = isLovableHost && !isKnownCustomDomain ? managed || custom : custom || managed;
+  const key = (isLovableHost || isLocalHost) && !isKnownCustomDomain ? managed || custom : custom || managed;
   return { key, trackingId };
 });

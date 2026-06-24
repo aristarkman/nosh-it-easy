@@ -78,6 +78,34 @@ function ZoneEditor({ locationId }: { locationId: string }) {
   const [mapReady, setMapReady] = useState(false);
   const [drawing, setDrawing] = useState(false);
 
+  const ensureDrawingManager = (g: typeof google = window.google) => {
+    if (drawingMgr.current) return drawingMgr.current;
+    if (!mapInstance.current) throw new Error("Map is still loading");
+    if (!g?.maps?.drawing?.DrawingManager || !g.maps.drawing?.OverlayType?.POLYGON) {
+      throw new Error("Google Maps drawing tools are unavailable");
+    }
+
+    const dm = new g.maps.drawing.DrawingManager({
+      drawingControl: false,
+      polygonOptions: {
+        fillOpacity: 0.25,
+        strokeWeight: 2,
+        editable: true,
+        draggable: false,
+      },
+    });
+    dm.setMap(mapInstance.current);
+    drawingMgr.current = dm;
+
+    g.maps.event.addListener(dm, "polygoncomplete", (poly: google.maps.Polygon) => {
+      dm.setDrawingMode(null);
+      setDrawing(false);
+      void onPolygonDrawn(poly);
+    });
+
+    return dm;
+  };
+
   const load = async () => {
     const { data, error } = await supabase
       .from("delivery_zone_polygons")
@@ -119,24 +147,7 @@ function ZoneEditor({ locationId }: { locationId: string }) {
         });
         mapInstance.current = map;
 
-        const dm = new g.maps.drawing.DrawingManager({
-          drawingControl: false,
-          polygonOptions: {
-            fillOpacity: 0.25,
-            strokeWeight: 2,
-            editable: true,
-            draggable: false,
-          },
-        });
-        dm.setMap(map);
-        drawingMgr.current = dm;
-
-        g.maps.event.addListener(dm, "polygoncomplete", (poly: google.maps.Polygon) => {
-          dm.setDrawingMode(null);
-          setDrawing(false);
-          void onPolygonDrawn(poly);
-        });
-
+        ensureDrawingManager(g);
         setMapReady(true);
       })
       .catch((e) => toast.error(`Map load failed: ${e.message}`));
@@ -292,9 +303,14 @@ function ZoneEditor({ locationId }: { locationId: string }) {
   };
 
   const startDrawing = () => {
-    if (!drawingMgr.current || !window.google) return;
-    setDrawing(true);
-    drawingMgr.current.setDrawingMode(google.maps.drawing.OverlayType.POLYGON);
+    try {
+      const dm = ensureDrawingManager(window.google);
+      setMapReady(true);
+      setDrawing(true);
+      dm.setDrawingMode(window.google.maps.drawing.OverlayType.POLYGON);
+    } catch (e) {
+      toast.error(`Drawing unavailable: ${(e as Error).message}`);
+    }
   };
 
   const stopDrawing = () => {
@@ -320,8 +336,7 @@ function ZoneEditor({ locationId }: { locationId: string }) {
           ) : (
             <button
               onClick={startDrawing}
-              disabled={!mapReady}
-              className="inline-flex items-center gap-1.5 rounded-full bg-primary px-3 py-1.5 text-xs font-bold uppercase tracking-wider text-primary-foreground disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 rounded-full bg-primary px-3 py-1.5 text-xs font-bold uppercase tracking-wider text-primary-foreground"
             >
               <Plus className="size-3.5" /> Draw new zone
             </button>
