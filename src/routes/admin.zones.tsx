@@ -440,7 +440,7 @@ function ZoneEditor({ locationId }: { locationId: string }) {
           <div ref={mapRef} className="h-full w-full" />
           {drawing && (
             <div
-              className="absolute inset-0 z-20 cursor-crosshair"
+              className="absolute inset-0 z-[1000001] cursor-crosshair"
               role="button"
               tabIndex={0}
               aria-label="Click map points for delivery zone"
