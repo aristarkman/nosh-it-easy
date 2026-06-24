@@ -1,5 +1,5 @@
 /// <reference types="google.maps" />
-// Singleton loader for the Google Maps JS API with the drawing library
+// Singleton loader for the Google Maps JS API
 let loadPromise: Promise<typeof google> | null = null;
 
 declare global {
@@ -35,17 +35,10 @@ async function ensureMapsReady() {
   if (!window.google?.maps) throw new Error("Google Maps did not initialize");
 
   if (typeof window.google.maps.importLibrary === "function") {
-    await Promise.all([
-      window.google.maps.importLibrary("maps"),
-      window.google.maps.importLibrary("drawing"),
-      window.google.maps.importLibrary("geometry"),
-    ]);
+    await Promise.all([window.google.maps.importLibrary("maps"), window.google.maps.importLibrary("geometry")]);
   }
 
   if (!window.google.maps.Map) throw new Error("Google Maps map tools did not load");
-  if (!window.google.maps.drawing?.DrawingManager) {
-    throw new Error("Google Maps drawing tools did not load");
-  }
   if (!window.google.maps.geometry) throw new Error("Google Maps geometry tools did not load");
 
   return window.google;
@@ -77,7 +70,7 @@ export function loadGoogleMaps(): Promise<typeof google> {
       const params = new URLSearchParams({
         key,
         loading: "async",
-        libraries: "drawing,geometry",
+        libraries: "geometry",
         callback: "__gmapsInit",
       });
       if (trackingId) params.set("channel", trackingId);
