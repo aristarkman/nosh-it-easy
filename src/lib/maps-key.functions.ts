@@ -13,8 +13,8 @@ function normalizeHost(host: string) {
 }
 
 // Returns the right browser key for the current host.
-// Custom domains (e.g. takeout.koshernosh.com) and local preview use the
-// user-provided key when available; *.lovable.app / lovableproject.com use
+// Custom domains (e.g. takeout.koshernosh.com) use the user-provided key
+// when available; local preview and *.lovable.app / lovableproject.com use
 // the managed key first.
 export const getMapsBrowserKey = createServerFn({ method: "GET" }).handler(async () => {
   let host = "";
@@ -38,6 +38,6 @@ export const getMapsBrowserKey = createServerFn({ method: "GET" }).handler(async
   const isKnownCustomDomain = CUSTOM_DOMAIN_SUFFIXES.some(
     (domain) => host === domain || host.endsWith(`.${domain}`),
   );
-  const key = isLovableHost && !isKnownCustomDomain && !isLocalHost ? managed || custom : custom || managed;
+  const key = (isLovableHost || isLocalHost) && !isKnownCustomDomain ? managed || custom : custom || managed;
   return { key, trackingId };
 });
