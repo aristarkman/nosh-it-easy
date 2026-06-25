@@ -215,6 +215,7 @@ function RootComponent() {
           </footer>
           )}
           {!isChromeless && <ScrollToTop />}
+          {!isChromeless && <WelcomePopup />}
         </div>
       </OrderProvider>
     </QueryClientProvider>
