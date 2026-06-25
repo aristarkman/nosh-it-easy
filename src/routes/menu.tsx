@@ -198,13 +198,18 @@ function MenuPage() {
                       />
                     ) : null}
                     <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2">
+                      <div className="flex flex-wrap items-center gap-2">
                         <h3 className="text-base font-semibold normal-case tracking-tight text-foreground" style={{ fontFamily: "var(--font-body)" }}>
                           {i.name}
                         </h3>
                         {i.popular && (
                           <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-primary">
                             <Flame className="size-3" /> Popular
+                          </span>
+                        )}
+                        {i.glutenFreePossible && (
+                          <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-300">
+                            <WheatOff className="size-3" /> GF Possible
                           </span>
                         )}
                         {i.soldOut && (
