@@ -1,6 +1,6 @@
 import { createFileRoute, Link, redirect } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { Search, ChevronRight, Flame } from "lucide-react";
+import { Search, ChevronRight, Flame, WheatOff } from "lucide-react";
 import { LOCATIONS, useOrder, fmt } from "@/lib/order-context";
 import { menuItemAlt } from "@/lib/alt-text";
 import { getMenu } from "@/lib/menu.functions";
@@ -51,14 +51,19 @@ function MenuPage() {
   const { todayLabel } = useStoreHours();
   const [active, setActive] = useState(categories[0]?.id ?? "");
   const [q, setQ] = useState("");
+  const [gfOnly, setGfOnly] = useState(false);
 
   const filtered = useMemo(() => {
-    if (!q.trim()) return items;
-    const s = q.toLowerCase();
-    return items.filter(
-      (i) => i.name.toLowerCase().includes(s) || i.description.toLowerCase().includes(s)
-    );
-  }, [q, items]);
+    let list = items;
+    if (gfOnly) list = list.filter((i) => i.glutenFreePossible);
+    if (q.trim()) {
+      const s = q.toLowerCase();
+      list = list.filter(
+        (i) => i.name.toLowerCase().includes(s) || i.description.toLowerCase().includes(s)
+      );
+    }
+    return list;
+  }, [q, items, gfOnly]);
 
   useEffect(() => {
     const onScroll = () => {
