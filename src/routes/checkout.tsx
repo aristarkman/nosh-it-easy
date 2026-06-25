@@ -425,7 +425,7 @@ function CheckoutPage() {
   }, [whenType, onlineHours, closures]);
 
   const valid =
-    !closedToday &&
+    (whenType === "schedule" || !closedToday) &&
     asapCheck.ok &&
     scheduleCheck.ok &&
     name.trim().length > 1 &&
