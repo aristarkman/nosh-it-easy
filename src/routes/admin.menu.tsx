@@ -542,6 +542,7 @@ function MenuAdmin() {
                   <th key={l.location_id} className="px-4 py-3">{(l.display_name ?? l.location_id)} price</th>
                 ))}
                 <th className="px-4 py-3">Modifications</th>
+                <th className="px-4 py-3">GF Possible</th>
                 <th className="px-4 py-3">Active</th>
               </tr>
             </thead>
@@ -660,6 +661,16 @@ function MenuAdmin() {
                         })}
                       </div>
                     )}
+                  </td>
+                  <td className="px-4 py-3">
+                    <button
+                      onClick={() => toggleGfPossible(it)}
+                      className={`rounded-full px-3 py-1 text-xs font-bold uppercase tracking-wider ${
+                        it.gluten_free_possible ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300" : "bg-muted text-muted-foreground"
+                      }`}
+                    >
+                      {it.gluten_free_possible ? "Yes" : "No"}
+                    </button>
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2">
