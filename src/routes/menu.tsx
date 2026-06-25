@@ -122,6 +122,17 @@ function MenuPage() {
 
       <div className="sticky top-[68px] z-30 mt-4 -mx-4 overflow-x-auto border-b border-border bg-background/85 px-4 backdrop-blur">
         <div className="flex gap-1 py-2">
+          <button
+            onClick={() => setGfOnly((v) => !v)}
+            aria-pressed={gfOnly}
+            className={`inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-3.5 py-1.5 text-sm font-semibold transition ${
+              gfOnly
+                ? "bg-primary text-primary-foreground"
+                : "border border-border text-muted-foreground hover:bg-muted hover:text-foreground"
+            }`}
+          >
+            <WheatOff className="size-3.5" /> GF Possible
+          </button>
           {categories.map((c) => {
             if (!filtered.some((i) => i.category === c.id)) return null;
             return (
@@ -140,6 +151,18 @@ function MenuPage() {
           })}
         </div>
       </div>
+
+      {gfOnly && (
+        <div className="mt-4 rounded-xl border border-amber-300/60 bg-amber-50 p-4 text-sm text-amber-900 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200">
+          Our kitchen is not entirely gluten free — we use many non-gluten free products. Gluten free preparation is available upon request but cross-contamination is possible. Please inform us of any severe allergies.
+        </div>
+      )}
+
+      {gfOnly && filtered.length === 0 && (
+        <div className="mt-6 rounded-xl border border-border bg-card p-6 text-center text-sm text-muted-foreground">
+          No gluten free possible items — try another category or call the deli directly.
+        </div>
+      )}
 
       {categories.map((c) => {
         const catItems = filtered.filter((i) => i.category === c.id);
