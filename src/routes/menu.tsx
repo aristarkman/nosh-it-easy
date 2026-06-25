@@ -45,6 +45,7 @@ function MenuPage() {
   const { items, categories } = Route.useLoaderData() as { items: import("@/lib/menu-types").MenuItem[]; categories: Category[] };
   const { location, orderType } = useOrder();
   const loc = LOCATIONS.find((l) => l.id === location);
+  const { todayLabel } = useStoreHours();
   const [active, setActive] = useState(categories[0]?.id ?? "");
   const [q, setQ] = useState("");
 
