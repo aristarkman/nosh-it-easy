@@ -1,5 +1,5 @@
 import { Link, useLocation } from "@tanstack/react-router";
-import { ShoppingBag, MapPin, Phone, User } from "lucide-react";
+import { ShoppingBag, MapPin, Phone, User, ShoppingCart } from "lucide-react";
 import { useOrder, LOCATIONS } from "@/lib/order-context";
 import { useCustomerAuth } from "@/lib/customer-auth";
 import logo from "@/assets/kosher-nosh-logo.png";
