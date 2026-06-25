@@ -90,7 +90,7 @@ export const Route = createFileRoute("/api/public/hooks/requote-scheduled")({
             "id, order_number, location_id, delivery_address, total, scheduled_time, shipday_order_id"
           )
           .eq("order_type", "delivery")
-          .eq("when_type", "scheduled")
+          .eq("when_type", "schedule")
           .is("shipday_order_id", null)
           .in("status", ["new", "accepted", "ready"])
           .gte("scheduled_time", windowStart)
