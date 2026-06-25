@@ -32,6 +32,7 @@ type Ctx = OrderState & {
   setOrderType: (t: OrderType) => void;
   setWhen: (when: WhenType, scheduledTime?: string | null) => void;
   addToCart: (line: Omit<CartLine, "lineId">) => void;
+  replaceLine: (lineId: string, line: Omit<CartLine, "lineId">) => void;
   removeLine: (lineId: string) => void;
   updateQty: (lineId: string, qty: number) => void;
   clearCart: () => void;
