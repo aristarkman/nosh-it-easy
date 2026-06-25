@@ -90,7 +90,7 @@ function MenuPage() {
             <h1 className="font-display text-3xl font-black sm:text-4xl">
               {loc?.name}{" "}
               <span className="text-base font-medium text-muted-foreground">
-                · {loc?.hours}
+                · {(location && todayLabel(location)) || loc?.hours}
               </span>
             </h1>
           </div>
