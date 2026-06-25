@@ -3,6 +3,7 @@ import { useState } from "react";
 import { ArrowLeft, Minus, Plus } from "lucide-react";
 import type { MenuItem, ModifierGroup, ModifierOption } from "@/lib/menu-types";
 import { useOrder, fmt, buildLineFromItem } from "@/lib/order-context";
+import { menuItemAlt } from "@/lib/alt-text";
 import { getMenuItem } from "@/lib/menu.functions";
 import { thumb } from "@/lib/image-url";
 import { z } from "zod";
@@ -166,7 +167,7 @@ function ItemPage() {
             <div className="overflow-hidden rounded-2xl border border-border bg-muted">
               <img
                 src={thumb(photos[activePhoto], 1024, 80)}
-                alt={item.name}
+                alt={menuItemAlt(item.name, location)}
                 className="aspect-square w-full object-cover"
               />
             </div>
@@ -181,7 +182,7 @@ function ItemPage() {
                     }`}
                     aria-label={`Photo ${i + 1}`}
                   >
-                    <img src={thumb(p, 160)} alt="" className="size-full object-cover" />
+                    <img src={thumb(p, 160)} alt={`${menuItemAlt(item.name, location)} - photo ${i + 1}`} className="size-full object-cover" />
                   </button>
                 ))}
               </div>
