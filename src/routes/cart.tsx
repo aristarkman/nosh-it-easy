@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, Minus, Plus, Trash2, Star } from "lucide-react";
+import { ArrowLeft, Minus, Plus, Trash2, Star, Pencil } from "lucide-react";
 import { useOrder, fmt, LOCATIONS } from "@/lib/order-context";
 import { getMenu } from "@/lib/menu.functions";
 import type { MenuItem } from "@/lib/menu-types";
@@ -32,6 +32,12 @@ function CartPage() {
     queryFn: () => fetchMenu(),
     staleTime: 5 * 60 * 1000,
   });
+
+  const itemsById = useMemo(() => {
+    const map = new Map<string, MenuItem>();
+    (menuData?.items ?? []).forEach((i) => map.set(i.id, i));
+    return map;
+  }, [menuData]);
 
   const upsells = useMemo<MenuItem[]>(() => {
     const items = menuData?.items ?? [];
@@ -109,7 +115,10 @@ function CartPage() {
       </div>
 
       <ul className="mt-6 divide-y divide-border overflow-hidden rounded-2xl border border-border bg-card">
-        {cart.map((l) => (
+        {cart.map((l) => {
+          const menuItem = itemsById.get(l.itemId);
+          const canEdit = !!menuItem?.slug;
+          return (
           <li key={l.lineId} className="flex gap-4 p-4 sm:p-5">
             <div className="flex-1">
               <div className="flex items-baseline justify-between gap-3">
@@ -129,7 +138,7 @@ function CartPage() {
               {l.notes && (
                 <p className="mt-1 text-xs italic text-muted-foreground">"{l.notes}"</p>
               )}
-              <div className="mt-3 flex items-center gap-3">
+              <div className="mt-3 flex flex-wrap items-center gap-3">
                 <div className="flex items-center rounded-full border border-border">
                   <button
                     onClick={() => updateQty(l.lineId, l.quantity - 1)}
@@ -147,6 +156,16 @@ function CartPage() {
                     <Plus className="size-3.5" />
                   </button>
                 </div>
+                {canEdit && (
+                  <Link
+                    to="/item/$slug"
+                    params={{ slug: menuItem!.slug }}
+                    search={{ edit: l.lineId }}
+                    className="inline-flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-primary"
+                  >
+                    <Pencil className="size-3.5" /> Edit
+                  </Link>
+                )}
                 <button
                   onClick={() => removeLine(l.lineId)}
                   className="inline-flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-destructive"
@@ -156,7 +175,8 @@ function CartPage() {
               </div>
             </div>
           </li>
-        ))}
+          );
+        })}
       </ul>
 
       {upsells.length > 0 && (

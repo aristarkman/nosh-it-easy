@@ -32,6 +32,7 @@ type Ctx = OrderState & {
   setOrderType: (t: OrderType) => void;
   setWhen: (when: WhenType, scheduledTime?: string | null) => void;
   addToCart: (line: Omit<CartLine, "lineId">) => void;
+  replaceLine: (lineId: string, line: Omit<CartLine, "lineId">) => void;
   removeLine: (lineId: string) => void;
   updateQty: (lineId: string, qty: number) => void;
   clearCart: () => void;
@@ -138,6 +139,11 @@ export function OrderProvider({ children }: { children: ReactNode }) {
     });
     trackAddToCart({ value: line.unitPrice * line.quantity, itemId: line.itemId, name: line.name, quantity: line.quantity });
   };
+  const replaceLine = (lineId: string, line: Omit<CartLine, "lineId">) =>
+    setState((s) => ({
+      ...s,
+      cart: s.cart.map((l) => (l.lineId === lineId ? { ...line, lineId } : l)),
+    }));
   const removeLine = (lineId: string) =>
     setState((s) => ({ ...s, cart: s.cart.filter((l) => l.lineId !== lineId) }));
   const updateQty = (lineId: string, qty: number) =>
@@ -154,7 +160,7 @@ export function OrderProvider({ children }: { children: ReactNode }) {
 
   return (
     <OrderContext.Provider
-      value={{ ...state, setLocation, setOrderType, setWhen, addToCart, removeLine, updateQty, clearCart, subtotal, totalQty }}
+      value={{ ...state, setLocation, setOrderType, setWhen, addToCart, replaceLine, removeLine, updateQty, clearCart, subtotal, totalQty }}
     >
       {children}
     </OrderContext.Provider>
