@@ -60,14 +60,10 @@ export function WelcomePopup() {
         </DialogHeader>
         <div className="mt-2 flex flex-col gap-2">
           <Button asChild size="lg" className="w-full" onClick={dismiss}>
-            <Link to="/auth" search={{ mode: "signup" }}>
-              Create account & claim 100 points
-            </Link>
+            <Link to="/signup">Create account & claim 100 points</Link>
           </Button>
           <Button asChild variant="outline" size="lg" className="w-full" onClick={dismiss}>
-            <Link to="/auth" search={{ mode: "signin" }}>
-              Already a customer? Sign in
-            </Link>
+            <Link to="/login">Already a customer? Sign in</Link>
           </Button>
           <button
             type="button"
