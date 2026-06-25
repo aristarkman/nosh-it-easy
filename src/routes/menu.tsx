@@ -23,10 +23,12 @@ export const Route = createFileRoute("/menu")({
   beforeLoad: () => {
     if (typeof window !== "undefined") {
       try {
-        const raw = localStorage.getItem("kn-order-v1");
-        const s = raw ? JSON.parse(raw) : null;
+        const raw = localStorage.getItem("kn-order") ?? localStorage.getItem("kn-order-v1");
+        const parsed = raw ? JSON.parse(raw) : null;
+        const s = parsed?.state ?? parsed;
         if (!s?.location) throw redirect({ to: "/" });
         if (!s?.orderType) throw redirect({ to: "/order-type" });
+        if (!s?.whenType) throw redirect({ to: "/when" });
       } catch (e) {
         if ((e as { isRedirect?: boolean })?.isRedirect) throw e;
       }
