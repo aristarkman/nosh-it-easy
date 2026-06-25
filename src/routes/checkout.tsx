@@ -63,7 +63,7 @@ declare global {
 
 function CheckoutPage() {
   const navigate = useNavigate();
-  const { cart, subtotal, location, orderType, clearCart } = useOrder();
+  const { cart, subtotal, location, orderType, whenType: ctxWhen, scheduledTime: ctxSched, clearCart } = useOrder();
   const auth = useCustomerAuth();
   const loc = LOCATIONS.find((l) => l.id === location);
 
@@ -72,8 +72,8 @@ function CheckoutPage() {
   const [email, setEmail] = useState("");
   const [address, setAddress] = useState("");
   const [zip, setZip] = useState("");
-  const [whenType, setWhenType] = useState<"asap" | "schedule">("asap");
-  const [scheduledTime, setScheduledTime] = useState("");
+  const [whenType, setWhenType] = useState<"asap" | "schedule">(ctxWhen ?? "asap");
+  const [scheduledTime, setScheduledTime] = useState(ctxSched ?? "");
   const [pay, setPay] = useState<"card" | "applepay" | "googlepay" | "in-person">("card");
   const [submitting, setSubmitting] = useState(false);
 
