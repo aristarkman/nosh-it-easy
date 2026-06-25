@@ -63,7 +63,7 @@ declare global {
 
 function CheckoutPage() {
   const navigate = useNavigate();
-  const { cart, subtotal, location, orderType, whenType: ctxWhen, scheduledTime: ctxSched, clearCart } = useOrder();
+  const { cart, subtotal, location, orderType, whenType: ctxWhen, scheduledTime: ctxSched, clearCart, setLocation } = useOrder();
   const auth = useCustomerAuth();
   const loc = LOCATIONS.find((l) => l.id === location);
 
