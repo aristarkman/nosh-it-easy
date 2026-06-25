@@ -97,6 +97,11 @@ function CheckoutPage() {
   const [ftdReady, setFtdReady] = useState(false);
   const ftdLoadedRef = useRef(false);
 
+  useEffect(() => {
+    if (ctxWhen) setWhenType(ctxWhen);
+    setScheduledTime(ctxSched ?? "");
+  }, [ctxWhen, ctxSched]);
+
   // Promo code
   const [promoInput, setPromoInput] = useState("");
   const [promoChecking, setPromoChecking] = useState(false);
@@ -639,8 +644,9 @@ function CheckoutPage() {
       },
     }).catch((e) => console.error("Staff alert failed:", e));
 
-    // Dispatch to Shipday for delivery orders (fire-and-forget; persist tracking on response)
-    if (orderType === "delivery") {
+    // Dispatch ASAP delivery orders immediately. Scheduled deliveries are quoted
+    // closer to pickup time by the scheduled re-quote job.
+    if (orderType === "delivery" && whenType === "asap") {
       dispatchShipday({
         data: {
           orderNumber: data.order_number,
