@@ -64,6 +64,18 @@ export function SiteHeader() {
               <User className="size-3.5" />
               <span className="hidden sm:inline">{auth.authed ? "Account" : "Sign in"}</span>
             </Link>
+            <Link
+              to="/cart"
+              className="relative inline-flex items-center justify-center rounded-full border border-border bg-card p-2.5 text-xs font-semibold transition hover:border-primary"
+              aria-label={totalQty > 0 ? `Cart (${totalQty} items)` : "Cart"}
+            >
+              <ShoppingCart className="size-4" />
+              {totalQty > 0 && (
+                <span className="absolute -right-1.5 -top-1.5 grid min-w-[1.25rem] place-items-center rounded-full bg-primary px-1 text-[10px] font-bold text-primary-foreground">
+                  {totalQty}
+                </span>
+              )}
+            </Link>
             <a
               href="https://catering.koshernosh.com"
               target="_blank"
