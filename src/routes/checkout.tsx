@@ -533,7 +533,10 @@ function CheckoutPage() {
         customer_email: email.trim() || null,
         delivery_address: orderType === "delivery" ? `${address.trim()}, ${zip}` : null,
         when_type: whenType,
-        scheduled_time: whenType === "schedule" && scheduledTime ? scheduledTime : null,
+        scheduled_time:
+          whenType === "schedule" && scheduledTime
+            ? new Date(scheduledTime).toISOString()
+            : null,
         payment_method: pay,
         subtotal,
         delivery_fee: deliveryFee,
