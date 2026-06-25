@@ -99,6 +99,12 @@ function WhenPage() {
     if (loaded && !openNow && choice === "asap") setChoice("schedule");
   }, [loaded, openNow, choice]);
 
+  // When schedule is selected but no time chosen yet, seed with the default
+  useEffect(() => {
+    if (choice === "schedule" && !time) setTime(defaultMin);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [choice]);
+
   const scheduleCheck = useMemo(() => {
     if (choice !== "schedule") return { ok: true } as { ok: boolean; reason?: string };
     if (!time) return { ok: false, reason: "Pick a date and time." };
