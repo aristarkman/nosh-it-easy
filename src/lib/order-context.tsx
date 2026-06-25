@@ -127,6 +127,8 @@ export function OrderProvider({ children }: { children: ReactNode }) {
 
   const setLocation = (location: LocationId) => setState((s) => ({ ...s, location }));
   const setOrderType = (orderType: OrderType) => setState((s) => ({ ...s, orderType }));
+  const setWhen = (whenType: WhenType, scheduledTime: string | null = null) =>
+    setState((s) => ({ ...s, whenType, scheduledTime: whenType === "schedule" ? scheduledTime : null }));
   const addToCart = (line: Omit<CartLine, "lineId">) => {
     setState((s) => ({ ...s, cart: [...s.cart, { ...line, lineId: crypto.randomUUID() }] }));
     void track("add_to_cart", {
