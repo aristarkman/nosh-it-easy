@@ -145,7 +145,9 @@ function ItemPage() {
   );
 
   const add = () => {
-    addToCart(buildLineFromItem(item, selections, qty, notes.trim() || undefined));
+    const line = buildLineFromItem(item, selections, qty, notes.trim() || undefined);
+    if (isEditing) replaceLine(editingLine!.lineId, line);
+    else addToCart(line);
     navigate({ to: "/cart" });
   };
 
