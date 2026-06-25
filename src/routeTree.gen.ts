@@ -45,6 +45,7 @@ import { Route as AdminCategoriesRouteImport } from './routes/admin.categories'
 import { Route as AdminBiyoRouteImport } from './routes/admin.biyo'
 import { Route as ApiPublicHooksSyncBiyoRouteImport } from './routes/api/public/hooks/sync-biyo'
 import { Route as ApiPublicHooksShipdayRouteImport } from './routes/api/public/hooks/shipday'
+import { Route as ApiPublicHooksRequoteScheduledRouteImport } from './routes/api/public/hooks/requote-scheduled'
 import { Route as ApiPublicHooksCartAbandonmentRouteImport } from './routes/api/public/hooks/cart-abandonment'
 
 const WhenRoute = WhenRouteImport.update({
@@ -227,6 +228,12 @@ const ApiPublicHooksShipdayRoute = ApiPublicHooksShipdayRouteImport.update({
   path: '/api/public/hooks/shipday',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicHooksRequoteScheduledRoute =
+  ApiPublicHooksRequoteScheduledRouteImport.update({
+    id: '/api/public/hooks/requote-scheduled',
+    path: '/api/public/hooks/requote-scheduled',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicHooksCartAbandonmentRoute =
   ApiPublicHooksCartAbandonmentRouteImport.update({
     id: '/api/public/hooks/cart-abandonment',
@@ -270,6 +277,7 @@ export interface FileRoutesByFullPath {
   '/staff/login': typeof StaffLoginRoute
   '/admin/': typeof AdminIndexRoute
   '/api/public/hooks/cart-abandonment': typeof ApiPublicHooksCartAbandonmentRoute
+  '/api/public/hooks/requote-scheduled': typeof ApiPublicHooksRequoteScheduledRoute
   '/api/public/hooks/shipday': typeof ApiPublicHooksShipdayRoute
   '/api/public/hooks/sync-biyo': typeof ApiPublicHooksSyncBiyoRoute
 }
@@ -308,6 +316,7 @@ export interface FileRoutesByTo {
   '/staff/login': typeof StaffLoginRoute
   '/admin': typeof AdminIndexRoute
   '/api/public/hooks/cart-abandonment': typeof ApiPublicHooksCartAbandonmentRoute
+  '/api/public/hooks/requote-scheduled': typeof ApiPublicHooksRequoteScheduledRoute
   '/api/public/hooks/shipday': typeof ApiPublicHooksShipdayRoute
   '/api/public/hooks/sync-biyo': typeof ApiPublicHooksSyncBiyoRoute
 }
@@ -348,6 +357,7 @@ export interface FileRoutesById {
   '/staff/login': typeof StaffLoginRoute
   '/admin/': typeof AdminIndexRoute
   '/api/public/hooks/cart-abandonment': typeof ApiPublicHooksCartAbandonmentRoute
+  '/api/public/hooks/requote-scheduled': typeof ApiPublicHooksRequoteScheduledRoute
   '/api/public/hooks/shipday': typeof ApiPublicHooksShipdayRoute
   '/api/public/hooks/sync-biyo': typeof ApiPublicHooksSyncBiyoRoute
 }
@@ -389,6 +399,7 @@ export interface FileRouteTypes {
     | '/staff/login'
     | '/admin/'
     | '/api/public/hooks/cart-abandonment'
+    | '/api/public/hooks/requote-scheduled'
     | '/api/public/hooks/shipday'
     | '/api/public/hooks/sync-biyo'
   fileRoutesByTo: FileRoutesByTo
@@ -427,6 +438,7 @@ export interface FileRouteTypes {
     | '/staff/login'
     | '/admin'
     | '/api/public/hooks/cart-abandonment'
+    | '/api/public/hooks/requote-scheduled'
     | '/api/public/hooks/shipday'
     | '/api/public/hooks/sync-biyo'
   id:
@@ -466,6 +478,7 @@ export interface FileRouteTypes {
     | '/staff/login'
     | '/admin/'
     | '/api/public/hooks/cart-abandonment'
+    | '/api/public/hooks/requote-scheduled'
     | '/api/public/hooks/shipday'
     | '/api/public/hooks/sync-biyo'
   fileRoutesById: FileRoutesById
@@ -493,6 +506,7 @@ export interface RootRouteChildren {
   ItemSlugRoute: typeof ItemSlugRoute
   StaffLoginRoute: typeof StaffLoginRoute
   ApiPublicHooksCartAbandonmentRoute: typeof ApiPublicHooksCartAbandonmentRoute
+  ApiPublicHooksRequoteScheduledRoute: typeof ApiPublicHooksRequoteScheduledRoute
   ApiPublicHooksShipdayRoute: typeof ApiPublicHooksShipdayRoute
   ApiPublicHooksSyncBiyoRoute: typeof ApiPublicHooksSyncBiyoRoute
 }
@@ -751,6 +765,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicHooksShipdayRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/hooks/requote-scheduled': {
+      id: '/api/public/hooks/requote-scheduled'
+      path: '/api/public/hooks/requote-scheduled'
+      fullPath: '/api/public/hooks/requote-scheduled'
+      preLoaderRoute: typeof ApiPublicHooksRequoteScheduledRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/hooks/cart-abandonment': {
       id: '/api/public/hooks/cart-abandonment'
       path: '/api/public/hooks/cart-abandonment'
@@ -818,6 +839,7 @@ const rootRouteChildren: RootRouteChildren = {
   ItemSlugRoute: ItemSlugRoute,
   StaffLoginRoute: StaffLoginRoute,
   ApiPublicHooksCartAbandonmentRoute: ApiPublicHooksCartAbandonmentRoute,
+  ApiPublicHooksRequoteScheduledRoute: ApiPublicHooksRequoteScheduledRoute,
   ApiPublicHooksShipdayRoute: ApiPublicHooksShipdayRoute,
   ApiPublicHooksSyncBiyoRoute: ApiPublicHooksSyncBiyoRoute,
 }
