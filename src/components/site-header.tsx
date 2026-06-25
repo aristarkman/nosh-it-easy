@@ -11,7 +11,7 @@ export function SiteHeader() {
   const loc = LOCATIONS.find((l) => l.id === location);
   const hideOnLanding = path === "/";
   const auth = useCustomerAuth();
-  void totalQty;
+
 
   return (
     <header className="sticky top-0 z-40 bg-background">
