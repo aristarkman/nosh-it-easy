@@ -98,7 +98,7 @@ function ModifierSection({
 function ItemPage() {
   const { item } = Route.useLoaderData() as { item: MenuItem };
   const { edit: editLineId } = Route.useSearch();
-  const { addToCart, replaceLine, cart } = useOrder();
+  const { addToCart, replaceLine, cart, location } = useOrder();
   const navigate = useNavigate();
 
   const editingLine = editLineId ? cart.find((l) => l.lineId === editLineId) : undefined;
