@@ -245,7 +245,7 @@ function ItemPage() {
             onClick={add}
             className="flex flex-1 items-center justify-between rounded-full bg-primary px-5 py-3 text-sm font-semibold text-primary-foreground transition hover:opacity-90 disabled:opacity-40"
           >
-            <span>Add {qty} to cart</span>
+            <span>{isEditing ? `Update ${qty} in cart` : `Add ${qty} to cart`}</span>
             <span>{fmt(unit * qty)}</span>
           </button>
         </div>
