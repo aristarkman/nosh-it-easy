@@ -331,7 +331,7 @@ function MenuAdmin() {
       const slug = `${slugify(name)}-${biyo_product_id.slice(-6)}`;
       const { data: ins, error } = await supabase.from("menu_items")
         .insert({ name, category: newCat || null, biyo_product_id, active: true, slug })
-        .select("id,name,category,active,sort_order,photo_url,description").single();
+        .select("id,name,category,active,sort_order,photo_url,description,gluten_free_possible").single();
       if (error || !ins) { alert(error?.message ?? "Failed"); return; }
       const { error: pErr } = await supabase.from("menu_item_prices")
         .insert({ menu_item_id: ins.id, location_id: "cresskill", price });
