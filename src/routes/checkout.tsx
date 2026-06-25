@@ -308,6 +308,12 @@ function CheckoutPage() {
     return zones.find((z) => pointInPolygon(geo, z.polygon));
   }, [orderType, geo, zones]);
 
+  const otherLocation = useMemo(() => LOCATIONS.find((l) => l.id !== location), [location]);
+  const otherMatchedZone = useMemo(() => {
+    if (orderType !== "delivery" || !geo || matchedZone) return undefined;
+    return otherZones.find((z) => pointInPolygon(geo, z.polygon));
+  }, [orderType, geo, matchedZone, otherZones]);
+
   // Live Shipday on-demand quote — falls back to zone fee if unavailable.
   const [liveQuote, setLiveQuote] = useState<{
     fee: number;
