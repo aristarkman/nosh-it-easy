@@ -81,7 +81,9 @@ function CheckoutPage() {
   const [tipPreset, setTipPreset] = useState<number>(0.18);
   const [tipCustom, setTipCustom] = useState<string>("");
 
-  const [zones, setZones] = useState<{ id: string; name: string; fee: number; minimum: number; polygon: { lat: number; lng: number }[] }[]>([]);
+  type Zone = { id: string; name: string; fee: number; minimum: number; polygon: { lat: number; lng: number }[] };
+  const [zones, setZones] = useState<Zone[]>([]);
+  const [otherZones, setOtherZones] = useState<Zone[]>([]);
   const [geo, setGeo] = useState<{ lat: number; lng: number } | null>(null);
   const [geoError, setGeoError] = useState<string | null>(null);
   const [geoLoading, setGeoLoading] = useState(false);
