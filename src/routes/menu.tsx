@@ -2,6 +2,7 @@ import { createFileRoute, Link, redirect } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { Search, ChevronRight, Flame } from "lucide-react";
 import { LOCATIONS, useOrder, fmt } from "@/lib/order-context";
+import { menuItemAlt } from "@/lib/alt-text";
 import { getMenu } from "@/lib/menu.functions";
 import { thumb } from "@/lib/image-url";
 import type { Category } from "@/lib/menu-types";
@@ -159,7 +160,7 @@ function MenuPage() {
                     {i.image ? (
                       <img
                         src={thumb(i.image, 224)}
-                        alt={i.name}
+                        alt={menuItemAlt(i.name, location)}
                         width={112}
                         height={112}
                         loading={idx < 4 ? "eager" : "lazy"}

@@ -25,7 +25,7 @@ export function SiteHeader() {
       <div className="border-b border-border">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3">
           <Link to="/" className="flex items-center" aria-label="The Famous Kosher Nosh">
-            <img src={logo} alt="The Famous Kosher Nosh" className="h-12 w-auto sm:h-14 md:h-16" />
+            <img src={logo} alt="The Famous Kosher Nosh - Kosher Deli Glen Rock and Cresskill NJ" className="h-12 w-auto sm:h-14 md:h-16" />
           </Link>
 
           <div className="hidden items-center gap-6 md:flex">

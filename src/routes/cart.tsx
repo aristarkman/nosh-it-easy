@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, Minus, Plus, Trash2, Star, Pencil } from "lucide-react";
 import { useOrder, fmt, LOCATIONS } from "@/lib/order-context";
+import { menuItemAlt } from "@/lib/alt-text";
 import { getMenu } from "@/lib/menu.functions";
 import type { MenuItem } from "@/lib/menu-types";
 
@@ -193,7 +194,7 @@ function CartPage() {
                   {u.image ? (
                     <img
                       src={u.image}
-                      alt={u.name}
+                      alt={menuItemAlt(u.name, location)}
                       className="size-16 flex-none rounded-xl object-cover"
                     />
                   ) : (
