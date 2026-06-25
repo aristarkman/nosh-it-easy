@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as WhenRouteImport } from './routes/when'
 import { Route as TermsRouteImport } from './routes/terms'
 import { Route as TabletRouteImport } from './routes/tablet'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
@@ -46,6 +47,11 @@ import { Route as ApiPublicHooksSyncBiyoRouteImport } from './routes/api/public/
 import { Route as ApiPublicHooksShipdayRouteImport } from './routes/api/public/hooks/shipday'
 import { Route as ApiPublicHooksCartAbandonmentRouteImport } from './routes/api/public/hooks/cart-abandonment'
 
+const WhenRoute = WhenRouteImport.update({
+  id: '/when',
+  path: '/when',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const TermsRoute = TermsRouteImport.update({
   id: '/terms',
   path: '/terms',
@@ -246,6 +252,7 @@ export interface FileRoutesByFullPath {
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/tablet': typeof TabletRoute
   '/terms': typeof TermsRoute
+  '/when': typeof WhenRoute
   '/admin/biyo': typeof AdminBiyoRoute
   '/admin/categories': typeof AdminCategoriesRoute
   '/admin/closures': typeof AdminClosuresRoute
@@ -283,6 +290,7 @@ export interface FileRoutesByTo {
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/tablet': typeof TabletRoute
   '/terms': typeof TermsRoute
+  '/when': typeof WhenRoute
   '/admin/biyo': typeof AdminBiyoRoute
   '/admin/categories': typeof AdminCategoriesRoute
   '/admin/closures': typeof AdminClosuresRoute
@@ -322,6 +330,7 @@ export interface FileRoutesById {
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/tablet': typeof TabletRoute
   '/terms': typeof TermsRoute
+  '/when': typeof WhenRoute
   '/admin/biyo': typeof AdminBiyoRoute
   '/admin/categories': typeof AdminCategoriesRoute
   '/admin/closures': typeof AdminClosuresRoute
@@ -362,6 +371,7 @@ export interface FileRouteTypes {
     | '/sitemap.xml'
     | '/tablet'
     | '/terms'
+    | '/when'
     | '/admin/biyo'
     | '/admin/categories'
     | '/admin/closures'
@@ -399,6 +409,7 @@ export interface FileRouteTypes {
     | '/sitemap.xml'
     | '/tablet'
     | '/terms'
+    | '/when'
     | '/admin/biyo'
     | '/admin/categories'
     | '/admin/closures'
@@ -437,6 +448,7 @@ export interface FileRouteTypes {
     | '/sitemap.xml'
     | '/tablet'
     | '/terms'
+    | '/when'
     | '/admin/biyo'
     | '/admin/categories'
     | '/admin/closures'
@@ -476,6 +488,7 @@ export interface RootRouteChildren {
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   TabletRoute: typeof TabletRoute
   TermsRoute: typeof TermsRoute
+  WhenRoute: typeof WhenRoute
   ConfirmationOrderIdRoute: typeof ConfirmationOrderIdRoute
   ItemSlugRoute: typeof ItemSlugRoute
   StaffLoginRoute: typeof StaffLoginRoute
@@ -486,6 +499,13 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/when': {
+      id: '/when'
+      path: '/when'
+      fullPath: '/when'
+      preLoaderRoute: typeof WhenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/terms': {
       id: '/terms'
       path: '/terms'
@@ -793,6 +813,7 @@ const rootRouteChildren: RootRouteChildren = {
   SitemapDotxmlRoute: SitemapDotxmlRoute,
   TabletRoute: TabletRoute,
   TermsRoute: TermsRoute,
+  WhenRoute: WhenRoute,
   ConfirmationOrderIdRoute: ConfirmationOrderIdRoute,
   ItemSlugRoute: ItemSlugRoute,
   StaffLoginRoute: StaffLoginRoute,

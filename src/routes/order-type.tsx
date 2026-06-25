@@ -30,7 +30,7 @@ function OrderTypePick() {
 
   const choose = (t: OrderType) => {
     setOrderType(t);
-    navigate({ to: "/menu" });
+    navigate({ to: "/when" });
   };
 
   return (
