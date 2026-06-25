@@ -8,6 +8,7 @@ import { thumb } from "@/lib/image-url";
 import { z } from "zod";
 
 export const Route = createFileRoute("/item/$slug")({
+  validateSearch: z.object({ edit: z.string().optional() }),
   loader: async ({ params }) => {
     const { item } = await getMenuItem({ data: { slug: params.slug } });
     if (!item) throw notFound();
