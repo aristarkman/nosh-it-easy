@@ -5,6 +5,7 @@ import { LOCATIONS, useOrder, fmt } from "@/lib/order-context";
 import { getMenu } from "@/lib/menu.functions";
 import { thumb } from "@/lib/image-url";
 import type { Category } from "@/lib/menu-types";
+import { useStoreHours } from "@/lib/use-store-hours";
 
 export const Route = createFileRoute("/menu")({
   head: () => ({
