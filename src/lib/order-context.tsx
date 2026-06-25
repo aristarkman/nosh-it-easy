@@ -6,6 +6,7 @@ import { useCartSync } from "./use-cart-sync";
 
 export type LocationId = "glen-rock" | "cresskill";
 export type OrderType = "pickup" | "delivery";
+export type WhenType = "asap" | "schedule";
 
 export type CartLine = {
   lineId: string;
@@ -21,12 +22,15 @@ export type CartLine = {
 type OrderState = {
   location: LocationId | null;
   orderType: OrderType | null;
+  whenType: WhenType | null;
+  scheduledTime: string | null;
   cart: CartLine[];
 };
 
 type Ctx = OrderState & {
   setLocation: (l: LocationId) => void;
   setOrderType: (t: OrderType) => void;
+  setWhen: (when: WhenType, scheduledTime?: string | null) => void;
   addToCart: (line: Omit<CartLine, "lineId">) => void;
   removeLine: (lineId: string) => void;
   updateQty: (lineId: string, qty: number) => void;
@@ -44,7 +48,7 @@ const LEGACY_KEYS = ["kn-order-v1"];
 
 type Persisted = { v: number; state: OrderState };
 
-const EMPTY: OrderState = { location: null, orderType: null, cart: [] };
+const EMPTY: OrderState = { location: null, orderType: null, whenType: null, scheduledTime: null, cart: [] };
 
 function isOrderState(x: unknown): x is OrderState {
   if (!x || typeof x !== "object") return false;
@@ -123,6 +127,8 @@ export function OrderProvider({ children }: { children: ReactNode }) {
 
   const setLocation = (location: LocationId) => setState((s) => ({ ...s, location }));
   const setOrderType = (orderType: OrderType) => setState((s) => ({ ...s, orderType }));
+  const setWhen = (whenType: WhenType, scheduledTime: string | null = null) =>
+    setState((s) => ({ ...s, whenType, scheduledTime: whenType === "schedule" ? scheduledTime : null }));
   const addToCart = (line: Omit<CartLine, "lineId">) => {
     setState((s) => ({ ...s, cart: [...s.cart, { ...line, lineId: crypto.randomUUID() }] }));
     void track("add_to_cart", {
@@ -148,7 +154,7 @@ export function OrderProvider({ children }: { children: ReactNode }) {
 
   return (
     <OrderContext.Provider
-      value={{ ...state, setLocation, setOrderType, addToCart, removeLine, updateQty, clearCart, subtotal, totalQty }}
+      value={{ ...state, setLocation, setOrderType, setWhen, addToCart, removeLine, updateQty, clearCart, subtotal, totalQty }}
     >
       {children}
     </OrderContext.Provider>
