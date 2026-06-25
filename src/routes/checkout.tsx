@@ -153,8 +153,12 @@ function CheckoutPage() {
     if (!location) return;
     (async () => {
       const today = new Date().toISOString().slice(0, 10);
-      const [{ data: z }, { data: c }, { data: h }] = await Promise.all([
+      const otherLocationId = LOCATIONS.find((l) => l.id !== location)?.id;
+      const [{ data: z }, { data: zOther }, { data: c }, { data: h }] = await Promise.all([
         supabase.from("delivery_zone_polygons").select("id,name,fee,minimum,polygon").eq("location_id", location).eq("active", true).order("sort_order"),
+        otherLocationId
+          ? supabase.from("delivery_zone_polygons").select("id,name,fee,minimum,polygon").eq("location_id", otherLocationId).eq("active", true).order("sort_order")
+          : Promise.resolve({ data: [] as unknown[] }),
         supabase
           .from("store_closures")
           .select("reason,location_id,start_date,end_date")
@@ -165,15 +169,19 @@ function CheckoutPage() {
           .eq("location_id", location)
           .eq("hours_kind", "online"),
       ]);
-      setZones(
-        (z ?? []).map((x) => ({
-          id: x.id as string,
-          name: x.name as string,
-          fee: Number(x.fee),
-          minimum: Number(x.minimum),
-          polygon: (x.polygon as { lat: number; lng: number }[]) ?? [],
-        })),
-      );
+      const mapZones = (rows: unknown[]): Zone[] =>
+        (rows ?? []).map((r) => {
+          const x = r as { id: string; name: string; fee: number | string; minimum: number | string; polygon: unknown };
+          return {
+            id: x.id,
+            name: x.name,
+            fee: Number(x.fee),
+            minimum: Number(x.minimum),
+            polygon: (x.polygon as { lat: number; lng: number }[]) ?? [],
+          };
+        });
+      setZones(mapZones((z ?? []) as unknown[]));
+      setOtherZones(mapZones((zOther ?? []) as unknown[]));
       const allClosures = (c ?? []).filter((x) => x.location_id === null || x.location_id === location);
       setClosures(allClosures.map((x) => ({ start_date: x.start_date, end_date: x.end_date })));
       const hitToday = allClosures.find((x) => x.start_date <= today && x.end_date >= today);
