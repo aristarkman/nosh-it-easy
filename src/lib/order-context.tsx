@@ -6,6 +6,7 @@ import { useCartSync } from "./use-cart-sync";
 
 export type LocationId = "glen-rock" | "cresskill";
 export type OrderType = "pickup" | "delivery";
+export type WhenType = "asap" | "schedule";
 
 export type CartLine = {
   lineId: string;
@@ -21,12 +22,15 @@ export type CartLine = {
 type OrderState = {
   location: LocationId | null;
   orderType: OrderType | null;
+  whenType: WhenType | null;
+  scheduledTime: string | null;
   cart: CartLine[];
 };
 
 type Ctx = OrderState & {
   setLocation: (l: LocationId) => void;
   setOrderType: (t: OrderType) => void;
+  setWhen: (when: WhenType, scheduledTime?: string | null) => void;
   addToCart: (line: Omit<CartLine, "lineId">) => void;
   removeLine: (lineId: string) => void;
   updateQty: (lineId: string, qty: number) => void;
