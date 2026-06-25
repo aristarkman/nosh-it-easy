@@ -5,6 +5,7 @@ import appCss from "../styles.css?url";
 import { OrderProvider } from "@/lib/order-context";
 import { SiteHeader } from "@/components/site-header";
 import { ScrollToTop } from "@/components/scroll-to-top";
+import { WelcomePopup } from "@/components/welcome-popup";
 
 function NotFoundComponent() {
   return (
@@ -214,6 +215,7 @@ function RootComponent() {
           </footer>
           )}
           {!isChromeless && <ScrollToTop />}
+          {!isChromeless && <WelcomePopup />}
         </div>
       </OrderProvider>
     </QueryClientProvider>
