@@ -96,19 +96,29 @@ function ModifierSection({
 
 function ItemPage() {
   const { item } = Route.useLoaderData() as { item: MenuItem };
-  const { addToCart } = useOrder();
+  const { edit: editLineId } = Route.useSearch();
+  const { addToCart, replaceLine, cart } = useOrder();
   const navigate = useNavigate();
+
+  const editingLine = editLineId ? cart.find((l) => l.lineId === editLineId) : undefined;
+  const isEditing = !!editingLine && editingLine.itemId === item.id;
 
   const [selections, setSelections] = useState<Record<string, ModifierOption[]>>(() => {
     const init: Record<string, ModifierOption[]> = {};
     item.modifierGroups?.forEach((g) => {
-      if (g.required && g.max === 1 && g.options[0]) init[g.id] = [g.options[0]];
-      else init[g.id] = [];
+      if (isEditing) {
+        const existing = editingLine!.modifiers.find((m) => m.groupId === g.id);
+        init[g.id] = existing ? existing.options : [];
+      } else if (g.required && g.max === 1 && g.options[0]) {
+        init[g.id] = [g.options[0]];
+      } else {
+        init[g.id] = [];
+      }
     });
     return init;
   });
-  const [qty, setQty] = useState(1);
-  const [notes, setNotes] = useState("");
+  const [qty, setQty] = useState(isEditing ? editingLine!.quantity : 1);
+  const [notes, setNotes] = useState(isEditing ? editingLine!.notes ?? "" : "");
   const photos = item.images && item.images.length > 0 ? item.images : (item.image ? [item.image] : []);
   const [activePhoto, setActivePhoto] = useState(0);
 
