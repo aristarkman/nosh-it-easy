@@ -774,9 +774,28 @@ function CheckoutPage() {
               {geoLoading && address.trim().length >= 5 && zip.length === 5 && (
                 <p className="text-xs text-muted-foreground">Checking delivery area…</p>
               )}
-              {!geoLoading && geo && !matchedZone && (
+              {!geoLoading && geo && !matchedZone && otherMatchedZone && otherLocation && (
+                <div className="rounded-md border border-primary/40 bg-primary/5 p-3 text-xs space-y-2">
+                  <p>
+                    Your address is outside our {loc?.name} delivery area, but our {otherLocation.name} location
+                    can deliver to you ({fmt(otherMatchedZone.fee)} fee · {fmt(otherMatchedZone.minimum)} min).
+                  </p>
+                  <button
+                    type="button"
+                    className="inline-flex items-center rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90"
+                    onClick={() => {
+                      setLocation(otherLocation.id);
+                      toast.success(`Switched to ${otherLocation.name}`);
+                    }}
+                  >
+                    Switch to {otherLocation.name}
+                  </button>
+                </div>
+              )}
+              {!geoLoading && geo && !matchedZone && !otherMatchedZone && (
                 <p className="text-xs text-destructive">
-                  Sorry — that address is outside our delivery area from {loc?.name}. Try pickup instead.
+                  Sorry — that address is outside our delivery area from {loc?.name}
+                  {otherLocation ? ` or ${otherLocation.name}` : ""}. Try pickup instead.
                 </p>
               )}
               {!geoLoading && geoError && address.trim().length >= 5 && zip.length === 5 && (
