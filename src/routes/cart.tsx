@@ -33,6 +33,12 @@ function CartPage() {
     staleTime: 5 * 60 * 1000,
   });
 
+  const itemsById = useMemo(() => {
+    const map = new Map<string, MenuItem>();
+    (menuData?.items ?? []).forEach((i) => map.set(i.id, i));
+    return map;
+  }, [menuData]);
+
   const upsells = useMemo<MenuItem[]>(() => {
     const items = menuData?.items ?? [];
     const inCart = new Set(cart.map((l) => l.itemId));
