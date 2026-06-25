@@ -63,7 +63,7 @@ declare global {
 
 function CheckoutPage() {
   const navigate = useNavigate();
-  const { cart, subtotal, location, orderType, whenType: ctxWhen, scheduledTime: ctxSched, clearCart } = useOrder();
+  const { cart, subtotal, location, orderType, whenType: ctxWhen, scheduledTime: ctxSched, clearCart, setLocation } = useOrder();
   const auth = useCustomerAuth();
   const loc = LOCATIONS.find((l) => l.id === location);
 
@@ -81,7 +81,9 @@ function CheckoutPage() {
   const [tipPreset, setTipPreset] = useState<number>(0.18);
   const [tipCustom, setTipCustom] = useState<string>("");
 
-  const [zones, setZones] = useState<{ id: string; name: string; fee: number; minimum: number; polygon: { lat: number; lng: number }[] }[]>([]);
+  type Zone = { id: string; name: string; fee: number; minimum: number; polygon: { lat: number; lng: number }[] };
+  const [zones, setZones] = useState<Zone[]>([]);
+  const [otherZones, setOtherZones] = useState<Zone[]>([]);
   const [geo, setGeo] = useState<{ lat: number; lng: number } | null>(null);
   const [geoError, setGeoError] = useState<string | null>(null);
   const [geoLoading, setGeoLoading] = useState(false);
@@ -151,8 +153,12 @@ function CheckoutPage() {
     if (!location) return;
     (async () => {
       const today = new Date().toISOString().slice(0, 10);
-      const [{ data: z }, { data: c }, { data: h }] = await Promise.all([
+      const otherLocationId = LOCATIONS.find((l) => l.id !== location)?.id;
+      const [{ data: z }, { data: zOther }, { data: c }, { data: h }] = await Promise.all([
         supabase.from("delivery_zone_polygons").select("id,name,fee,minimum,polygon").eq("location_id", location).eq("active", true).order("sort_order"),
+        otherLocationId
+          ? supabase.from("delivery_zone_polygons").select("id,name,fee,minimum,polygon").eq("location_id", otherLocationId).eq("active", true).order("sort_order")
+          : Promise.resolve({ data: [] as unknown[] }),
         supabase
           .from("store_closures")
           .select("reason,location_id,start_date,end_date")
@@ -163,15 +169,19 @@ function CheckoutPage() {
           .eq("location_id", location)
           .eq("hours_kind", "online"),
       ]);
-      setZones(
-        (z ?? []).map((x) => ({
-          id: x.id as string,
-          name: x.name as string,
-          fee: Number(x.fee),
-          minimum: Number(x.minimum),
-          polygon: (x.polygon as { lat: number; lng: number }[]) ?? [],
-        })),
-      );
+      const mapZones = (rows: unknown[]): Zone[] =>
+        (rows ?? []).map((r) => {
+          const x = r as { id: string; name: string; fee: number | string; minimum: number | string; polygon: unknown };
+          return {
+            id: x.id,
+            name: x.name,
+            fee: Number(x.fee),
+            minimum: Number(x.minimum),
+            polygon: (x.polygon as { lat: number; lng: number }[]) ?? [],
+          };
+        });
+      setZones(mapZones((z ?? []) as unknown[]));
+      setOtherZones(mapZones((zOther ?? []) as unknown[]));
       const allClosures = (c ?? []).filter((x) => x.location_id === null || x.location_id === location);
       setClosures(allClosures.map((x) => ({ start_date: x.start_date, end_date: x.end_date })));
       const hitToday = allClosures.find((x) => x.start_date <= today && x.end_date >= today);
@@ -297,6 +307,12 @@ function CheckoutPage() {
     if (orderType !== "delivery" || !geo) return undefined;
     return zones.find((z) => pointInPolygon(geo, z.polygon));
   }, [orderType, geo, zones]);
+
+  const otherLocation = useMemo(() => LOCATIONS.find((l) => l.id !== location), [location]);
+  const otherMatchedZone = useMemo(() => {
+    if (orderType !== "delivery" || !geo || matchedZone) return undefined;
+    return otherZones.find((z) => pointInPolygon(geo, z.polygon));
+  }, [orderType, geo, matchedZone, otherZones]);
 
   // Live Shipday on-demand quote — falls back to zone fee if unavailable.
   const [liveQuote, setLiveQuote] = useState<{
@@ -758,9 +774,28 @@ function CheckoutPage() {
               {geoLoading && address.trim().length >= 5 && zip.length === 5 && (
                 <p className="text-xs text-muted-foreground">Checking delivery area…</p>
               )}
-              {!geoLoading && geo && !matchedZone && (
+              {!geoLoading && geo && !matchedZone && otherMatchedZone && otherLocation && (
+                <div className="rounded-md border border-primary/40 bg-primary/5 p-3 text-xs space-y-2">
+                  <p>
+                    Your address is outside our {loc?.name} delivery area, but our {otherLocation.name} location
+                    can deliver to you ({fmt(otherMatchedZone.fee)} fee · {fmt(otherMatchedZone.minimum)} min).
+                  </p>
+                  <button
+                    type="button"
+                    className="inline-flex items-center rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90"
+                    onClick={() => {
+                      setLocation(otherLocation.id);
+                      toast.success(`Switched to ${otherLocation.name}`);
+                    }}
+                  >
+                    Switch to {otherLocation.name}
+                  </button>
+                </div>
+              )}
+              {!geoLoading && geo && !matchedZone && !otherMatchedZone && (
                 <p className="text-xs text-destructive">
-                  Sorry — that address is outside our delivery area from {loc?.name}. Try pickup instead.
+                  Sorry — that address is outside our delivery area from {loc?.name}
+                  {otherLocation ? ` or ${otherLocation.name}` : ""}. Try pickup instead.
                 </p>
               )}
               {!geoLoading && geoError && address.trim().length >= 5 && zip.length === 5 && (
