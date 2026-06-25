@@ -48,7 +48,7 @@ const LEGACY_KEYS = ["kn-order-v1"];
 
 type Persisted = { v: number; state: OrderState };
 
-const EMPTY: OrderState = { location: null, orderType: null, cart: [] };
+const EMPTY: OrderState = { location: null, orderType: null, whenType: null, scheduledTime: null, cart: [] };
 
 function isOrderState(x: unknown): x is OrderState {
   if (!x || typeof x !== "object") return false;
