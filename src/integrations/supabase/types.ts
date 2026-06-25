@@ -600,6 +600,7 @@ export type Database = {
           category: string | null
           created_at: string
           description: string | null
+          gluten_free_possible: boolean
           id: string
           last_synced_at: string | null
           name: string
@@ -615,6 +616,7 @@ export type Database = {
           category?: string | null
           created_at?: string
           description?: string | null
+          gluten_free_possible?: boolean
           id?: string
           last_synced_at?: string | null
           name: string
@@ -630,6 +632,7 @@ export type Database = {
           category?: string | null
           created_at?: string
           description?: string | null
+          gluten_free_possible?: boolean
           id?: string
           last_synced_at?: string | null
           name?: string
