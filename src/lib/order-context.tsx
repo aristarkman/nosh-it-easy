@@ -139,6 +139,11 @@ export function OrderProvider({ children }: { children: ReactNode }) {
     });
     trackAddToCart({ value: line.unitPrice * line.quantity, itemId: line.itemId, name: line.name, quantity: line.quantity });
   };
+  const replaceLine = (lineId: string, line: Omit<CartLine, "lineId">) =>
+    setState((s) => ({
+      ...s,
+      cart: s.cart.map((l) => (l.lineId === lineId ? { ...line, lineId } : l)),
+    }));
   const removeLine = (lineId: string) =>
     setState((s) => ({ ...s, cart: s.cart.filter((l) => l.lineId !== lineId) }));
   const updateQty = (lineId: string, qty: number) =>
