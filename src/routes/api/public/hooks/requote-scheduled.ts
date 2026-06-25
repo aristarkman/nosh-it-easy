@@ -2,9 +2,17 @@ import { createFileRoute } from "@tanstack/react-router";
 
 const SHIPDAY_BASE = "https://api.shipday.com";
 
-const PICKUPS: Record<string, { address: string }> = {
-  "glen-rock": { address: "230 Rock Rd, Glen Rock, NJ 07452" },
-  cresskill: { address: "27 Union Ave, Cresskill, NJ 07626" },
+const PICKUPS: Record<string, { name: string; address: string; phone: string }> = {
+  "glen-rock": {
+    name: "The Famous Kosher Nosh — Glen Rock",
+    address: "230 Rock Rd, Glen Rock, NJ 07452",
+    phone: "+12013310000",
+  },
+  cresskill: {
+    name: "The Famous Kosher Nosh — Cresskill",
+    address: "27 Union Ave, Cresskill, NJ 07626",
+    phone: "+12018713535",
+  },
 };
 
 function getApiKey(locationId: string): string | undefined {
@@ -15,27 +23,69 @@ function getApiKey(locationId: string): string | undefined {
   return KEYS[locationId] ?? process.env.SHIPDAY_API_KEY;
 }
 
-type QuoteResult =
-  | { ok: true; fee: number; etaMinutes: number | null }
-  | { ok: false; message: string };
+type CartItem = { name: string; quantity: number; unitPrice: number };
 
-async function quote(
-  locationId: string,
-  deliveryAddress: string,
-  total: number
-): Promise<QuoteResult> {
-  const apiKey = getApiKey(locationId);
-  const pickup = PICKUPS[locationId];
-  if (!apiKey || !pickup) return { ok: false, message: "Delivery not configured" };
+type OrderRow = {
+  id: string;
+  order_number: string;
+  location_id: string;
+  delivery_address: string | null;
+  total: number | string;
+  subtotal: number | string;
+  tax: number | string;
+  delivery_fee: number | string;
+  customer_name: string;
+  customer_phone: string;
+  customer_email: string | null;
+  notes: string | null;
+  items: unknown;
+  scheduled_time: string | null;
+};
+
+function parseTip(notes: string | null): number {
+  if (!notes) return 0;
+  const m = notes.match(/tip:([0-9]+(?:\.[0-9]+)?)/);
+  return m ? Number(m[1]) : 0;
+}
+
+async function dispatch(o: OrderRow): Promise<{ ok: true; id: string | null; trackingUrl: string | null } | { ok: false; message: string }> {
+  const apiKey = getApiKey(o.location_id);
+  const pickup = PICKUPS[o.location_id];
+  if (!apiKey || !pickup) return { ok: false, message: "Shipday not configured" };
+  if (!o.delivery_address) return { ok: false, message: "Missing delivery address" };
+
+  const items = Array.isArray(o.items) ? (o.items as CartItem[]) : [];
+  const tip = parseTip(o.notes);
+
+  const payload = {
+    orderNumber: o.order_number,
+    customerName: o.customer_name,
+    customerAddress: o.delivery_address,
+    customerPhoneNumber: o.customer_phone,
+    customerEmail: o.customer_email || undefined,
+    restaurantName: pickup.name,
+    restaurantAddress: pickup.address,
+    restaurantPhoneNumber: pickup.phone,
+    orderItems: items.map((it) => ({
+      name: it.name,
+      quantity: it.quantity,
+      unitPrice: it.unitPrice,
+    })),
+    tips: tip,
+    tax: Number(o.tax),
+    discountAmount: 0,
+    deliveryFee: Number(o.delivery_fee),
+    totalOrderCost: Number(o.total),
+    deliveryInstruction: o.notes || undefined,
+    paymentMethod: "credit_card",
+    expectedPickupTime: o.scheduled_time || undefined,
+  };
+
   try {
-    const res = await fetch(`${SHIPDAY_BASE}/on-demand/quote`, {
+    const res = await fetch(`${SHIPDAY_BASE}/orders`, {
       method: "POST",
       headers: { Authorization: `Basic ${apiKey}`, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        pickupAddress: pickup.address,
-        deliveryAddress,
-        orderValue: total,
-      }),
+      body: JSON.stringify(payload),
     });
     const text = await res.text();
     let body: Record<string, unknown> = {};
@@ -53,15 +103,15 @@ async function quote(
             : `Shipday error (${res.status})`,
       };
     }
-    const fee =
-      (body.fee as number | undefined) ??
-      (body.deliveryFee as number | undefined) ??
-      ((body.quote as Record<string, unknown> | undefined)?.fee as number | undefined) ??
+    const id =
+      (body.orderId as string | number | undefined) ??
+      (body.id as string | number | undefined) ??
       null;
-    const etaMinutes =
-      (body.etaMinutes as number | undefined) ?? (body.eta as number | undefined) ?? null;
-    if (fee == null) return { ok: false, message: "No quote available for this address." };
-    return { ok: true, fee: Number(fee), etaMinutes: etaMinutes != null ? Number(etaMinutes) : null };
+    const trackingUrl =
+      (body.trackingLink as string | undefined) ??
+      (body.trackingUrl as string | undefined) ??
+      null;
+    return { ok: true, id: id != null ? String(id) : null, trackingUrl };
   } catch {
     return { ok: false, message: "Could not reach Shipday." };
   }
@@ -78,23 +128,20 @@ export const Route = createFileRoute("/api/public/hooks/requote-scheduled")({
 
         const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
-        const now = new Date();
-        const windowStart = new Date(now.getTime() + 30 * 60 * 1000).toISOString();
-        const windowEnd = new Date(now.getTime() + 45 * 60 * 1000).toISOString();
+        // Dispatch any scheduled delivery order whose pickup time is within the
+        // next 45 minutes (or already past-due) and hasn't been sent to Shipday.
+        const cutoff = new Date(Date.now() + 45 * 60 * 1000).toISOString();
 
-        // Find scheduled delivery orders entering the 30-45 min window
-        // that are still active (not delivered/cancelled) and not yet dispatched to Shipday.
         const { data: orders, error } = await supabaseAdmin
           .from("orders")
           .select(
-            "id, order_number, location_id, delivery_address, total, scheduled_time, shipday_order_id"
+            "id, order_number, location_id, delivery_address, total, subtotal, tax, delivery_fee, customer_name, customer_phone, customer_email, notes, items, scheduled_time"
           )
           .eq("order_type", "delivery")
           .eq("when_type", "schedule")
           .is("shipday_order_id", null)
           .in("status", ["new", "accepted", "ready"])
-          .gte("scheduled_time", windowStart)
-          .lte("scheduled_time", windowEnd);
+          .lte("scheduled_time", cutoff);
 
         if (error) {
           console.error("requote-scheduled query error:", error);
@@ -105,14 +152,29 @@ export const Route = createFileRoute("/api/public/hooks/requote-scheduled")({
         }
 
         let checked = 0;
+        let dispatched = 0;
         let alerted = 0;
-        let okCount = 0;
 
-        for (const o of orders ?? []) {
+        for (const o of (orders ?? []) as OrderRow[]) {
           if (!o.delivery_address) continue;
           checked++;
 
-          // Skip if we've already raised an unresolved alert for this order.
+          const result = await dispatch(o);
+          if (result.ok) {
+            dispatched++;
+            await supabaseAdmin
+              .from("orders")
+              .update({
+                shipday_order_id: result.id,
+                shipday_tracking_url: result.trackingUrl,
+                quoted_delivery_fee: Number(o.delivery_fee),
+                dispatched_at: new Date().toISOString(),
+              })
+              .eq("id", o.id);
+            continue;
+          }
+
+          // Avoid duplicate alerts for the same order.
           const { data: existing } = await supabaseAdmin
             .from("system_alerts")
             .select("id")
@@ -122,12 +184,6 @@ export const Route = createFileRoute("/api/public/hooks/requote-scheduled")({
             .limit(1);
           if (existing && existing.length > 0) continue;
 
-          const result = await quote(o.location_id, o.delivery_address, Number(o.total));
-          if (result.ok) {
-            okCount++;
-            continue;
-          }
-
           alerted++;
           await supabaseAdmin.from("system_alerts").insert({
             kind: "driver_unavailable_scheduled",
@@ -135,7 +191,7 @@ export const Route = createFileRoute("/api/public/hooks/requote-scheduled")({
             location_id: o.location_id,
             order_number: o.order_number,
             order_id: o.id,
-            message: `No driver quote for scheduled order ${o.order_number} (pickup ${new Date(
+            message: `Could not dispatch scheduled order ${o.order_number} to Shipday (pickup ${new Date(
               o.scheduled_time as string
             ).toLocaleString()}): ${result.message}`,
             details: {
@@ -147,7 +203,7 @@ export const Route = createFileRoute("/api/public/hooks/requote-scheduled")({
         }
 
         return new Response(
-          JSON.stringify({ ok: true, checked, alerted, okCount }),
+          JSON.stringify({ ok: true, checked, dispatched, alerted }),
           { headers: { "Content-Type": "application/json" } }
         );
       },
