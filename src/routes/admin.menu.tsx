@@ -23,6 +23,7 @@ type Item = {
   sort_order: number;
   photo_url: string | null;
   description: string | null;
+  gluten_free_possible: boolean;
 };
 type Price = { menu_item_id: string; location_id: string; price: number };
 type Loc = { location_id: string; display_name: string | null };
@@ -53,7 +54,7 @@ function MenuAdmin() {
   async function load() {
     setLoading(true);
     const [i, p, l, g, a, c, ph] = await Promise.all([
-      supabase.from("menu_items").select("id,name,category,active,sort_order,photo_url,description").order("category").order("sort_order").order("name"),
+      supabase.from("menu_items").select("id,name,category,active,sort_order,photo_url,description,gluten_free_possible").order("category").order("sort_order").order("name"),
       supabase.from("menu_item_prices").select("menu_item_id,location_id,price"),
       supabase.from("biyo_locations").select("location_id,display_name").order("location_id"),
       supabase.from("modifier_groups").select("id,name").order("name"),
@@ -177,6 +178,16 @@ function MenuAdmin() {
     const { error } = await supabase.from("menu_items").update({ active: !it.active }).eq("id", it.id);
     if (error) {
       setItems((prev) => prev.map((x) => x.id === it.id ? { ...x, active: it.active } : x));
+      alert(error.message);
+    }
+  }
+
+  async function toggleGfPossible(it: Item) {
+    const next = !it.gluten_free_possible;
+    setItems((prev) => prev.map((x) => x.id === it.id ? { ...x, gluten_free_possible: next } : x));
+    const { error } = await supabase.from("menu_items").update({ gluten_free_possible: next }).eq("id", it.id);
+    if (error) {
+      setItems((prev) => prev.map((x) => x.id === it.id ? { ...x, gluten_free_possible: it.gluten_free_possible } : x));
       alert(error.message);
     }
   }
@@ -320,7 +331,7 @@ function MenuAdmin() {
       const slug = `${slugify(name)}-${biyo_product_id.slice(-6)}`;
       const { data: ins, error } = await supabase.from("menu_items")
         .insert({ name, category: newCat || null, biyo_product_id, active: true, slug })
-        .select("id,name,category,active,sort_order,photo_url,description").single();
+        .select("id,name,category,active,sort_order,photo_url,description,gluten_free_possible").single();
       if (error || !ins) { alert(error?.message ?? "Failed"); return; }
       const { error: pErr } = await supabase.from("menu_item_prices")
         .insert({ menu_item_id: ins.id, location_id: "cresskill", price });
@@ -531,6 +542,7 @@ function MenuAdmin() {
                   <th key={l.location_id} className="px-4 py-3">{(l.display_name ?? l.location_id)} price</th>
                 ))}
                 <th className="px-4 py-3">Modifications</th>
+                <th className="px-4 py-3">GF Possible</th>
                 <th className="px-4 py-3">Active</th>
               </tr>
             </thead>
@@ -649,6 +661,16 @@ function MenuAdmin() {
                         })}
                       </div>
                     )}
+                  </td>
+                  <td className="px-4 py-3">
+                    <button
+                      onClick={() => toggleGfPossible(it)}
+                      className={`rounded-full px-3 py-1 text-xs font-bold uppercase tracking-wider ${
+                        it.gluten_free_possible ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300" : "bg-muted text-muted-foreground"
+                      }`}
+                    >
+                      {it.gluten_free_possible ? "Yes" : "No"}
+                    </button>
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2">

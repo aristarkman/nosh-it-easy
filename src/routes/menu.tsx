@@ -1,6 +1,6 @@
 import { createFileRoute, Link, redirect } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { Search, ChevronRight, Flame } from "lucide-react";
+import { Search, ChevronRight, Flame, WheatOff } from "lucide-react";
 import { LOCATIONS, useOrder, fmt } from "@/lib/order-context";
 import { menuItemAlt } from "@/lib/alt-text";
 import { getMenu } from "@/lib/menu.functions";
@@ -51,14 +51,19 @@ function MenuPage() {
   const { todayLabel } = useStoreHours();
   const [active, setActive] = useState(categories[0]?.id ?? "");
   const [q, setQ] = useState("");
+  const [gfOnly, setGfOnly] = useState(false);
 
   const filtered = useMemo(() => {
-    if (!q.trim()) return items;
-    const s = q.toLowerCase();
-    return items.filter(
-      (i) => i.name.toLowerCase().includes(s) || i.description.toLowerCase().includes(s)
-    );
-  }, [q, items]);
+    let list = items;
+    if (gfOnly) list = list.filter((i) => i.glutenFreePossible);
+    if (q.trim()) {
+      const s = q.toLowerCase();
+      list = list.filter(
+        (i) => i.name.toLowerCase().includes(s) || i.description.toLowerCase().includes(s)
+      );
+    }
+    return list;
+  }, [q, items, gfOnly]);
 
   useEffect(() => {
     const onScroll = () => {
@@ -117,6 +122,17 @@ function MenuPage() {
 
       <div className="sticky top-[68px] z-30 mt-4 -mx-4 overflow-x-auto border-b border-border bg-background/85 px-4 backdrop-blur">
         <div className="flex gap-1 py-2">
+          <button
+            onClick={() => setGfOnly((v) => !v)}
+            aria-pressed={gfOnly}
+            className={`inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-3.5 py-1.5 text-sm font-semibold transition ${
+              gfOnly
+                ? "bg-primary text-primary-foreground"
+                : "border border-border text-muted-foreground hover:bg-muted hover:text-foreground"
+            }`}
+          >
+            <WheatOff className="size-3.5" /> GF Possible
+          </button>
           {categories.map((c) => {
             if (!filtered.some((i) => i.category === c.id)) return null;
             return (
@@ -135,6 +151,18 @@ function MenuPage() {
           })}
         </div>
       </div>
+
+      {gfOnly && (
+        <div className="mt-4 rounded-xl border border-amber-300/60 bg-amber-50 p-4 text-sm text-amber-900 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200">
+          Our kitchen is not entirely gluten free — we use many non-gluten free products. Gluten free preparation is available upon request but cross-contamination is possible. Please inform us of any severe allergies.
+        </div>
+      )}
+
+      {gfOnly && filtered.length === 0 && (
+        <div className="mt-6 rounded-xl border border-border bg-card p-6 text-center text-sm text-muted-foreground">
+          No gluten free possible items — try another category or call the deli directly.
+        </div>
+      )}
 
       {categories.map((c) => {
         const catItems = filtered.filter((i) => i.category === c.id);
@@ -170,13 +198,18 @@ function MenuPage() {
                       />
                     ) : null}
                     <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2">
+                      <div className="flex flex-wrap items-center gap-2">
                         <h3 className="text-base font-semibold normal-case tracking-tight text-foreground" style={{ fontFamily: "var(--font-body)" }}>
                           {i.name}
                         </h3>
                         {i.popular && (
                           <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-primary">
                             <Flame className="size-3" /> Popular
+                          </span>
+                        )}
+                        {i.glutenFreePossible && (
+                          <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-300">
+                            <WheatOff className="size-3" /> GF Possible
                           </span>
                         )}
                         {i.soldOut && (
