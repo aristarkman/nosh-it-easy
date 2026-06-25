@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Gift } from "lucide-react";
 
 const DISMISS_KEY = "kn-welcome-dismissed";
-const SKIP_PATHS = ["/auth", "/admin", "/tablet", "/dispatch", "/checkout"];
+const SKIP_PATHS = ["/login", "/signup", "/forgot-password", "/reset-password", "/admin", "/tablet", "/dispatch", "/staff", "/checkout"];
 
 export function WelcomePopup() {
   const pathname = useLocation({ select: (l) => l.pathname });
