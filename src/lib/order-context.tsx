@@ -160,7 +160,7 @@ export function OrderProvider({ children }: { children: ReactNode }) {
 
   return (
     <OrderContext.Provider
-      value={{ ...state, setLocation, setOrderType, setWhen, addToCart, removeLine, updateQty, clearCart, subtotal, totalQty }}
+      value={{ ...state, setLocation, setOrderType, setWhen, addToCart, replaceLine, removeLine, updateQty, clearCart, subtotal, totalQty }}
     >
       {children}
     </OrderContext.Provider>
