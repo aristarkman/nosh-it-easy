@@ -544,7 +544,17 @@ function MenuAdmin() {
             <button onClick={bulkRecategorize} disabled={bulkBusy}
               className="rounded border border-border px-3 py-1.5 text-sm font-bold hover:border-primary disabled:opacity-50">
               Apply category
+            <button onClick={() => bulkCopyPrices("cresskill", "glen-rock")} disabled={bulkBusy}
+              title="Copy Cresskill prices to Glen Rock for the selected items, making them available at Glen Rock"
+              className="rounded border border-border px-3 py-1.5 text-sm font-bold hover:border-primary disabled:opacity-50">
+              Copy Cresskill → Glen Rock
             </button>
+            <button onClick={() => bulkCopyPrices("glen-rock", "cresskill")} disabled={bulkBusy}
+              title="Copy Glen Rock prices to Cresskill for the selected items"
+              className="rounded border border-border px-3 py-1.5 text-sm font-bold hover:border-primary disabled:opacity-50">
+              Copy Glen Rock → Cresskill
+            </button>
+
             <button onClick={bulkDelete} disabled={bulkBusy}
               className="rounded border border-destructive bg-destructive px-3 py-1.5 text-sm font-bold text-destructive-foreground hover:opacity-90 disabled:opacity-50">
               <Trash2 className="mr-1 inline size-3.5" /> Delete
