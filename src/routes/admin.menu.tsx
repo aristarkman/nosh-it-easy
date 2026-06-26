@@ -557,16 +557,19 @@ function MenuAdmin() {
               Apply category
             </button>
 
-            <button onClick={() => bulkCopyPrices("cresskill", "glen-rock")} disabled={bulkBusy}
-              title="Copy Cresskill prices to Glen Rock for the selected items, making them available at Glen Rock"
+            <button onClick={() => bulkSetAvailability(["cresskill", "glen-rock"], "both stores")} disabled={bulkBusy}
               className="rounded border border-border px-3 py-1.5 text-sm font-bold hover:border-primary disabled:opacity-50">
-              Copy Cresskill → Glen Rock
+              Available at both
             </button>
-            <button onClick={() => bulkCopyPrices("glen-rock", "cresskill")} disabled={bulkBusy}
-              title="Copy Glen Rock prices to Cresskill for the selected items"
+            <button onClick={() => bulkSetAvailability(["cresskill"], "Cresskill only")} disabled={bulkBusy}
               className="rounded border border-border px-3 py-1.5 text-sm font-bold hover:border-primary disabled:opacity-50">
-              Copy Glen Rock → Cresskill
+              Cresskill only
             </button>
+            <button onClick={() => bulkSetAvailability(["glen-rock"], "Glen Rock only")} disabled={bulkBusy}
+              className="rounded border border-border px-3 py-1.5 text-sm font-bold hover:border-primary disabled:opacity-50">
+              Glen Rock only
+            </button>
+
 
             <button onClick={bulkDelete} disabled={bulkBusy}
               className="rounded border border-destructive bg-destructive px-3 py-1.5 text-sm font-bold text-destructive-foreground hover:opacity-90 disabled:opacity-50">
