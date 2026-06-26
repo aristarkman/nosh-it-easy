@@ -679,25 +679,43 @@ function MenuAdmin() {
                       className="mt-1 w-64 rounded border border-transparent bg-transparent px-2 py-1 text-xs text-muted-foreground hover:border-border focus:border-primary focus:bg-background focus:text-foreground focus:outline-none"
                     />
                   </td>
-                  {locs.map((l) => {
-                    const cur = priceFor(it.id, l.location_id);
+                  {(() => {
+                    const cur = priceFor(it.id, "cresskill");
                     return (
-                      <td key={l.location_id} className="px-4 py-3 tabular-nums">
+                      <td className="px-4 py-3 tabular-nums">
                         <div className="flex items-center gap-1">
                           <span className="text-muted-foreground">$</span>
                           <input
-                            key={`price-${it.id}-${l.location_id}-${cur ?? ""}`}
+                            key={`price-${it.id}-${cur ?? ""}`}
                             defaultValue={cur != null ? Number(cur).toFixed(2) : ""}
                             inputMode="decimal"
                             placeholder="0.00"
-                            onBlur={(e) => savePrice(it.id, l.location_id, e.target.value)}
+                            onBlur={(e) => savePrice(it.id, "cresskill", e.target.value)}
                             onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }}
                             className="w-24 rounded border border-border bg-background px-2 py-1 text-right hover:border-primary focus:border-primary focus:ring-2 focus:ring-primary/30 focus:outline-none"
                           />
                         </div>
                       </td>
                     );
-                  })}
+                  })()}
+                  <td className="px-4 py-3">
+                    <div className="flex flex-col gap-1 text-xs">
+                      {locs.map((l) => {
+                        const on = (it.available_locations ?? []).includes(l.location_id);
+                        return (
+                          <label key={l.location_id} className="inline-flex items-center gap-1.5">
+                            <input
+                              type="checkbox"
+                              checked={on}
+                              onChange={(e) => toggleLocation(it, l.location_id, e.target.checked)}
+                            />
+                            {l.display_name ?? l.location_id}
+                          </label>
+                        );
+                      })}
+                    </div>
+                  </td>
+
                   <td className="px-4 py-3">
                     <button
                       onClick={() => setEditingMods(editingMods === it.id ? null : it.id)}
