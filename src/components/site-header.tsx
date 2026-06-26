@@ -83,7 +83,7 @@ export function SiteHeader() {
               className="relative inline-flex items-center gap-2 rounded-full bg-primary px-4 py-2.5 text-xs font-black uppercase tracking-wider text-primary-foreground shadow-sm transition hover:opacity-90 sm:text-sm"
             >
               <ShoppingBag className="size-4" />
-              <span>Order Catering</span>
+              <span>Ordering for a Larger Group?</span>
             </a>
           </div>
         </div>
