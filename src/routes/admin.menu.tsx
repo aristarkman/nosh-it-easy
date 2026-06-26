@@ -123,11 +123,23 @@ function MenuAdmin() {
 
   async function savePrice(itemId: string, locId: string, raw: string) {
     const trimmed = raw.trim();
-    if (trimmed === "") return;
+    const current = priceFor(itemId, locId);
+    // Empty input = remove price row = item not available at this location.
+    if (trimmed === "") {
+      if (current == null) return;
+      const prev = current;
+      setPrices((p) => p.filter((x) => !(x.menu_item_id === itemId && x.location_id === locId)));
+      const { error } = await supabase.from("menu_item_prices")
+        .delete().eq("menu_item_id", itemId).eq("location_id", locId);
+      if (error) {
+        setPrices((p) => [...p, { menu_item_id: itemId, location_id: locId, price: prev }]);
+        alert(error.message);
+      }
+      return;
+    }
     const next = Number(trimmed);
     if (!Number.isFinite(next) || next < 0) { alert("Enter a valid price"); return; }
     const rounded = Math.round(next * 100) / 100;
-    const current = priceFor(itemId, locId);
     if (current != null && Math.abs(current - rounded) < 0.005) return;
     const prev = current;
     setPrices((p) => {
@@ -144,6 +156,27 @@ function MenuAdmin() {
       alert(error.message);
     }
   }
+
+  async function bulkCopyPrices(fromLoc: string, toLoc: string) {
+    const ids = Array.from(selected);
+    if (ids.length === 0) return;
+    const rows = prices
+      .filter((p) => p.location_id === fromLoc && ids.includes(p.menu_item_id))
+      .map((p) => ({ menu_item_id: p.menu_item_id, location_id: toLoc, price: p.price }));
+    if (rows.length === 0) { alert(`No ${fromLoc} prices found for the selected items.`); return; }
+    if (!window.confirm(`Copy ${rows.length} price${rows.length === 1 ? "" : "s"} from ${fromLoc} to ${toLoc}? This makes the selected items available at ${toLoc}.`)) return;
+    setBulkBusy(true);
+    const prev = prices;
+    setPrices((p) => {
+      const without = p.filter((x) => !(x.location_id === toLoc && ids.includes(x.menu_item_id)));
+      return [...without, ...rows];
+    });
+    const { error } = await supabase.from("menu_item_prices")
+      .upsert(rows, { onConflict: "menu_item_id,location_id" });
+    if (error) { setPrices(prev); alert(error.message); }
+    setBulkBusy(false);
+  }
+
 
   async function saveName(it: Item, name: string) {
     const trimmed = name.trim();
