@@ -85,8 +85,9 @@ async function buildMenu(locationId: string): Promise<{ items: MenuItem[]; categ
   const items: MenuItem[] = [];
   for (const it of itemsRes.data ?? []) {
     const price = priceById.get(it.id);
-    // Item must have a price row for this location to be available here.
+    // Item needs a valid Cresskill price (the canonical online price).
     if (price == null || price < 0) continue;
+
     const itemGroups = groupsByItem.get(it.id) ?? [];
     if (price === 0) {
       const hasPricedModifier = itemGroups.some((g) => g.options.some((o) => (o.price ?? 0) > 0));
