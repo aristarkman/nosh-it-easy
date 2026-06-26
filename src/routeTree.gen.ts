@@ -28,6 +28,7 @@ import { Route as AdminRouteImport } from './routes/admin'
 import { Route as AccountRouteImport } from './routes/account'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AdminIndexRouteImport } from './routes/admin.index'
+import { Route as WelcomeAddressRouteImport } from './routes/welcome.address'
 import { Route as StaffLoginRouteImport } from './routes/staff.login'
 import { Route as ItemSlugRouteImport } from './routes/item.$slug'
 import { Route as ConfirmationOrderIdRouteImport } from './routes/confirmation.$orderId'
@@ -142,6 +143,11 @@ const AdminIndexRoute = AdminIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => AdminRoute,
+} as any)
+const WelcomeAddressRoute = WelcomeAddressRouteImport.update({
+  id: '/welcome/address',
+  path: '/welcome/address',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const StaffLoginRoute = StaffLoginRouteImport.update({
   id: '/staff/login',
@@ -275,6 +281,7 @@ export interface FileRoutesByFullPath {
   '/confirmation/$orderId': typeof ConfirmationOrderIdRoute
   '/item/$slug': typeof ItemSlugRoute
   '/staff/login': typeof StaffLoginRoute
+  '/welcome/address': typeof WelcomeAddressRoute
   '/admin/': typeof AdminIndexRoute
   '/api/public/hooks/cart-abandonment': typeof ApiPublicHooksCartAbandonmentRoute
   '/api/public/hooks/requote-scheduled': typeof ApiPublicHooksRequoteScheduledRoute
@@ -314,6 +321,7 @@ export interface FileRoutesByTo {
   '/confirmation/$orderId': typeof ConfirmationOrderIdRoute
   '/item/$slug': typeof ItemSlugRoute
   '/staff/login': typeof StaffLoginRoute
+  '/welcome/address': typeof WelcomeAddressRoute
   '/admin': typeof AdminIndexRoute
   '/api/public/hooks/cart-abandonment': typeof ApiPublicHooksCartAbandonmentRoute
   '/api/public/hooks/requote-scheduled': typeof ApiPublicHooksRequoteScheduledRoute
@@ -355,6 +363,7 @@ export interface FileRoutesById {
   '/confirmation/$orderId': typeof ConfirmationOrderIdRoute
   '/item/$slug': typeof ItemSlugRoute
   '/staff/login': typeof StaffLoginRoute
+  '/welcome/address': typeof WelcomeAddressRoute
   '/admin/': typeof AdminIndexRoute
   '/api/public/hooks/cart-abandonment': typeof ApiPublicHooksCartAbandonmentRoute
   '/api/public/hooks/requote-scheduled': typeof ApiPublicHooksRequoteScheduledRoute
@@ -397,6 +406,7 @@ export interface FileRouteTypes {
     | '/confirmation/$orderId'
     | '/item/$slug'
     | '/staff/login'
+    | '/welcome/address'
     | '/admin/'
     | '/api/public/hooks/cart-abandonment'
     | '/api/public/hooks/requote-scheduled'
@@ -436,6 +446,7 @@ export interface FileRouteTypes {
     | '/confirmation/$orderId'
     | '/item/$slug'
     | '/staff/login'
+    | '/welcome/address'
     | '/admin'
     | '/api/public/hooks/cart-abandonment'
     | '/api/public/hooks/requote-scheduled'
@@ -476,6 +487,7 @@ export interface FileRouteTypes {
     | '/confirmation/$orderId'
     | '/item/$slug'
     | '/staff/login'
+    | '/welcome/address'
     | '/admin/'
     | '/api/public/hooks/cart-abandonment'
     | '/api/public/hooks/requote-scheduled'
@@ -505,6 +517,7 @@ export interface RootRouteChildren {
   ConfirmationOrderIdRoute: typeof ConfirmationOrderIdRoute
   ItemSlugRoute: typeof ItemSlugRoute
   StaffLoginRoute: typeof StaffLoginRoute
+  WelcomeAddressRoute: typeof WelcomeAddressRoute
   ApiPublicHooksCartAbandonmentRoute: typeof ApiPublicHooksCartAbandonmentRoute
   ApiPublicHooksRequoteScheduledRoute: typeof ApiPublicHooksRequoteScheduledRoute
   ApiPublicHooksShipdayRoute: typeof ApiPublicHooksShipdayRoute
@@ -645,6 +658,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/admin/'
       preLoaderRoute: typeof AdminIndexRouteImport
       parentRoute: typeof AdminRoute
+    }
+    '/welcome/address': {
+      id: '/welcome/address'
+      path: '/welcome/address'
+      fullPath: '/welcome/address'
+      preLoaderRoute: typeof WelcomeAddressRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/staff/login': {
       id: '/staff/login'
@@ -838,6 +858,7 @@ const rootRouteChildren: RootRouteChildren = {
   ConfirmationOrderIdRoute: ConfirmationOrderIdRoute,
   ItemSlugRoute: ItemSlugRoute,
   StaffLoginRoute: StaffLoginRoute,
+  WelcomeAddressRoute: WelcomeAddressRoute,
   ApiPublicHooksCartAbandonmentRoute: ApiPublicHooksCartAbandonmentRoute,
   ApiPublicHooksRequoteScheduledRoute: ApiPublicHooksRequoteScheduledRoute,
   ApiPublicHooksShipdayRoute: ApiPublicHooksShipdayRoute,

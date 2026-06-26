@@ -1,33 +1,21 @@
-## Welcome Popup: 100 Bonus Loyalty Points
+## Add optional delivery address step after signup
 
-### Behavior
-- Appears immediately on first page load for any visitor who is **not signed in**.
-- Re-shows on every visit until the user signs in (dismissal is per-session only — clicking X closes it for that session but it returns next visit).
-- Two CTAs:
-  1. **"Create account & claim 100 points"** → routes to `/auth` in signup mode.
-  2. **"Already a customer? Sign in"** → routes to `/auth` in login mode.
-- Hidden entirely once the user is authenticated.
-- Does not appear on `/auth` itself (avoid loop) or admin/checkout routes (avoid interrupting flows).
+After a customer creates an account, route them to a new follow-up screen that prompts for a delivery address. The step is fully optional — they can save it or skip to continue.
 
-### Bonus point logic
-- Any **new account signup** auto-credits 100 points (not gated by popup CTA).
-- Implemented server-side via a `welcome_bonus` entry inserted into `loyalty_ledger` the first time a `customer_profiles` row is created.
-- Uses the existing `handle_new_customer` trigger pattern — extend it to also insert a +100 `welcome_bonus` row in `loyalty_ledger`.
-- Idempotent: only awarded once per `user_id` (enforced by checking for an existing `welcome_bonus` reason).
+### Flow
+1. User completes signup on the existing auth form.
+2. On successful account creation (new user, not login), redirect to `/welcome/address` instead of the current post-signup destination.
+3. The screen shows:
+   - Heading: "Add a delivery address" with subtext explaining it speeds up future checkout and is optional.
+   - Google Places autocomplete address field (reusing the same autocomplete component used at checkout) with unit/apt, city, state, zip, and an optional delivery notes field.
+   - "Save address" primary button — writes to `customer_addresses` (marked as default) then continues.
+   - "Skip for now" secondary link — continues without saving.
+4. After save or skip, redirect to the home page (or back to the page they came from if we captured one pre-signup).
 
-### UI
-- Reuses existing shadcn `Dialog` component, styled to match the deli's warm/cream theme.
-- Headline: "Welcome to The Famous Kosher Nosh!"
-- Subhead: "Sign up and get **100 bonus points** ($5 off your first order) — plus earn 1 point per $1 on every order."
-- Small print: "New accounts only. Points credit instantly on signup."
-
-### Technical details
-- New component: `src/components/welcome-popup.tsx` — reads auth state via `supabase.auth.getUser()` + `onAuthStateChange`, uses `sessionStorage` key `kn-welcome-dismissed` for per-session dismissal.
-- Mounted once in `src/routes/__root.tsx` so it shows on any first page hit.
-- Migration: update `handle_new_customer()` to also `INSERT INTO loyalty_ledger (user_id, points, reason) VALUES (NEW.id, 100, 'welcome_bonus') ON CONFLICT DO NOTHING;` — guarded by a `NOT EXISTS` check on `(user_id, reason='welcome_bonus')`.
-- Route-aware: popup component checks `useLocation()` and skips on `/auth`, `/admin/*`, `/checkout`.
-
-### Out of scope
-- No email verification gating (points credit on signup regardless).
-- No A/B test or analytics event tracking beyond existing patterns.
-- No edit to the loyalty earn rate or redemption rules.
+### Technical notes
+- New route file: `src/routes/welcome.address.tsx` (public route; user is authenticated by the time they land here).
+- Reuse the existing address autocomplete + geocoding helpers already used on `/checkout` so behavior matches (zone validation can be skipped here — saving an out-of-zone address is fine, we just won't preselect delivery).
+- Save via a new `saveCustomerAddress` server function in `src/lib/customer-address.functions.ts` using `requireSupabaseAuth`; insert into `customer_addresses` with `is_default = true` when it's the user's first address.
+- Update the signup handler in the auth route to detect the "just signed up" case and `navigate({ to: "/welcome/address" })` instead of the current redirect. Login flow is untouched.
+- No schema changes — `customer_addresses` already exists.
+- No changes to checkout, header, or other flows.
