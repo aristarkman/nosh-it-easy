@@ -9,14 +9,15 @@ async function buildMenu(locationId: string): Promise<{ items: MenuItem[]; categ
   const [itemsRes, pricesRes, availRes, migRes, mgRes, moRes, catsRes, photosRes] = await Promise.all([
     supabaseAdmin
       .from("menu_items")
-      .select("id,name,slug,description,category,popular,photo_url,sort_order,gluten_free_possible")
+      .select("id,name,slug,description,category,popular,photo_url,sort_order,gluten_free_possible,available_locations")
       .eq("active", true)
+      .contains("available_locations", [locationId])
       .order("sort_order")
       .order("name"),
     supabaseAdmin
       .from("menu_item_prices")
       .select("menu_item_id,price")
-      .eq("location_id", locationId),
+      .eq("location_id", "cresskill"),
     supabaseAdmin
       .from("menu_item_availability")
       .select("menu_item_id,sold_out")
@@ -28,6 +29,7 @@ async function buildMenu(locationId: string): Promise<{ items: MenuItem[]; categ
     supabaseAdmin.from("menu_categories").select("id,name,blurb,sort_order").eq("active", true).order("sort_order").order("name"),
     supabaseAdmin.from("menu_item_photos").select("menu_item_id,url,sort_order").order("sort_order"),
   ]);
+
 
   if (itemsRes.error) throw itemsRes.error;
   if (pricesRes.error) throw pricesRes.error;
