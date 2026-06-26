@@ -24,7 +24,9 @@ type Item = {
   photo_url: string | null;
   description: string | null;
   gluten_free_possible: boolean;
+  available_locations: string[];
 };
+
 type Price = { menu_item_id: string; location_id: string; price: number };
 type Loc = { location_id: string; display_name: string | null };
 type Group = { id: string; name: string };
