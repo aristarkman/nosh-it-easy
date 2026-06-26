@@ -24,7 +24,9 @@ type Item = {
   photo_url: string | null;
   description: string | null;
   gluten_free_possible: boolean;
+  available_locations: string[];
 };
+
 type Price = { menu_item_id: string; location_id: string; price: number };
 type Loc = { location_id: string; display_name: string | null };
 type Group = { id: string; name: string };
@@ -54,7 +56,7 @@ function MenuAdmin() {
   async function load() {
     setLoading(true);
     const [i, p, l, g, a, c, ph] = await Promise.all([
-      supabase.from("menu_items").select("id,name,category,active,sort_order,photo_url,description,gluten_free_possible").order("category").order("sort_order").order("name"),
+      supabase.from("menu_items").select("id,name,category,active,sort_order,photo_url,description,gluten_free_possible,available_locations").order("category").order("sort_order").order("name"),
       supabase.from("menu_item_prices").select("menu_item_id,location_id,price"),
       supabase.from("biyo_locations").select("location_id,display_name").order("location_id"),
       supabase.from("modifier_groups").select("id,name").order("name"),
@@ -75,13 +77,6 @@ function MenuAdmin() {
 
   const cats = useMemo(() => Array.from(new Set(items.map((x) => x.category).filter(Boolean))) as string[], [items]);
 
-  const cresskillHasPriceRow = useMemo(() => {
-    const set = new Set<string>();
-    for (const p of prices) {
-      if (p.location_id === "cresskill") set.add(p.menu_item_id);
-    }
-    return set;
-  }, [prices]);
 
   const filtered = useMemo(() => {
     const s = q.trim().toLowerCase();
@@ -157,25 +152,33 @@ function MenuAdmin() {
     }
   }
 
-  async function bulkCopyPrices(fromLoc: string, toLoc: string) {
+  async function toggleLocation(it: Item, locId: string, on: boolean) {
+    const current = it.available_locations ?? [];
+    const next = on
+      ? Array.from(new Set([...current, locId]))
+      : current.filter((l) => l !== locId);
+    if (next.length === current.length && on === current.includes(locId)) return;
+    const prev = current;
+    setItems((p) => p.map((x) => x.id === it.id ? { ...x, available_locations: next } : x));
+    const { error } = await supabase.from("menu_items").update({ available_locations: next }).eq("id", it.id);
+    if (error) {
+      setItems((p) => p.map((x) => x.id === it.id ? { ...x, available_locations: prev } : x));
+      alert(error.message);
+    }
+  }
+
+  async function bulkSetAvailability(locs: string[], label: string) {
     const ids = Array.from(selected);
     if (ids.length === 0) return;
-    const rows = prices
-      .filter((p) => p.location_id === fromLoc && ids.includes(p.menu_item_id))
-      .map((p) => ({ menu_item_id: p.menu_item_id, location_id: toLoc, price: p.price }));
-    if (rows.length === 0) { alert(`No ${fromLoc} prices found for the selected items.`); return; }
-    if (!window.confirm(`Copy ${rows.length} price${rows.length === 1 ? "" : "s"} from ${fromLoc} to ${toLoc}? This makes the selected items available at ${toLoc}.`)) return;
+    if (!window.confirm(`Make ${ids.length} item${ids.length === 1 ? "" : "s"} available at ${label}?`)) return;
     setBulkBusy(true);
-    const prev = prices;
-    setPrices((p) => {
-      const without = p.filter((x) => !(x.location_id === toLoc && ids.includes(x.menu_item_id)));
-      return [...without, ...rows];
-    });
-    const { error } = await supabase.from("menu_item_prices")
-      .upsert(rows, { onConflict: "menu_item_id,location_id" });
-    if (error) { setPrices(prev); alert(error.message); }
+    const prev = items;
+    setItems((p) => p.map((x) => selected.has(x.id) ? { ...x, available_locations: locs } : x));
+    const { error } = await supabase.from("menu_items").update({ available_locations: locs }).in("id", ids);
+    if (error) { setItems(prev); alert(error.message); }
     setBulkBusy(false);
   }
+
 
 
   async function saveName(it: Item, name: string) {
@@ -364,7 +367,7 @@ function MenuAdmin() {
       const slug = `${slugify(name)}-${biyo_product_id.slice(-6)}`;
       const { data: ins, error } = await supabase.from("menu_items")
         .insert({ name, category: newCat || null, biyo_product_id, active: true, slug })
-        .select("id,name,category,active,sort_order,photo_url,description,gluten_free_possible").single();
+        .select("id,name,category,active,sort_order,photo_url,description,gluten_free_possible,available_locations").single();
       if (error || !ins) { alert(error?.message ?? "Failed"); return; }
       const { error: pErr } = await supabase.from("menu_item_prices")
         .insert({ menu_item_id: ins.id, location_id: "cresskill", price });
@@ -456,9 +459,10 @@ function MenuAdmin() {
         <div>
           <h1 className="font-display text-2xl">Menu items</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            An item is available at a location when it has a price there. Clear a price to hide the item at that location.{" "}
+            One price applies to both stores. Use the "Available at" checkboxes to control which locations offer each item.{" "}
             <Link to="/admin/modifiers" className="text-primary underline">Manage modifications →</Link>
           </p>
+
 
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -547,16 +551,19 @@ function MenuAdmin() {
               Apply category
             </button>
 
-            <button onClick={() => bulkCopyPrices("cresskill", "glen-rock")} disabled={bulkBusy}
-              title="Copy Cresskill prices to Glen Rock for the selected items, making them available at Glen Rock"
+            <button onClick={() => bulkSetAvailability(["cresskill", "glen-rock"], "both stores")} disabled={bulkBusy}
               className="rounded border border-border px-3 py-1.5 text-sm font-bold hover:border-primary disabled:opacity-50">
-              Copy Cresskill → Glen Rock
+              Available at both
             </button>
-            <button onClick={() => bulkCopyPrices("glen-rock", "cresskill")} disabled={bulkBusy}
-              title="Copy Glen Rock prices to Cresskill for the selected items"
+            <button onClick={() => bulkSetAvailability(["cresskill"], "Cresskill only")} disabled={bulkBusy}
               className="rounded border border-border px-3 py-1.5 text-sm font-bold hover:border-primary disabled:opacity-50">
-              Copy Glen Rock → Cresskill
+              Cresskill only
             </button>
+            <button onClick={() => bulkSetAvailability(["glen-rock"], "Glen Rock only")} disabled={bulkBusy}
+              className="rounded border border-border px-3 py-1.5 text-sm font-bold hover:border-primary disabled:opacity-50">
+              Glen Rock only
+            </button>
+
 
             <button onClick={bulkDelete} disabled={bulkBusy}
               className="rounded border border-destructive bg-destructive px-3 py-1.5 text-sm font-bold text-destructive-foreground hover:opacity-90 disabled:opacity-50">
@@ -584,9 +591,9 @@ function MenuAdmin() {
                 <th className="px-4 py-3">Photo</th>
                 <th className="px-4 py-3">Category</th>
                 <th className="px-4 py-3">Menu item</th>
-                {locs.map((l) => (
-                  <th key={l.location_id} className="px-4 py-3">{(l.display_name ?? l.location_id)} price</th>
-                ))}
+                <th className="px-4 py-3">Price</th>
+                <th className="px-4 py-3">Available at</th>
+
                 <th className="px-4 py-3">Modifications</th>
                 <th className="px-4 py-3">GF Possible</th>
                 <th className="px-4 py-3">Active</th>
@@ -666,25 +673,43 @@ function MenuAdmin() {
                       className="mt-1 w-64 rounded border border-transparent bg-transparent px-2 py-1 text-xs text-muted-foreground hover:border-border focus:border-primary focus:bg-background focus:text-foreground focus:outline-none"
                     />
                   </td>
-                  {locs.map((l) => {
-                    const cur = priceFor(it.id, l.location_id);
+                  {(() => {
+                    const cur = priceFor(it.id, "cresskill");
                     return (
-                      <td key={l.location_id} className="px-4 py-3 tabular-nums">
+                      <td className="px-4 py-3 tabular-nums">
                         <div className="flex items-center gap-1">
                           <span className="text-muted-foreground">$</span>
                           <input
-                            key={`price-${it.id}-${l.location_id}-${cur ?? ""}`}
+                            key={`price-${it.id}-${cur ?? ""}`}
                             defaultValue={cur != null ? Number(cur).toFixed(2) : ""}
                             inputMode="decimal"
                             placeholder="0.00"
-                            onBlur={(e) => savePrice(it.id, l.location_id, e.target.value)}
+                            onBlur={(e) => savePrice(it.id, "cresskill", e.target.value)}
                             onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }}
                             className="w-24 rounded border border-border bg-background px-2 py-1 text-right hover:border-primary focus:border-primary focus:ring-2 focus:ring-primary/30 focus:outline-none"
                           />
                         </div>
                       </td>
                     );
-                  })}
+                  })()}
+                  <td className="px-4 py-3">
+                    <div className="flex flex-col gap-1 text-xs">
+                      {locs.map((l) => {
+                        const on = (it.available_locations ?? []).includes(l.location_id);
+                        return (
+                          <label key={l.location_id} className="inline-flex items-center gap-1.5">
+                            <input
+                              type="checkbox"
+                              checked={on}
+                              onChange={(e) => toggleLocation(it, l.location_id, e.target.checked)}
+                            />
+                            {l.display_name ?? l.location_id}
+                          </label>
+                        );
+                      })}
+                    </div>
+                  </td>
+
                   <td className="px-4 py-3">
                     <button
                       onClick={() => setEditingMods(editingMods === it.id ? null : it.id)}
