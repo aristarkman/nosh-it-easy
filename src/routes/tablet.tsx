@@ -1,11 +1,10 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { Clock, MapPin, Phone, User, Truck, ShoppingBag, Check, ChefHat, X, LogOut, Volume2, VolumeX, RotateCcw, AlertTriangle } from "lucide-react";
+import { Clock, MapPin, Phone, User, Truck, ShoppingBag, Check, ChefHat, X, LogOut, Volume2, VolumeX, AlertTriangle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { LOCATIONS, fmt, type CartLine } from "@/lib/order-context";
 import { sendOrderStatusSms } from "@/lib/sms.functions";
 import { useNewOrderAlarm } from "@/lib/use-new-order-alarm";
-import { RefundDialog } from "@/components/refund-dialog";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/tablet")({
@@ -67,7 +66,6 @@ function TabletPage() {
   const [allowedLocations, setAllowedLocations] = useState<string[]>([]);
   const [isAdmin, setIsAdmin] = useState(false);
   const [userEmail, setUserEmail] = useState<string>("");
-  const [refundOrder, setRefundOrder] = useState<Order | null>(null);
 
   // Auth gate + load assigned locations
   useEffect(() => {
@@ -108,7 +106,7 @@ function TabletPage() {
       let q = supabase
         .from("orders")
         .select("*")
-        .in("status", ["new", "accepted", "ready", "completed"])
+        .in("status", ["new", "accepted", "ready"])
         .order("created_at", { ascending: false })
         .limit(200);
       if (!isAdmin && allowedLocations.length > 0) {
@@ -276,7 +274,7 @@ function TabletPage() {
           </div>
         </div>
         <div className="mx-auto flex max-w-[1400px] gap-1 px-4">
-          {(["new", "accepted", "ready", "completed"] as Status[]).map((s) => (
+          {(["new", "accepted", "ready"] as Status[]).map((s) => (
             <button
               key={s}
               onClick={() => setTab(s)}
@@ -312,23 +310,11 @@ function TabletPage() {
                 o={o}
                 onAdvance={() => advance(o)}
                 onCancel={() => cancel(o)}
-                onRefund={() => setRefundOrder(o)}
               />
             ))}
           </div>
         )}
       </div>
-
-      {refundOrder && (
-        <RefundDialog
-          open={!!refundOrder}
-          onClose={() => setRefundOrder(null)}
-          order={refundOrder}
-          onRefunded={() => {
-            // realtime UPDATE will refresh totals; nothing else to do
-          }}
-        />
-      )}
     </div>
   );
 }
@@ -354,19 +340,16 @@ function OrderCard({
   o,
   onAdvance,
   onCancel,
-  onRefund,
 }: {
   o: Order;
   onAdvance: () => void;
   onCancel: () => void;
-  onRefund: () => void;
 }) {
   const flow = STATUS_FLOW[o.status];
   const loc = LOCATIONS.find((l) => l.id === o.location_id);
   const ago = timeAgo(o.created_at);
   const isNew = o.status === "new";
   const refunded = (o.refunded_total ?? 0) > 0;
-  const canRefund = (o.refunded_total ?? 0) < o.total && o.refund_status !== "voided";
 
   return (
     <div
@@ -453,16 +436,6 @@ function OrderCard({
           )}
         </div>
         <div className="flex gap-1.5">
-          {canRefund && (
-            <button
-              onClick={onRefund}
-              className="grid size-9 place-items-center rounded-full border border-border text-muted-foreground hover:border-destructive hover:text-destructive"
-              aria-label="Refund order"
-              title="Refund / void"
-            >
-              <RotateCcw className="size-4" />
-            </button>
-          )}
           {o.status !== "ready" && o.status !== "completed" && (
             <button
               onClick={onCancel}
