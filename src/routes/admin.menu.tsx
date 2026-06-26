@@ -159,25 +159,33 @@ function MenuAdmin() {
     }
   }
 
-  async function bulkCopyPrices(fromLoc: string, toLoc: string) {
+  async function toggleLocation(it: Item, locId: string, on: boolean) {
+    const current = it.available_locations ?? [];
+    const next = on
+      ? Array.from(new Set([...current, locId]))
+      : current.filter((l) => l !== locId);
+    if (next.length === current.length && on === current.includes(locId)) return;
+    const prev = current;
+    setItems((p) => p.map((x) => x.id === it.id ? { ...x, available_locations: next } : x));
+    const { error } = await supabase.from("menu_items").update({ available_locations: next }).eq("id", it.id);
+    if (error) {
+      setItems((p) => p.map((x) => x.id === it.id ? { ...x, available_locations: prev } : x));
+      alert(error.message);
+    }
+  }
+
+  async function bulkSetAvailability(locs: string[], label: string) {
     const ids = Array.from(selected);
     if (ids.length === 0) return;
-    const rows = prices
-      .filter((p) => p.location_id === fromLoc && ids.includes(p.menu_item_id))
-      .map((p) => ({ menu_item_id: p.menu_item_id, location_id: toLoc, price: p.price }));
-    if (rows.length === 0) { alert(`No ${fromLoc} prices found for the selected items.`); return; }
-    if (!window.confirm(`Copy ${rows.length} price${rows.length === 1 ? "" : "s"} from ${fromLoc} to ${toLoc}? This makes the selected items available at ${toLoc}.`)) return;
+    if (!window.confirm(`Make ${ids.length} item${ids.length === 1 ? "" : "s"} available at ${label}?`)) return;
     setBulkBusy(true);
-    const prev = prices;
-    setPrices((p) => {
-      const without = p.filter((x) => !(x.location_id === toLoc && ids.includes(x.menu_item_id)));
-      return [...without, ...rows];
-    });
-    const { error } = await supabase.from("menu_item_prices")
-      .upsert(rows, { onConflict: "menu_item_id,location_id" });
-    if (error) { setPrices(prev); alert(error.message); }
+    const prev = items;
+    setItems((p) => p.map((x) => selected.has(x.id) ? { ...x, available_locations: locs } : x));
+    const { error } = await supabase.from("menu_items").update({ available_locations: locs }).in("id", ids);
+    if (error) { setItems(prev); alert(error.message); }
     setBulkBusy(false);
   }
+
 
 
   async function saveName(it: Item, name: string) {
