@@ -1006,6 +1006,11 @@ function CheckoutPage() {
                   Pay with cash on delivery
                 </PayOption>
               )}
+              {orderType === "pickup" && !canPayInPerson && (
+                <PayOption icon={<Wallet className="size-4" />} active={pay === "in-person"} onClick={() => setPay("in-person")}>
+                  Pay with cash at pickup
+                </PayOption>
+              )}
             </div>
             {pay !== "in-person" && (
               <p className="text-xs text-muted-foreground">
