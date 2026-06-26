@@ -596,6 +596,7 @@ export type Database = {
       menu_items: {
         Row: {
           active: boolean
+          available_locations: string[]
           biyo_product_id: string
           category: string | null
           created_at: string
@@ -612,6 +613,7 @@ export type Database = {
         }
         Insert: {
           active?: boolean
+          available_locations?: string[]
           biyo_product_id: string
           category?: string | null
           created_at?: string
@@ -628,6 +630,7 @@ export type Database = {
         }
         Update: {
           active?: boolean
+          available_locations?: string[]
           biyo_product_id?: string
           category?: string | null
           created_at?: string
