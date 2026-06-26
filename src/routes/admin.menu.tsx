@@ -77,13 +77,6 @@ function MenuAdmin() {
 
   const cats = useMemo(() => Array.from(new Set(items.map((x) => x.category).filter(Boolean))) as string[], [items]);
 
-  const cresskillHasPriceRow = useMemo(() => {
-    const set = new Set<string>();
-    for (const p of prices) {
-      if (p.location_id === "cresskill") set.add(p.menu_item_id);
-    }
-    return set;
-  }, [prices]);
 
   const filtered = useMemo(() => {
     const s = q.trim().toLowerCase();
