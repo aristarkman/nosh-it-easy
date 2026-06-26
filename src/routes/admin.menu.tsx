@@ -466,9 +466,10 @@ function MenuAdmin() {
         <div>
           <h1 className="font-display text-2xl">Menu items</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            An item is available at a location when it has a price there. Clear a price to hide the item at that location.{" "}
+            One price applies to both stores. Use the "Available at" checkboxes to control which locations offer each item.{" "}
             <Link to="/admin/modifiers" className="text-primary underline">Manage modifications →</Link>
           </p>
+
 
         </div>
         <div className="flex flex-wrap items-center gap-2">
