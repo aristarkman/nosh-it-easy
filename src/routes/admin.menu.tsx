@@ -456,9 +456,10 @@ function MenuAdmin() {
         <div>
           <h1 className="font-display text-2xl">Menu items</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Prices come from Biyo. Edit categories, activate items, assign modifications.{" "}
+            An item is available at a location when it has a price there. Clear a price to hide the item at that location.{" "}
             <Link to="/admin/modifiers" className="text-primary underline">Manage modifications →</Link>
           </p>
+
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <button onClick={() => setCreating((v) => !v)}
