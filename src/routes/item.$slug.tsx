@@ -8,13 +8,27 @@ import { getMenuItem } from "@/lib/menu.functions";
 import { thumb } from "@/lib/image-url";
 import { z } from "zod";
 
+function readLocationFromStorage(): string {
+  if (typeof window === "undefined") return "cresskill";
+  try {
+    const raw = localStorage.getItem("kn-order") ?? localStorage.getItem("kn-order-v1");
+    const parsed = raw ? JSON.parse(raw) : null;
+    const s = parsed?.state ?? parsed;
+    return s?.location ?? "cresskill";
+  } catch {
+    return "cresskill";
+  }
+}
+
 export const Route = createFileRoute("/item/$slug")({
+  ssr: false,
   validateSearch: z.object({ edit: z.string().optional() }),
   loader: async ({ params }) => {
-    const { item } = await getMenuItem({ data: { slug: params.slug } });
+    const { item } = await getMenuItem({ data: { slug: params.slug, locationId: readLocationFromStorage() } });
     if (!item) throw notFound();
     return { item };
   },
+
   head: ({ loaderData }) => ({
     meta: [
       { title: `${loaderData?.item.name ?? "Item"} — The Kosher Nosh` },
