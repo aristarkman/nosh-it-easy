@@ -26,7 +26,7 @@ function SignupPage() {
       email,
       password,
       options: {
-        emailRedirectTo: window.location.origin + "/account",
+        emailRedirectTo: window.location.origin + "/welcome/address",
         data: { full_name: fullName, phone },
       },
     });
@@ -36,7 +36,7 @@ function SignupPage() {
       return;
     }
     toast.success("Account created!");
-    navigate({ to: "/account" });
+    navigate({ to: "/welcome/address" });
   };
 
   const onGoogle = async () => {
