@@ -436,16 +436,6 @@ function OrderCard({
           )}
         </div>
         <div className="flex gap-1.5">
-          {canRefund && (
-            <button
-              onClick={onRefund}
-              className="grid size-9 place-items-center rounded-full border border-border text-muted-foreground hover:border-destructive hover:text-destructive"
-              aria-label="Refund order"
-              title="Refund / void"
-            >
-              <RotateCcw className="size-4" />
-            </button>
-          )}
           {o.status !== "ready" && o.status !== "completed" && (
             <button
               onClick={onCancel}
