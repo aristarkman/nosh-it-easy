@@ -544,6 +544,8 @@ function MenuAdmin() {
             <button onClick={bulkRecategorize} disabled={bulkBusy}
               className="rounded border border-border px-3 py-1.5 text-sm font-bold hover:border-primary disabled:opacity-50">
               Apply category
+            </button>
+
             <button onClick={() => bulkCopyPrices("cresskill", "glen-rock")} disabled={bulkBusy}
               title="Copy Cresskill prices to Glen Rock for the selected items, making them available at Glen Rock"
               className="rounded border border-border px-3 py-1.5 text-sm font-bold hover:border-primary disabled:opacity-50">
