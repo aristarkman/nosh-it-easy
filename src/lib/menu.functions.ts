@@ -2,10 +2,9 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import type { MenuItem, ModifierGroup, ModifierOption, Category } from "@/lib/menu-types";
 
-const PRICE_LOCATION = "cresskill"; // single source of truth for prices
-const FALLBACK_CATEGORY = "More from the Deli";
+const DEFAULT_LOCATION = "cresskill";
 
-async function buildMenu(): Promise<{ items: MenuItem[]; categories: Category[] }> {
+async function buildMenu(locationId: string): Promise<{ items: MenuItem[]; categories: Category[] }> {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   const [itemsRes, pricesRes, availRes, migRes, mgRes, moRes, catsRes, photosRes] = await Promise.all([
     supabaseAdmin
@@ -17,11 +16,11 @@ async function buildMenu(): Promise<{ items: MenuItem[]; categories: Category[] 
     supabaseAdmin
       .from("menu_item_prices")
       .select("menu_item_id,price")
-      .eq("location_id", PRICE_LOCATION),
+      .eq("location_id", locationId),
     supabaseAdmin
       .from("menu_item_availability")
       .select("menu_item_id,sold_out")
-      .eq("location_id", PRICE_LOCATION)
+      .eq("location_id", locationId)
       .eq("sold_out", true),
     supabaseAdmin.from("menu_item_modifier_groups").select("menu_item_id,modifier_group_id,sort_order"),
     supabaseAdmin.from("modifier_groups").select("id,name,required,min_select,max_select"),
@@ -67,10 +66,8 @@ async function buildMenu(): Promise<{ items: MenuItem[]; categories: Category[] 
     groupsByItem.set(a.menu_item_id, arr);
   }
 
-  // Build category list strictly from admin-defined categories.
-  // Items whose category does not match an admin category are hidden.
   const categories: Category[] = (catsRes.data ?? []).map((c) => ({
-    id: c.name, // use name as the id since menu_items.category is free text
+    id: c.name,
     name: c.name,
     blurb: c.blurb ?? undefined,
   }));
@@ -86,15 +83,15 @@ async function buildMenu(): Promise<{ items: MenuItem[]; categories: Category[] 
   const items: MenuItem[] = [];
   for (const it of itemsRes.data ?? []) {
     const price = priceById.get(it.id);
-    if (price == null || price < 0) continue; // skip items with no price row
+    // Item must have a price row for this location to be available here.
+    if (price == null || price < 0) continue;
     const itemGroups = groupsByItem.get(it.id) ?? [];
-    // Allow $0 base only if a modifier group provides pricing
     if (price === 0) {
       const hasPricedModifier = itemGroups.some((g) => g.options.some((o) => (o.price ?? 0) > 0));
       if (!hasPricedModifier) continue;
     }
     const raw = (it.category ?? "").trim();
-    if (!validCatNames.has(raw)) continue; // hide items whose category isn't in admin Categories
+    if (!validCatNames.has(raw)) continue;
     const cat = raw;
     const photos = photosByItem.get(it.id) ?? [];
     const primary = photos[0] ?? it.photo_url ?? undefined;
@@ -111,21 +108,27 @@ async function buildMenu(): Promise<{ items: MenuItem[]; categories: Category[] 
       popular: !!it.popular,
       soldOut: soldOut.has(it.id),
       glutenFreePossible: !!(it as { gluten_free_possible?: boolean }).gluten_free_possible,
-      modifierGroups: groupsByItem.get(it.id) ?? [],
+      modifierGroups: itemGroups,
     });
   }
   return { items, categories };
 }
 
-export const getMenu = createServerFn({ method: "GET" }).handler(async () => {
-  return await buildMenu();
-});
+const locationSchema = z.object({ locationId: z.string().min(1).optional() }).optional();
+
+export const getMenu = createServerFn({ method: "GET" })
+  .inputValidator((input) => locationSchema.parse(input))
+  .handler(async ({ data }) => {
+    return await buildMenu(data?.locationId ?? DEFAULT_LOCATION);
+  });
 
 export const getMenuItem = createServerFn({ method: "GET" })
-  .inputValidator((input) => z.object({ slug: z.string().min(1) }).parse(input))
+  .inputValidator((input) => z.object({ slug: z.string().min(1), locationId: z.string().min(1).optional() }).parse(input))
   .handler(async ({ data }) => {
-    const { items } = await buildMenu();
+    const { items } = await buildMenu(data.locationId ?? DEFAULT_LOCATION);
     const item = items.find((i) => i.slug === data.slug) ?? null;
     return { item };
   });
+
+
 

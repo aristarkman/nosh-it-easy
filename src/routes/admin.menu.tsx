@@ -64,7 +64,7 @@ function MenuAdmin() {
     ]);
     setItems((i.data ?? []) as Item[]);
     setPrices((p.data ?? []) as Price[]);
-    setLocs(((l.data ?? []) as Loc[]).filter((x) => x.location_id !== "glen-rock"));
+    setLocs((l.data ?? []) as Loc[]);
     setGroups((g.data ?? []) as Group[]);
     setAssigns((a.data ?? []) as Assign[]);
     setCatRows((c.data ?? []) as CatRow[]);
@@ -123,11 +123,23 @@ function MenuAdmin() {
 
   async function savePrice(itemId: string, locId: string, raw: string) {
     const trimmed = raw.trim();
-    if (trimmed === "") return;
+    const current = priceFor(itemId, locId);
+    // Empty input = remove price row = item not available at this location.
+    if (trimmed === "") {
+      if (current == null) return;
+      const prev = current;
+      setPrices((p) => p.filter((x) => !(x.menu_item_id === itemId && x.location_id === locId)));
+      const { error } = await supabase.from("menu_item_prices")
+        .delete().eq("menu_item_id", itemId).eq("location_id", locId);
+      if (error) {
+        setPrices((p) => [...p, { menu_item_id: itemId, location_id: locId, price: prev }]);
+        alert(error.message);
+      }
+      return;
+    }
     const next = Number(trimmed);
     if (!Number.isFinite(next) || next < 0) { alert("Enter a valid price"); return; }
     const rounded = Math.round(next * 100) / 100;
-    const current = priceFor(itemId, locId);
     if (current != null && Math.abs(current - rounded) < 0.005) return;
     const prev = current;
     setPrices((p) => {
@@ -144,6 +156,27 @@ function MenuAdmin() {
       alert(error.message);
     }
   }
+
+  async function bulkCopyPrices(fromLoc: string, toLoc: string) {
+    const ids = Array.from(selected);
+    if (ids.length === 0) return;
+    const rows = prices
+      .filter((p) => p.location_id === fromLoc && ids.includes(p.menu_item_id))
+      .map((p) => ({ menu_item_id: p.menu_item_id, location_id: toLoc, price: p.price }));
+    if (rows.length === 0) { alert(`No ${fromLoc} prices found for the selected items.`); return; }
+    if (!window.confirm(`Copy ${rows.length} price${rows.length === 1 ? "" : "s"} from ${fromLoc} to ${toLoc}? This makes the selected items available at ${toLoc}.`)) return;
+    setBulkBusy(true);
+    const prev = prices;
+    setPrices((p) => {
+      const without = p.filter((x) => !(x.location_id === toLoc && ids.includes(x.menu_item_id)));
+      return [...without, ...rows];
+    });
+    const { error } = await supabase.from("menu_item_prices")
+      .upsert(rows, { onConflict: "menu_item_id,location_id" });
+    if (error) { setPrices(prev); alert(error.message); }
+    setBulkBusy(false);
+  }
+
 
   async function saveName(it: Item, name: string) {
     const trimmed = name.trim();
@@ -423,9 +456,10 @@ function MenuAdmin() {
         <div>
           <h1 className="font-display text-2xl">Menu items</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Prices come from Biyo. Edit categories, activate items, assign modifications.{" "}
+            An item is available at a location when it has a price there. Clear a price to hide the item at that location.{" "}
             <Link to="/admin/modifiers" className="text-primary underline">Manage modifications →</Link>
           </p>
+
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <button onClick={() => setCreating((v) => !v)}
@@ -512,6 +546,18 @@ function MenuAdmin() {
               className="rounded border border-border px-3 py-1.5 text-sm font-bold hover:border-primary disabled:opacity-50">
               Apply category
             </button>
+
+            <button onClick={() => bulkCopyPrices("cresskill", "glen-rock")} disabled={bulkBusy}
+              title="Copy Cresskill prices to Glen Rock for the selected items, making them available at Glen Rock"
+              className="rounded border border-border px-3 py-1.5 text-sm font-bold hover:border-primary disabled:opacity-50">
+              Copy Cresskill → Glen Rock
+            </button>
+            <button onClick={() => bulkCopyPrices("glen-rock", "cresskill")} disabled={bulkBusy}
+              title="Copy Glen Rock prices to Cresskill for the selected items"
+              className="rounded border border-border px-3 py-1.5 text-sm font-bold hover:border-primary disabled:opacity-50">
+              Copy Glen Rock → Cresskill
+            </button>
+
             <button onClick={bulkDelete} disabled={bulkBusy}
               className="rounded border border-destructive bg-destructive px-3 py-1.5 text-sm font-bold text-destructive-foreground hover:opacity-90 disabled:opacity-50">
               <Trash2 className="mr-1 inline size-3.5" /> Delete

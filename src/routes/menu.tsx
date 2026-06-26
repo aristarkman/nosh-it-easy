@@ -8,7 +8,20 @@ import { thumb } from "@/lib/image-url";
 import type { Category } from "@/lib/menu-types";
 import { useStoreHours } from "@/lib/use-store-hours";
 
+function readLocationFromStorage(): string {
+  if (typeof window === "undefined") return "cresskill";
+  try {
+    const raw = localStorage.getItem("kn-order") ?? localStorage.getItem("kn-order-v1");
+    const parsed = raw ? JSON.parse(raw) : null;
+    const s = parsed?.state ?? parsed;
+    return s?.location ?? "cresskill";
+  } catch {
+    return "cresskill";
+  }
+}
+
 export const Route = createFileRoute("/menu")({
+  ssr: false,
   head: () => ({
     meta: [
       { title: "Menu — The Famous Kosher Nosh | Glen Rock & Cresskill, NJ" },
@@ -35,7 +48,7 @@ export const Route = createFileRoute("/menu")({
       }
     }
   },
-  loader: () => getMenu(),
+  loader: () => getMenu({ data: { locationId: readLocationFromStorage() } }),
   errorComponent: () => (
     <div className="mx-auto max-w-md p-10 text-center">
       <p>Could not load the menu. Please try again in a moment.</p>
@@ -43,6 +56,7 @@ export const Route = createFileRoute("/menu")({
   ),
   component: MenuPage,
 });
+
 
 function MenuPage() {
   const { items, categories } = Route.useLoaderData() as { items: import("@/lib/menu-types").MenuItem[]; categories: Category[] };

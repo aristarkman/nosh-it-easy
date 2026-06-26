@@ -29,10 +29,11 @@ function CartPage() {
 
   const fetchMenu = useServerFn(getMenu);
   const { data: menuData } = useQuery({
-    queryKey: ["menu"],
-    queryFn: () => fetchMenu(),
+    queryKey: ["menu", location ?? "cresskill"],
+    queryFn: () => fetchMenu({ data: { locationId: location ?? "cresskill" } }),
     staleTime: 5 * 60 * 1000,
   });
+
 
   const itemsById = useMemo(() => {
     const map = new Map<string, MenuItem>();
