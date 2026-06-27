@@ -892,6 +892,7 @@ function CheckoutPage() {
                 value={tipCustom}
                 onChange={(e) => setTipCustom(e.target.value.replace(/[^\d.]/g, ""))}
                 inputMode="decimal"
+                aria-label="Custom tip amount"
                 placeholder="$ amount"
                 className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm outline-none focus:border-primary"
               />
