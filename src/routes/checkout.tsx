@@ -847,6 +847,7 @@ function CheckoutPage() {
               {whenType === "schedule" && (
                 <input
                   type="datetime-local"
+                  aria-label="Scheduled date and time"
                   value={scheduledTime}
                   onChange={(e) => setScheduledTime(e.target.value)}
                   className="w-full rounded-xl border border-border bg-card px-3 py-2.5 text-sm outline-none focus:border-primary"
