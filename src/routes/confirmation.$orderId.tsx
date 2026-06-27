@@ -189,6 +189,7 @@ function Confirmation() {
           <textarea
             value={feedbackText}
             onChange={(e) => setFeedbackText(e.target.value)}
+            aria-label="Feedback about your order"
             rows={4}
             maxLength={500}
             className="mt-3 w-full rounded-xl border border-border bg-background p-3 text-sm outline-none focus:border-primary"

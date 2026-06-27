@@ -847,6 +847,7 @@ function CheckoutPage() {
               {whenType === "schedule" && (
                 <input
                   type="datetime-local"
+                  aria-label="Scheduled date and time"
                   value={scheduledTime}
                   onChange={(e) => setScheduledTime(e.target.value)}
                   className="w-full rounded-xl border border-border bg-card px-3 py-2.5 text-sm outline-none focus:border-primary"
@@ -891,6 +892,7 @@ function CheckoutPage() {
                 value={tipCustom}
                 onChange={(e) => setTipCustom(e.target.value.replace(/[^\d.]/g, ""))}
                 inputMode="decimal"
+                aria-label="Custom tip amount"
                 placeholder="$ amount"
                 className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm outline-none focus:border-primary"
               />
@@ -930,6 +932,7 @@ function CheckoutPage() {
                 <input
                   value={promoInput}
                   onChange={(e) => setPromoInput(e.target.value.toUpperCase())}
+                  aria-label="Promo code"
                   placeholder="Enter promo code"
                   className="flex-1 rounded-xl border border-border bg-background px-3 py-2.5 text-sm uppercase outline-none focus:border-primary"
                 />

@@ -67,6 +67,8 @@ function SignupPage() {
       <form onSubmit={onSubmit} className="space-y-3">
         <input
           required
+          autoComplete="name"
+          aria-label="Full name"
           value={fullName}
           onChange={(e) => setFullName(e.target.value)}
           placeholder="Full name"
@@ -75,6 +77,8 @@ function SignupPage() {
         <input
           required
           type="tel"
+          autoComplete="tel"
+          aria-label="Phone"
           value={phone}
           onChange={(e) => setPhone(e.target.value)}
           placeholder="Phone"
@@ -83,6 +87,8 @@ function SignupPage() {
         <input
           required
           type="email"
+          autoComplete="email"
+          aria-label="Email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           placeholder="Email"
@@ -91,6 +97,8 @@ function SignupPage() {
         <input
           required
           type="password"
+          autoComplete="new-password"
+          aria-label="Password"
           minLength={8}
           value={password}
           onChange={(e) => setPassword(e.target.value)}
