@@ -46,6 +46,8 @@ function ForgotPasswordPage() {
             <input
               type="email"
               required
+              autoComplete="email"
+              aria-label="Email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="Email"
