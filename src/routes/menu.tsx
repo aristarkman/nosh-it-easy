@@ -128,6 +128,7 @@ function MenuPage() {
           <input
             value={q}
             onChange={(e) => setQ(e.target.value)}
+            aria-label="Search the menu"
             placeholder="Search the menu — pastrami, knish, soup…"
             className="w-full rounded-xl border border-border bg-background py-2.5 pl-9 pr-3 text-sm outline-none transition focus:border-primary"
           />
