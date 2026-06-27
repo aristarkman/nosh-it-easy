@@ -57,6 +57,8 @@ function ResetPasswordPage() {
           <input
             type="password"
             required
+            autoComplete="new-password"
+            aria-label="New password"
             minLength={8}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
@@ -66,6 +68,8 @@ function ResetPasswordPage() {
           <input
             type="password"
             required
+            autoComplete="new-password"
+            aria-label="Confirm new password"
             minLength={8}
             value={confirm}
             onChange={(e) => setConfirm(e.target.value)}
