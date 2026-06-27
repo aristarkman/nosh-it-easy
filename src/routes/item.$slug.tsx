@@ -229,6 +229,7 @@ function ItemPage() {
         <textarea
           value={notes}
           onChange={(e) => setNotes(e.target.value)}
+          aria-label="Special instructions"
           maxLength={250}
           rows={3}
           placeholder="Allergies, prep notes, extra mustard…"
