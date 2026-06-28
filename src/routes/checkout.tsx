@@ -461,6 +461,7 @@ function CheckoutPage() {
     setSubmitting(true);
 
     const orderNumber = `KN-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
+    const orderId = crypto.randomUUID();
     let paymentMeta: Record<string, unknown> = {};
 
     try {
@@ -521,9 +522,10 @@ function CheckoutPage() {
       return;
     }
 
-    const { data, error } = await supabase
+    const { error } = await supabase
       .from("orders")
       .insert({
+        id: orderId,
         order_number: orderNumber,
         user_id: auth.userId,
         location_id: location,
@@ -550,11 +552,9 @@ function CheckoutPage() {
           loyaltyDiscount ? `loyalty:-${loyaltyDiscount.toFixed(2)}` : null,
           Object.keys(paymentMeta).length ? JSON.stringify(paymentMeta) : null,
         ].filter(Boolean).join(" | "),
-      })
-      .select("id,order_number")
-      .single();
+      });
 
-    if (error || !data) {
+    if (error) {
       console.error(error);
       toast.error(
         pay === "card"
@@ -574,6 +574,8 @@ function CheckoutPage() {
       setSubmitting(false);
       return;
     }
+
+    const data = { id: orderId, order_number: orderNumber };
 
     sessionStorage.setItem(
       "kn-last-order",
