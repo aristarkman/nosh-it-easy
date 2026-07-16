@@ -23,22 +23,37 @@ function fmtTime(t: string): string {
   return `${h}${mm}${am ? "am" : "pm"}`;
 }
 
-function todayLabel(rows: HoursRow[], locationId: string): string {
+function todayRow(rows: HoursRow[], locationId: string): HoursRow | undefined {
   const dow = new Date().getDay();
-  const r = rows.find(
+  return rows.find(
     (x) =>
       x.location_id === locationId &&
       x.day_of_week === dow &&
       (x.hours_kind ?? "storefront") === "storefront"
   );
+}
+
+function todayLabel(rows: HoursRow[], locationId: string): string {
+  const r = todayRow(rows, locationId);
   if (!r || r.is_closed || !r.open_time || !r.close_time) {
     return "Closed today";
   }
   return `Open today · ${fmtTime(r.open_time)} – ${fmtTime(r.close_time)}`;
 }
 
+function isOpenNow(rows: HoursRow[], locationId: string): boolean {
+  const r = todayRow(rows, locationId);
+  if (!r || r.is_closed || !r.open_time || !r.close_time) return false;
+  const now = new Date();
+  const mins = now.getHours() * 60 + now.getMinutes();
+  const [oh, om] = r.open_time.split(":").map(Number);
+  const [ch, cm] = r.close_time.split(":").map(Number);
+  return mins >= oh * 60 + om && mins < ch * 60 + cm;
+}
+
 export function useStoreHours() {
   const [rows, setRows] = useState<HoursRow[]>([]);
+  const [, setTick] = useState(0);
 
   useEffect(() => {
     let active = true;
@@ -48,13 +63,17 @@ export function useStoreHours() {
         .select("location_id,day_of_week,open_time,close_time,is_closed,hours_kind");
       if (active && data) setRows(data as HoursRow[]);
     })();
+    const id = setInterval(() => setTick((n) => n + 1), 60_000);
     return () => {
       active = false;
+      clearInterval(id);
     };
   }, []);
 
   return {
     rows,
     todayLabel: (locationId: LocationId) => todayLabel(rows, locationId),
+    isOpenNow: (locationId: LocationId) => isOpenNow(rows, locationId),
+    loaded: rows.length > 0,
   };
 }
