@@ -4,9 +4,10 @@
   "sideEffects": false,
   "type": "module",
   "scripts": {
-    "dev": "vite dev",
-    "build": "vite build",
-    "build:dev": "vite build --mode development",
+    "prepare:checkout": "node scripts/remove-shipday-live-quote.mjs",
+    "dev": "npm run prepare:checkout && vite dev",
+    "build": "npm run prepare:checkout && vite build",
+    "build:dev": "npm run prepare:checkout && vite build --mode development",
     "preview": "vite preview",
     "lint": "eslint .",
     "format": "prettier --write ."
