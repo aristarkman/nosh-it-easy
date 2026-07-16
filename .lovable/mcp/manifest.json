@@ -1,0 +1,126 @@
+{
+  "version": 1,
+  "sdk_version": "0.22.2",
+  "path": "/mcp",
+  "auth": {
+    "type": "none"
+  },
+  "mcp": {
+    "server": {
+      "name": "kosher-nosh-mcp",
+      "version": "0.1.0",
+      "title": "The Famous Kosher Nosh"
+    },
+    "tools": [
+      {
+        "name": "list_locations",
+        "title": "List store locations",
+        "description": "List the two Famous Kosher Nosh restaurant locations (Glen Rock and Cresskill, NJ) with their address, phone number, and online ordering URL.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {}
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "list_categories",
+        "title": "List menu categories",
+        "description": "List the active menu categories offered at The Famous Kosher Nosh, with their slug, description, and display order. Optionally filter to a specific location.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "location": {
+              "type": "string",
+              "enum": [
+                "glen-rock",
+                "cresskill"
+              ],
+              "description": "Restrict to a single store location."
+            }
+          },
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "get_menu",
+        "title": "Get menu items",
+        "description": "Return active menu items for The Famous Kosher Nosh, including name, description, category, dietary labels, per-location price, availability, image, and an ordering URL. Optionally filter by store location and/or category slug.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "location": {
+              "type": "string",
+              "enum": [
+                "glen-rock",
+                "cresskill"
+              ],
+              "description": "Restrict prices/availability to a single store location."
+            },
+            "category": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 80,
+              "description": "Category slug (see list_categories) to filter items."
+            }
+          },
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "search_menu",
+        "title": "Search menu",
+        "description": "Search The Famous Kosher Nosh menu by keyword. Matches item names, descriptions, and category names (case-insensitive). Returns matching items with price, availability, and ordering URL.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "query": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 120,
+              "description": "Keyword or phrase to search for (e.g. 'brisket', 'gluten free', 'soup')."
+            },
+            "location": {
+              "type": "string",
+              "enum": [
+                "glen-rock",
+                "cresskill"
+              ],
+              "description": "Restrict prices/availability to a single store location."
+            }
+          },
+          "required": [
+            "query"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      }
+    ]
+  }
+}
