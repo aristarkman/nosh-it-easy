@@ -65,7 +65,7 @@ const DispatchInput = z.object({
   tip: z.number().nonnegative(),
   deliveryFee: z.number().nonnegative(),
   notes: z.string().max(2000).optional().nullable(),
-  scheduledTime: z.string().datetime().optional().nullable(),
+  scheduledTime: z.string().min(1).max(100).optional().nullable(),
   items: z
     .array(
       z.object({
