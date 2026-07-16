@@ -48,6 +48,7 @@ function LocationPick() {
         <section className="grid gap-4 sm:grid-cols-2">
           {LOCATIONS.map((l) => {
             const active = l.id === location;
+            const open = loaded ? isOpenNow(l.id) : null;
             return (
               <button
                 key={l.id}
@@ -65,9 +66,11 @@ function LocationPick() {
                       {l.name}
                     </h3>
                   </div>
-                  <span className="inline-flex items-center gap-1 rounded-full bg-foreground px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-background">
-                    <span className="size-1.5 rounded-full bg-primary" /> Open
-                  </span>
+                  {open !== null && (
+                    <span className="inline-flex items-center gap-1 rounded-full bg-foreground px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-background">
+                      <span className={`size-1.5 rounded-full ${open ? "bg-primary" : "bg-muted-foreground"}`} /> {open ? "Open" : "Closed"}
+                    </span>
+                  )}
                 </div>
                 <ul className="mt-5 space-y-2 text-sm text-muted-foreground">
                   <li className="flex items-center gap-2">
