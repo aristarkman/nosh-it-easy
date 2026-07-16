@@ -18,11 +18,30 @@ const PICKUPS: Record<string, { name: string; address: string; phone: string }> 
 };
 
 function getApiKey(locationId: string): string | undefined {
-  const KEYS: Record<string, string | undefined> = {
-    "glen-rock": process.env.SHIPDAY_API_KEY,
-    cresskill: process.env.SHIPDAY_API_KEY_CRESSKILL,
-  };
-  return KEYS[locationId] ?? process.env.SHIPDAY_API_KEY;
+  const key =
+    locationId === "glen-rock"
+      ? process.env.SHIPDAY_API_KEY
+      : locationId === "cresskill"
+        ? process.env.SHIPDAY_API_KEY_CRESSKILL
+        : undefined;
+
+  return key?.trim() || undefined;
+}
+
+function shipdayErrorMessage(status: number, body: Record<string, unknown>): string {
+  const apiMessage =
+    (typeof body.message === "string" && body.message) ||
+    (typeof body.error === "string" && body.error) ||
+    (typeof body.detail === "string" && body.detail) ||
+    null;
+
+  if (status === 401 || status === 403) {
+    return "Shipday rejected this store's API key. Check the location-specific Shipday secret.";
+  }
+  if (status === 400 || status === 404) {
+    return apiMessage || "No Shipday service is available for this address.";
+  }
+  return apiMessage || `Shipday error (${status})`;
 }
 
 const QuoteInput = z.object({
@@ -36,8 +55,14 @@ export const quoteShipday = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const apiKey = getApiKey(data.locationId);
     const pickup = PICKUPS[data.locationId];
-    if (!apiKey || !pickup) {
-      return { ok: false as const, message: "Delivery is not configured for this store." };
+    if (!pickup) {
+      return { ok: false as const, message: `No pickup address for ${data.locationId}.` };
+    }
+    if (!apiKey) {
+      return {
+        ok: false as const,
+        message: `Shipday is not configured for ${data.locationId}. Add the location-specific API key.`,
+      };
     }
     try {
       const res = await fetch(`${SHIPDAY_BASE}/on-demand/quote`, {
@@ -60,13 +85,14 @@ export const quoteShipday = createServerFn({ method: "POST" })
         body = { raw: text };
       }
       if (!res.ok) {
-        console.error("Shipday quote failed:", res.status, body);
+        console.error("Shipday quote failed:", {
+          status: res.status,
+          locationId: data.locationId,
+          body,
+        });
         return {
           ok: false as const,
-          message:
-            res.status === 404 || res.status === 400
-              ? "No drivers available for this address."
-              : `Shipday error (${res.status})`,
+          message: shipdayErrorMessage(res.status, body),
         };
       }
       const fee =
@@ -83,6 +109,10 @@ export const quoteShipday = createServerFn({ method: "POST" })
         (body.id as string | undefined) ??
         null;
       if (fee == null) {
+        console.error("Shipday quote response did not include a fee:", {
+          locationId: data.locationId,
+          body,
+        });
         return { ok: false as const, message: "No quote available for this address." };
       }
       return {
@@ -126,7 +156,10 @@ export const dispatchShipday = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const apiKey = getApiKey(data.locationId);
     if (!apiKey) {
-      return { ok: false as const, message: `Shipday is not configured for ${data.locationId}.` };
+      return {
+        ok: false as const,
+        message: `Shipday is not configured for ${data.locationId}. Add the location-specific API key.`,
+      };
     }
     const pickup = PICKUPS[data.locationId];
     if (!pickup) {
@@ -173,10 +206,15 @@ export const dispatchShipday = createServerFn({ method: "POST" })
         body = { raw: text };
       }
       if (!res.ok) {
-        console.error("Shipday create order failed:", res.status, body);
+        console.error("Shipday create order failed:", {
+          status: res.status,
+          locationId: data.locationId,
+          orderNumber: data.orderNumber,
+          body,
+        });
         return {
           ok: false as const,
-          message: `Shipday error (${res.status})`,
+          message: shipdayErrorMessage(res.status, body),
         };
       }
       const id =
