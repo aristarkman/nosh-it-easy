@@ -25,7 +25,7 @@ export const Route = createFileRoute("/")({
 
 function LocationPick() {
   const { setLocation, location } = useOrder();
-  const { todayLabel } = useStoreHours();
+  const { todayLabel, isOpenNow, loaded } = useStoreHours();
   const navigate = useNavigate();
 
   const choose = (id: LocationId) => {
