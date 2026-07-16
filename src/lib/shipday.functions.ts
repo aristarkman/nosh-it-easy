@@ -3,7 +3,6 @@ import { z } from "zod";
 
 const SHIPDAY_BASE = "https://api.shipday.com";
 
-// Pickup addresses for each store (full street addresses, required by Shipday)
 const PICKUPS: Record<string, { name: string; address: string; phone: string }> = {
   "glen-rock": {
     name: "The Famous Kosher Nosh — Glen Rock",
@@ -24,7 +23,6 @@ function getApiKey(locationId: string): string | undefined {
       : locationId === "cresskill"
         ? process.env.SHIPDAY_API_KEY_CRESSKILL
         : undefined;
-
   return key?.trim() || undefined;
 }
 
@@ -50,8 +48,6 @@ const QuoteInput = z.object({
   total: z.number().nonnegative(),
 });
 
-// Live Shipday quoting is intentionally disabled. Checkout will treat the empty
-// message as non-blocking and use the matched delivery-zone fee instead.
 export const quoteShipday = createServerFn({ method: "POST" })
   .inputValidator((input) => QuoteInput.parse(input))
   .handler(async () => ({ ok: false as const, message: "" }));
@@ -68,7 +64,8 @@ const DispatchInput = z.object({
   tax: z.number().nonnegative(),
   tip: z.number().nonnegative(),
   deliveryFee: z.number().nonnegative(),
-  notes: z.string().max(1000).optional().nullable(),
+  notes: z.string().max(2000).optional().nullable(),
+  scheduledTime: z.string().datetime().optional().nullable(),
   items: z
     .array(
       z.object({
@@ -83,6 +80,34 @@ const DispatchInput = z.object({
 export const dispatchShipday = createServerFn({ method: "POST" })
   .inputValidator((input) => DispatchInput.parse(input))
   .handler(async ({ data }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: savedOrder, error: orderError } = await supabaseAdmin
+      .from("orders")
+      .select("status,shipday_order_id,shipday_tracking_url")
+      .eq("order_number", data.orderNumber)
+      .maybeSingle();
+
+    if (orderError) {
+      console.error("Shipday pre-dispatch order lookup failed:", orderError);
+      return { ok: false as const, message: "Could not verify that the order was accepted." };
+    }
+    if (!savedOrder || !["accepted", "ready"].includes(savedOrder.status)) {
+      return {
+        ok: true as const,
+        shipdayOrderId: null,
+        trackingUrl: null,
+        skipped: true as const,
+      };
+    }
+    if (savedOrder.shipday_order_id) {
+      return {
+        ok: true as const,
+        shipdayOrderId: savedOrder.shipday_order_id,
+        trackingUrl: savedOrder.shipday_tracking_url,
+        skipped: false as const,
+      };
+    }
+
     const apiKey = getApiKey(data.locationId);
     if (!apiKey) {
       return {
@@ -104,10 +129,10 @@ export const dispatchShipday = createServerFn({ method: "POST" })
       restaurantName: pickup.name,
       restaurantAddress: pickup.address,
       restaurantPhoneNumber: pickup.phone,
-      orderItems: data.items.map((it) => ({
-        name: it.name,
-        quantity: it.quantity,
-        unitPrice: it.unitPrice,
+      orderItems: data.items.map((item) => ({
+        name: item.name,
+        quantity: item.quantity,
+        unitPrice: item.unitPrice,
       })),
       tips: data.tip,
       tax: data.tax,
@@ -116,10 +141,11 @@ export const dispatchShipday = createServerFn({ method: "POST" })
       totalOrderCost: data.total,
       deliveryInstruction: data.notes || undefined,
       paymentMethod: "credit_card",
+      expectedPickupTime: data.scheduledTime || undefined,
     };
 
     try {
-      const res = await fetch(`${SHIPDAY_BASE}/orders`, {
+      const response = await fetch(`${SHIPDAY_BASE}/orders`, {
         method: "POST",
         headers: {
           Authorization: `Basic ${apiKey}`,
@@ -127,23 +153,23 @@ export const dispatchShipday = createServerFn({ method: "POST" })
         },
         body: JSON.stringify(payload),
       });
-      const text = await res.text();
+      const text = await response.text();
       let body: Record<string, unknown> = {};
       try {
         body = text ? JSON.parse(text) : {};
       } catch {
         body = { raw: text };
       }
-      if (!res.ok) {
+      if (!response.ok) {
         console.error("Shipday create order failed:", {
-          status: res.status,
+          status: response.status,
           locationId: data.locationId,
           orderNumber: data.orderNumber,
           body,
         });
         return {
           ok: false as const,
-          message: shipdayErrorMessage(res.status, body),
+          message: shipdayErrorMessage(response.status, body),
         };
       }
       const id =
@@ -158,9 +184,10 @@ export const dispatchShipday = createServerFn({ method: "POST" })
         ok: true as const,
         shipdayOrderId: id != null ? String(id) : null,
         trackingUrl,
+        skipped: false as const,
       };
-    } catch (err) {
-      console.error("Shipday request error:", err);
+    } catch (error) {
+      console.error("Shipday request error:", error);
       return { ok: false as const, message: "Could not reach Shipday." };
     }
   });
