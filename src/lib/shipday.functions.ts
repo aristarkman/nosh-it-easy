@@ -50,82 +50,11 @@ const QuoteInput = z.object({
   total: z.number().nonnegative(),
 });
 
+// Live Shipday quoting is intentionally disabled. Checkout will treat the empty
+// message as non-blocking and use the matched delivery-zone fee instead.
 export const quoteShipday = createServerFn({ method: "POST" })
   .inputValidator((input) => QuoteInput.parse(input))
-  .handler(async ({ data }) => {
-    const apiKey = getApiKey(data.locationId);
-    const pickup = PICKUPS[data.locationId];
-    if (!pickup) {
-      return { ok: false as const, message: `No pickup address for ${data.locationId}.` };
-    }
-    if (!apiKey) {
-      return {
-        ok: false as const,
-        message: `Shipday is not configured for ${data.locationId}. Add the location-specific API key.`,
-      };
-    }
-    try {
-      const res = await fetch(`${SHIPDAY_BASE}/on-demand/quote`, {
-        method: "POST",
-        headers: {
-          Authorization: `Basic ${apiKey}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          pickupAddress: pickup.address,
-          deliveryAddress: data.deliveryAddress,
-          orderValue: data.total,
-        }),
-      });
-      const text = await res.text();
-      let body: Record<string, unknown> = {};
-      try {
-        body = text ? JSON.parse(text) : {};
-      } catch {
-        body = { raw: text };
-      }
-      if (!res.ok) {
-        console.error("Shipday quote failed:", {
-          status: res.status,
-          locationId: data.locationId,
-          body,
-        });
-        return {
-          ok: false as const,
-          message: shipdayErrorMessage(res.status, body),
-        };
-      }
-      const fee =
-        (body.fee as number | undefined) ??
-        (body.deliveryFee as number | undefined) ??
-        ((body.quote as Record<string, unknown> | undefined)?.fee as number | undefined) ??
-        null;
-      const etaMinutes =
-        (body.etaMinutes as number | undefined) ??
-        (body.eta as number | undefined) ??
-        null;
-      const quoteId =
-        (body.quoteId as string | undefined) ??
-        (body.id as string | undefined) ??
-        null;
-      if (fee == null) {
-        console.error("Shipday quote response did not include a fee:", {
-          locationId: data.locationId,
-          body,
-        });
-        return { ok: false as const, message: "No quote available for this address." };
-      }
-      return {
-        ok: true as const,
-        fee: Number(fee),
-        etaMinutes: etaMinutes != null ? Number(etaMinutes) : null,
-        quoteId,
-      };
-    } catch (err) {
-      console.error("Shipday quote error:", err);
-      return { ok: false as const, message: "Could not reach Shipday." };
-    }
-  });
+  .handler(async () => ({ ok: false as const, message: "" }));
 
 const DispatchInput = z.object({
   orderNumber: z.string().min(1).max(64),
