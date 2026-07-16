@@ -19,6 +19,7 @@ import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as OrderTypeRouteImport } from './routes/order-type'
 import { Route as MenuRouteImport } from './routes/menu'
+import { Route as McpRouteImport } from './routes/mcp'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
 import { Route as DispatchRouteImport } from './routes/dispatch'
@@ -45,6 +46,9 @@ import { Route as AdminDriversRouteImport } from './routes/admin.drivers'
 import { Route as AdminClosuresRouteImport } from './routes/admin.closures'
 import { Route as AdminCategoriesRouteImport } from './routes/admin.categories'
 import { Route as AdminBiyoRouteImport } from './routes/admin.biyo'
+import { Route as Char91DotwellKnownChar93OauthProtectedResourceRouteImport } from './routes/[.well-known]/oauth-protected-resource'
+import { Route as Char91DotmcpChar93ListToolsRouteImport } from './routes/[.mcp]/list-tools'
+import { Route as Char91DotmcpChar93InvokeToolToolRouteImport } from './routes/[.mcp]/invoke-tool/$tool'
 import { Route as ApiPublicHooksSyncBiyoRouteImport } from './routes/api/public/hooks/sync-biyo'
 import { Route as ApiPublicHooksShipdayRouteImport } from './routes/api/public/hooks/shipday'
 import { Route as ApiPublicHooksRequoteScheduledRouteImport } from './routes/api/public/hooks/requote-scheduled'
@@ -98,6 +102,11 @@ const OrderTypeRoute = OrderTypeRouteImport.update({
 const MenuRoute = MenuRouteImport.update({
   id: '/menu',
   path: '/menu',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const McpRoute = McpRouteImport.update({
+  id: '/mcp',
+  path: '/mcp',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LoginRoute = LoginRouteImport.update({
@@ -230,6 +239,24 @@ const AdminBiyoRoute = AdminBiyoRouteImport.update({
   path: '/biyo',
   getParentRoute: () => AdminRoute,
 } as any)
+const Char91DotwellKnownChar93OauthProtectedResourceRoute =
+  Char91DotwellKnownChar93OauthProtectedResourceRouteImport.update({
+    id: '/.well-known/oauth-protected-resource',
+    path: '/.well-known/oauth-protected-resource',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const Char91DotmcpChar93ListToolsRoute =
+  Char91DotmcpChar93ListToolsRouteImport.update({
+    id: '/.mcp/list-tools',
+    path: '/.mcp/list-tools',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const Char91DotmcpChar93InvokeToolToolRoute =
+  Char91DotmcpChar93InvokeToolToolRouteImport.update({
+    id: '/.mcp/invoke-tool/$tool',
+    path: '/.mcp/invoke-tool/$tool',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicHooksSyncBiyoRoute = ApiPublicHooksSyncBiyoRouteImport.update({
   id: '/api/public/hooks/sync-biyo',
   path: '/api/public/hooks/sync-biyo',
@@ -262,6 +289,7 @@ export interface FileRoutesByFullPath {
   '/dispatch': typeof DispatchRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/login': typeof LoginRoute
+  '/mcp': typeof McpRoute
   '/menu': typeof MenuRoute
   '/order-type': typeof OrderTypeRoute
   '/privacy': typeof PrivacyRoute
@@ -272,6 +300,8 @@ export interface FileRoutesByFullPath {
   '/tablet': typeof TabletRoute
   '/terms': typeof TermsRoute
   '/when': typeof WhenRoute
+  '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
+  '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/admin/biyo': typeof AdminBiyoRoute
   '/admin/categories': typeof AdminCategoriesRoute
   '/admin/closures': typeof AdminClosuresRoute
@@ -290,6 +320,7 @@ export interface FileRoutesByFullPath {
   '/staff/login': typeof StaffLoginRoute
   '/welcome/address': typeof WelcomeAddressRoute
   '/admin/': typeof AdminIndexRoute
+  '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/api/public/hooks/cart-abandonment': typeof ApiPublicHooksCartAbandonmentRoute
   '/api/public/hooks/requote-scheduled': typeof ApiPublicHooksRequoteScheduledRoute
   '/api/public/hooks/shipday': typeof ApiPublicHooksShipdayRoute
@@ -303,6 +334,7 @@ export interface FileRoutesByTo {
   '/dispatch': typeof DispatchRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/login': typeof LoginRoute
+  '/mcp': typeof McpRoute
   '/menu': typeof MenuRoute
   '/order-type': typeof OrderTypeRoute
   '/privacy': typeof PrivacyRoute
@@ -313,6 +345,8 @@ export interface FileRoutesByTo {
   '/tablet': typeof TabletRoute
   '/terms': typeof TermsRoute
   '/when': typeof WhenRoute
+  '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
+  '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/admin/biyo': typeof AdminBiyoRoute
   '/admin/categories': typeof AdminCategoriesRoute
   '/admin/closures': typeof AdminClosuresRoute
@@ -331,6 +365,7 @@ export interface FileRoutesByTo {
   '/staff/login': typeof StaffLoginRoute
   '/welcome/address': typeof WelcomeAddressRoute
   '/admin': typeof AdminIndexRoute
+  '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/api/public/hooks/cart-abandonment': typeof ApiPublicHooksCartAbandonmentRoute
   '/api/public/hooks/requote-scheduled': typeof ApiPublicHooksRequoteScheduledRoute
   '/api/public/hooks/shipday': typeof ApiPublicHooksShipdayRoute
@@ -346,6 +381,7 @@ export interface FileRoutesById {
   '/dispatch': typeof DispatchRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/login': typeof LoginRoute
+  '/mcp': typeof McpRoute
   '/menu': typeof MenuRoute
   '/order-type': typeof OrderTypeRoute
   '/privacy': typeof PrivacyRoute
@@ -356,6 +392,8 @@ export interface FileRoutesById {
   '/tablet': typeof TabletRoute
   '/terms': typeof TermsRoute
   '/when': typeof WhenRoute
+  '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
+  '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/admin/biyo': typeof AdminBiyoRoute
   '/admin/categories': typeof AdminCategoriesRoute
   '/admin/closures': typeof AdminClosuresRoute
@@ -374,6 +412,7 @@ export interface FileRoutesById {
   '/staff/login': typeof StaffLoginRoute
   '/welcome/address': typeof WelcomeAddressRoute
   '/admin/': typeof AdminIndexRoute
+  '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/api/public/hooks/cart-abandonment': typeof ApiPublicHooksCartAbandonmentRoute
   '/api/public/hooks/requote-scheduled': typeof ApiPublicHooksRequoteScheduledRoute
   '/api/public/hooks/shipday': typeof ApiPublicHooksShipdayRoute
@@ -390,6 +429,7 @@ export interface FileRouteTypes {
     | '/dispatch'
     | '/forgot-password'
     | '/login'
+    | '/mcp'
     | '/menu'
     | '/order-type'
     | '/privacy'
@@ -400,6 +440,8 @@ export interface FileRouteTypes {
     | '/tablet'
     | '/terms'
     | '/when'
+    | '/.mcp/list-tools'
+    | '/.well-known/oauth-protected-resource'
     | '/admin/biyo'
     | '/admin/categories'
     | '/admin/closures'
@@ -418,6 +460,7 @@ export interface FileRouteTypes {
     | '/staff/login'
     | '/welcome/address'
     | '/admin/'
+    | '/.mcp/invoke-tool/$tool'
     | '/api/public/hooks/cart-abandonment'
     | '/api/public/hooks/requote-scheduled'
     | '/api/public/hooks/shipday'
@@ -431,6 +474,7 @@ export interface FileRouteTypes {
     | '/dispatch'
     | '/forgot-password'
     | '/login'
+    | '/mcp'
     | '/menu'
     | '/order-type'
     | '/privacy'
@@ -441,6 +485,8 @@ export interface FileRouteTypes {
     | '/tablet'
     | '/terms'
     | '/when'
+    | '/.mcp/list-tools'
+    | '/.well-known/oauth-protected-resource'
     | '/admin/biyo'
     | '/admin/categories'
     | '/admin/closures'
@@ -459,6 +505,7 @@ export interface FileRouteTypes {
     | '/staff/login'
     | '/welcome/address'
     | '/admin'
+    | '/.mcp/invoke-tool/$tool'
     | '/api/public/hooks/cart-abandonment'
     | '/api/public/hooks/requote-scheduled'
     | '/api/public/hooks/shipday'
@@ -473,6 +520,7 @@ export interface FileRouteTypes {
     | '/dispatch'
     | '/forgot-password'
     | '/login'
+    | '/mcp'
     | '/menu'
     | '/order-type'
     | '/privacy'
@@ -483,6 +531,8 @@ export interface FileRouteTypes {
     | '/tablet'
     | '/terms'
     | '/when'
+    | '/.mcp/list-tools'
+    | '/.well-known/oauth-protected-resource'
     | '/admin/biyo'
     | '/admin/categories'
     | '/admin/closures'
@@ -501,6 +551,7 @@ export interface FileRouteTypes {
     | '/staff/login'
     | '/welcome/address'
     | '/admin/'
+    | '/.mcp/invoke-tool/$tool'
     | '/api/public/hooks/cart-abandonment'
     | '/api/public/hooks/requote-scheduled'
     | '/api/public/hooks/shipday'
@@ -516,6 +567,7 @@ export interface RootRouteChildren {
   DispatchRoute: typeof DispatchRoute
   ForgotPasswordRoute: typeof ForgotPasswordRoute
   LoginRoute: typeof LoginRoute
+  McpRoute: typeof McpRoute
   MenuRoute: typeof MenuRoute
   OrderTypeRoute: typeof OrderTypeRoute
   PrivacyRoute: typeof PrivacyRoute
@@ -526,10 +578,13 @@ export interface RootRouteChildren {
   TabletRoute: typeof TabletRoute
   TermsRoute: typeof TermsRoute
   WhenRoute: typeof WhenRoute
+  Char91DotmcpChar93ListToolsRoute: typeof Char91DotmcpChar93ListToolsRoute
+  Char91DotwellKnownChar93OauthProtectedResourceRoute: typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   ConfirmationOrderIdRoute: typeof ConfirmationOrderIdRoute
   ItemSlugRoute: typeof ItemSlugRoute
   StaffLoginRoute: typeof StaffLoginRoute
   WelcomeAddressRoute: typeof WelcomeAddressRoute
+  Char91DotmcpChar93InvokeToolToolRoute: typeof Char91DotmcpChar93InvokeToolToolRoute
   ApiPublicHooksCartAbandonmentRoute: typeof ApiPublicHooksCartAbandonmentRoute
   ApiPublicHooksRequoteScheduledRoute: typeof ApiPublicHooksRequoteScheduledRoute
   ApiPublicHooksShipdayRoute: typeof ApiPublicHooksShipdayRoute
@@ -606,6 +661,13 @@ declare module '@tanstack/react-router' {
       path: '/menu'
       fullPath: '/menu'
       preLoaderRoute: typeof MenuRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/mcp': {
+      id: '/mcp'
+      path: '/mcp'
+      fullPath: '/mcp'
+      preLoaderRoute: typeof McpRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/login': {
@@ -790,6 +852,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminBiyoRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/.well-known/oauth-protected-resource': {
+      id: '/.well-known/oauth-protected-resource'
+      path: '/.well-known/oauth-protected-resource'
+      fullPath: '/.well-known/oauth-protected-resource'
+      preLoaderRoute: typeof Char91DotwellKnownChar93OauthProtectedResourceRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/.mcp/list-tools': {
+      id: '/.mcp/list-tools'
+      path: '/.mcp/list-tools'
+      fullPath: '/.mcp/list-tools'
+      preLoaderRoute: typeof Char91DotmcpChar93ListToolsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/.mcp/invoke-tool/$tool': {
+      id: '/.mcp/invoke-tool/$tool'
+      path: '/.mcp/invoke-tool/$tool'
+      fullPath: '/.mcp/invoke-tool/$tool'
+      preLoaderRoute: typeof Char91DotmcpChar93InvokeToolToolRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/hooks/sync-biyo': {
       id: '/api/public/hooks/sync-biyo'
       path: '/api/public/hooks/sync-biyo'
@@ -866,6 +949,7 @@ const rootRouteChildren: RootRouteChildren = {
   DispatchRoute: DispatchRoute,
   ForgotPasswordRoute: ForgotPasswordRoute,
   LoginRoute: LoginRoute,
+  McpRoute: McpRoute,
   MenuRoute: MenuRoute,
   OrderTypeRoute: OrderTypeRoute,
   PrivacyRoute: PrivacyRoute,
@@ -876,10 +960,14 @@ const rootRouteChildren: RootRouteChildren = {
   TabletRoute: TabletRoute,
   TermsRoute: TermsRoute,
   WhenRoute: WhenRoute,
+  Char91DotmcpChar93ListToolsRoute: Char91DotmcpChar93ListToolsRoute,
+  Char91DotwellKnownChar93OauthProtectedResourceRoute:
+    Char91DotwellKnownChar93OauthProtectedResourceRoute,
   ConfirmationOrderIdRoute: ConfirmationOrderIdRoute,
   ItemSlugRoute: ItemSlugRoute,
   StaffLoginRoute: StaffLoginRoute,
   WelcomeAddressRoute: WelcomeAddressRoute,
+  Char91DotmcpChar93InvokeToolToolRoute: Char91DotmcpChar93InvokeToolToolRoute,
   ApiPublicHooksCartAbandonmentRoute: ApiPublicHooksCartAbandonmentRoute,
   ApiPublicHooksRequoteScheduledRoute: ApiPublicHooksRequoteScheduledRoute,
   ApiPublicHooksShipdayRoute: ApiPublicHooksShipdayRoute,
