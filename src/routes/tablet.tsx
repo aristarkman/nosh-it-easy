@@ -1,9 +1,24 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { Clock, MapPin, Phone, User, Truck, ShoppingBag, Check, ChefHat, X, LogOut, Volume2, VolumeX, AlertTriangle } from "lucide-react";
+import {
+  AlertTriangle,
+  Check,
+  ChefHat,
+  Clock,
+  LogOut,
+  MapPin,
+  Phone,
+  ShoppingBag,
+  Truck,
+  User,
+  Volume2,
+  VolumeX,
+  X,
+} from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { LOCATIONS, fmt, type CartLine } from "@/lib/order-context";
 import { sendOrderStatusSms } from "@/lib/sms.functions";
+import { dispatchShipday } from "@/lib/shipday.functions";
 import { useNewOrderAlarm } from "@/lib/use-new-order-alarm";
 import { toast } from "sonner";
 
@@ -27,6 +42,7 @@ export const Route = createFileRoute("/tablet")({
 });
 
 type Status = "new" | "accepted" | "ready" | "completed" | "cancelled";
+type DeliveryStatus = "unassigned" | "assigned" | "out_for_delivery" | "delivered";
 
 type Order = {
   id: string;
@@ -36,16 +52,23 @@ type Order = {
   status: Status;
   customer_name: string;
   customer_phone: string;
+  customer_email: string | null;
   delivery_address: string | null;
+  delivery_status: DeliveryStatus | null;
   when_type: string;
   scheduled_time: string | null;
   payment_method: string;
+  subtotal: number;
+  tax: number;
+  delivery_fee: number;
   total: number;
   items: CartLine[];
   notes: string | null;
   created_at: string;
   refunded_total: number;
   refund_status: "none" | "partial" | "full" | "voided";
+  shipday_order_id: string | null;
+  shipday_tracking_url: string | null;
 };
 
 const STATUS_FLOW: Record<Status, { next?: Status; label?: string; color: string }> = {
@@ -56,6 +79,19 @@ const STATUS_FLOW: Record<Status, { next?: Status; label?: string; color: string
   cancelled: { color: "bg-muted-foreground" },
 };
 
+function parseTip(notes: string | null): number {
+  const match = notes?.match(/(?:^|\|\s*)tip:([0-9]+(?:\.[0-9]+)?)/);
+  return match ? Number(match[1]) : 0;
+}
+
+function setDeliveryChoice(notes: string | null, choice: "shipday" | "self"): string {
+  const cleaned = (notes ?? "")
+    .split("|")
+    .map((part) => part.trim())
+    .filter((part) => part && !part.startsWith("delivery:"));
+  return [...cleaned, `delivery:${choice}`].join(" | ");
+}
+
 function TabletPage() {
   const nav = useNavigate();
   const [orders, setOrders] = useState<Order[]>([]);
@@ -65,12 +101,13 @@ function TabletPage() {
   const [authChecked, setAuthChecked] = useState(false);
   const [allowedLocations, setAllowedLocations] = useState<string[]>([]);
   const [isAdmin, setIsAdmin] = useState(false);
-  const [userEmail, setUserEmail] = useState<string>("");
+  const [userEmail, setUserEmail] = useState("");
+  const [deliveryChoiceOrder, setDeliveryChoiceOrder] = useState<Order | null>(null);
+  const [dispatching, setDispatching] = useState(false);
 
-  // Auth gate + load assigned locations
   useEffect(() => {
     let mounted = true;
-    (async () => {
+    void (async () => {
       const { data: sessionData } = await supabase.auth.getSession();
       if (!sessionData.session) {
         nav({ to: "/staff/login" });
@@ -78,7 +115,6 @@ function TabletPage() {
       }
       const userId = sessionData.session.user.id;
       setUserEmail(sessionData.session.user.email ?? "");
-
       const [{ data: roles }, { data: locs }] = await Promise.all([
         supabase.from("user_roles").select("role").eq("user_id", userId),
         supabase.from("staff_locations").select("location_id").eq("user_id", userId),
@@ -90,7 +126,8 @@ function TabletPage() {
       setAllowedLocations(admin ? LOCATIONS.map((l) => l.id) : assigned);
       setAuthChecked(true);
     })();
-    const { data: sub } = supabase.auth.onAuthStateChange((_e, session) => {
+
+    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
       if (!session) nav({ to: "/staff/login" });
     });
     return () => {
@@ -102,17 +139,17 @@ function TabletPage() {
   useEffect(() => {
     if (!authChecked) return;
     let mounted = true;
-    (async () => {
-      let q = supabase
+    void (async () => {
+      let query = supabase
         .from("orders")
         .select("*")
         .in("status", ["new", "accepted", "ready"])
         .order("created_at", { ascending: false })
         .limit(200);
       if (!isAdmin && allowedLocations.length > 0) {
-        q = q.in("location_id", allowedLocations);
+        query = query.in("location_id", allowedLocations);
       }
-      const { data, error } = await q;
+      const { data, error } = await query;
       if (!mounted) return;
       if (error) toast.error("Failed to load orders");
       else setOrders((data ?? []) as unknown as Order[]);
@@ -121,81 +158,180 @@ function TabletPage() {
 
     const channel = supabase
       .channel("orders-tablet")
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "orders" },
-        (payload) => {
-          setOrders((prev) => {
-            if (payload.eventType === "INSERT") {
-              const n = payload.new as Order;
-              if (!isAdmin && !allowedLocations.includes(n.location_id)) return prev;
-              toast.success(`New order ${n.order_number}`);
-              return [n, ...prev];
-            }
-            if (payload.eventType === "UPDATE") {
-              const n = payload.new as Order;
-              if (!isAdmin && !allowedLocations.includes(n.location_id)) return prev;
-              return prev.map((o) => (o.id === n.id ? n : o));
-            }
-            if (payload.eventType === "DELETE") {
-              const n = payload.old as { id: string };
-              return prev.filter((o) => o.id !== n.id);
-            }
-            return prev;
-          });
-        }
-      )
+      .on("postgres_changes", { event: "*", schema: "public", table: "orders" }, (payload) => {
+        setOrders((previous) => {
+          if (payload.eventType === "INSERT") {
+            const next = payload.new as Order;
+            if (!isAdmin && !allowedLocations.includes(next.location_id)) return previous;
+            toast.success(`New order ${next.order_number}`);
+            return [next, ...previous];
+          }
+          if (payload.eventType === "UPDATE") {
+            const next = payload.new as Order;
+            if (!isAdmin && !allowedLocations.includes(next.location_id)) return previous;
+            return previous.map((order) => (order.id === next.id ? next : order));
+          }
+          if (payload.eventType === "DELETE") {
+            const deleted = payload.old as { id: string };
+            return previous.filter((order) => order.id !== deleted.id);
+          }
+          return previous;
+        });
+      })
       .subscribe();
 
     return () => {
       mounted = false;
-      supabase.removeChannel(channel);
+      void supabase.removeChannel(channel);
     };
   }, [authChecked, isAdmin, allowedLocations]);
 
   const filtered = useMemo(
     () =>
       orders.filter(
-        (o) => (locFilter === "all" || o.location_id === locFilter) && o.status === tab
+        (order) =>
+          (locFilter === "all" || order.location_id === locFilter) && order.status === tab
       ),
     [orders, locFilter, tab]
   );
 
-  const advance = async (o: Order) => {
-    const next = STATUS_FLOW[o.status].next;
+  const advance = async (order: Order) => {
+    const next = STATUS_FLOW[order.status].next;
     if (!next) return;
-    const { error } = await supabase.from("orders").update({ status: next }).eq("id", o.id);
+    const { error } = await supabase.from("orders").update({ status: next }).eq("id", order.id);
     if (error) {
       toast.error("Update failed");
       return;
     }
-    if ((next === "accepted" || next === "ready") && o.customer_phone) {
-      const locName = LOCATIONS.find((l) => l.id === o.location_id)?.name;
-      sendOrderStatusSms({
+
+    const updatedOrder = { ...order, status: next };
+    setOrders((previous) => previous.map((item) => (item.id === order.id ? updatedOrder : item)));
+
+    if ((next === "accepted" || next === "ready") && order.customer_phone) {
+      const locName = LOCATIONS.find((location) => location.id === order.location_id)?.name;
+      void sendOrderStatusSms({
         data: {
-          to: o.customer_phone,
+          to: order.customer_phone,
           status: next,
-          orderNumber: o.order_number,
-          customerName: o.customer_name,
-          orderType: o.order_type,
+          orderNumber: order.order_number,
+          customerName: order.customer_name,
+          orderType: order.order_type,
           locationName: locName,
         },
-      }).catch((e) => console.error("SMS send failed:", e));
+      }).catch((error) => console.error("SMS send failed:", error));
+    }
+
+    if (next === "accepted" && order.order_type === "delivery") {
+      setDeliveryChoiceOrder(updatedOrder);
     }
   };
-  const cancel = async (o: Order) => {
-    const { error } = await supabase
-      .from("orders")
-      .update({ status: "cancelled" })
-      .eq("id", o.id);
+
+  const cancel = async (order: Order) => {
+    const { error } = await supabase.from("orders").update({ status: "cancelled" }).eq("id", order.id);
     if (error) toast.error("Cancel failed");
   };
 
+  const chooseSelfDelivery = async () => {
+    const order = deliveryChoiceOrder;
+    if (!order) return;
+    setDispatching(true);
+    const notes = setDeliveryChoice(order.notes, "self");
+    const { error } = await supabase
+      .from("orders")
+      .update({ notes, delivery_status: "unassigned" })
+      .eq("id", order.id);
+    setDispatching(false);
+    if (error) {
+      toast.error("Could not save delivery choice");
+      return;
+    }
+    setOrders((previous) =>
+      previous.map((item) =>
+        item.id === order.id ? { ...item, notes, delivery_status: "unassigned" } : item
+      )
+    );
+    setDeliveryChoiceOrder(null);
+    toast.success("Set for in-house delivery. Assign a driver on the Dispatch screen.");
+  };
+
+  const chooseShipday = async () => {
+    const order = deliveryChoiceOrder;
+    if (!order || !order.delivery_address) return;
+    setDispatching(true);
+    const notes = setDeliveryChoice(order.notes, "shipday");
+    const { error: choiceError } = await supabase.from("orders").update({ notes }).eq("id", order.id);
+    if (choiceError) {
+      setDispatching(false);
+      toast.error("Could not save delivery choice");
+      return;
+    }
+
+    const result = await dispatchShipday({
+      data: {
+        orderNumber: order.order_number,
+        locationId: order.location_id,
+        customerName: order.customer_name,
+        customerPhone: order.customer_phone,
+        customerEmail: order.customer_email,
+        deliveryAddress: order.delivery_address,
+        total: Number(order.total),
+        subtotal: Number(order.subtotal),
+        tax: Number(order.tax),
+        tip: parseTip(order.notes),
+        deliveryFee: Number(order.delivery_fee),
+        notes: order.notes,
+        scheduledTime: order.scheduled_time,
+        items: order.items.map((item) => ({
+          name: item.name,
+          quantity: item.quantity,
+          unitPrice: item.unitPrice,
+        })),
+      },
+    }).catch((error) => ({
+      ok: false as const,
+      message: error instanceof Error ? error.message : "Could not reach Shipday.",
+    }));
+
+    if (!result.ok) {
+      setDispatching(false);
+      toast.error(result.message || "Could not dispatch to Shipday");
+      return;
+    }
+
+    const patch = {
+      notes,
+      shipday_order_id: result.shipdayOrderId,
+      shipday_tracking_url: result.trackingUrl,
+      quoted_delivery_fee: Number(order.delivery_fee),
+      dispatched_at: new Date().toISOString(),
+      delivery_status: "unassigned" as const,
+    };
+    const { error: persistError } = await supabase.from("orders").update(patch).eq("id", order.id);
+    setDispatching(false);
+    if (persistError) {
+      toast.error("Shipday accepted the order, but tracking could not be saved");
+      return;
+    }
+
+    setOrders((previous) =>
+      previous.map((item) => (item.id === order.id ? { ...item, ...patch } : item))
+    );
+    setDeliveryChoiceOrder(null);
+    toast.success("Order dispatched to Shipday");
+  };
+
   const counts = useMemo(() => {
-    const c: Record<Status, number> = { new: 0, accepted: 0, ready: 0, completed: 0, cancelled: 0 };
-    for (const o of orders)
-      if (locFilter === "all" || o.location_id === locFilter) c[o.status]++;
-    return c;
+    const result: Record<Status, number> = {
+      new: 0,
+      accepted: 0,
+      ready: 0,
+      completed: 0,
+      cancelled: 0,
+    };
+    for (const order of orders) {
+      if (locFilter === "all" || order.location_id === locFilter) result[order.status]++;
+    }
+    return result;
   }, [orders, locFilter]);
 
   const { enabled: alarmEnabled, enable: enableAlarm } = useNewOrderAlarm(counts.new);
@@ -213,7 +349,10 @@ function TabletPage() {
             Your account ({userEmail}) is not assigned to any store. Contact your manager.
           </p>
           <button
-            onClick={async () => { await supabase.auth.signOut(); nav({ to: "/staff/login" }); }}
+            onClick={async () => {
+              await supabase.auth.signOut();
+              nav({ to: "/staff/login" });
+            }}
             className="inline-flex items-center gap-1.5 rounded-full border border-border px-4 py-2 text-xs font-bold uppercase tracking-wider"
           >
             <LogOut className="size-3.5" /> Sign out
@@ -223,7 +362,7 @@ function TabletPage() {
     );
   }
 
-  const visibleLocations = LOCATIONS.filter((l) => allowedLocations.includes(l.id));
+  const visibleLocations = LOCATIONS.filter((location) => allowedLocations.includes(location.id));
   const showAllFilter = visibleLocations.length > 1;
 
   return (
@@ -239,18 +378,14 @@ function TabletPage() {
           </div>
           <div className="flex flex-wrap items-center gap-2">
             {showAllFilter && (
-              <Filter
-                active={locFilter === "all"}
-                onClick={() => setLocFilter("all")}
-                label="All"
-              />
+              <Filter active={locFilter === "all"} onClick={() => setLocFilter("all")} label="All" />
             )}
-            {visibleLocations.map((l) => (
+            {visibleLocations.map((location) => (
               <Filter
-                key={l.id}
-                active={locFilter === l.id || (!showAllFilter && locFilter === "all")}
-                onClick={() => setLocFilter(l.id)}
-                label={l.name}
+                key={location.id}
+                active={locFilter === location.id || (!showAllFilter && locFilter === "all")}
+                onClick={() => setLocFilter(location.id)}
+                label={location.name}
               />
             ))}
             <button
@@ -258,7 +393,7 @@ function TabletPage() {
               className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-bold uppercase tracking-wider transition ${
                 alarmEnabled
                   ? "border-primary bg-primary/10 text-primary"
-                  : "border-destructive bg-destructive/10 text-destructive animate-pulse"
+                  : "animate-pulse border-destructive bg-destructive/10 text-destructive"
               }`}
               title={alarmEnabled ? "Sound on" : "Tap to enable order alerts"}
             >
@@ -266,7 +401,10 @@ function TabletPage() {
               {alarmEnabled ? "Alerts on" : "Enable alerts"}
             </button>
             <button
-              onClick={async () => { await supabase.auth.signOut(); nav({ to: "/staff/login" }); }}
+              onClick={async () => {
+                await supabase.auth.signOut();
+                nav({ to: "/staff/login" });
+              }}
               className="inline-flex items-center gap-1.5 rounded-full border border-border px-3 py-1.5 text-xs font-bold uppercase tracking-wider text-muted-foreground hover:text-foreground"
             >
               <LogOut className="size-3.5" /> Sign out
@@ -274,26 +412,30 @@ function TabletPage() {
           </div>
         </div>
         <div className="mx-auto flex max-w-[1400px] gap-1 px-4">
-          {(["new", "accepted", "ready"] as Status[]).map((s) => (
+          {(["new", "accepted", "ready"] as Status[]).map((status) => (
             <button
-              key={s}
-              onClick={() => setTab(s)}
+              key={status}
+              onClick={() => setTab(status)}
               className={`relative -mb-px border-b-2 px-4 py-3 text-sm font-bold uppercase tracking-wider transition ${
-                tab === s
+                tab === status
                   ? "border-primary text-primary"
                   : "border-transparent text-muted-foreground hover:text-foreground"
               }`}
             >
-              {labelFor(s)}
+              {labelFor(status)}
               <span className="ml-2 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-foreground px-1.5 text-[11px] font-bold text-background">
-                {counts[s]}
+                {counts[status]}
               </span>
             </button>
           ))}
         </div>
       </div>
 
-      <SystemAlertsBanner isAdmin={isAdmin} allowedLocations={allowedLocations} locFilter={locFilter} />
+      <SystemAlertsBanner
+        isAdmin={isAdmin}
+        allowedLocations={allowedLocations}
+        locFilter={locFilter}
+      />
 
       <div className="mx-auto max-w-[1400px] p-4">
         {loading ? (
@@ -304,23 +446,100 @@ function TabletPage() {
           </div>
         ) : (
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {filtered.map((o) => (
+            {filtered.map((order) => (
               <OrderCard
-                key={o.id}
-                o={o}
-                onAdvance={() => advance(o)}
-                onCancel={() => cancel(o)}
+                key={order.id}
+                o={order}
+                onAdvance={() => void advance(order)}
+                onCancel={() => void cancel(order)}
               />
             ))}
           </div>
         )}
       </div>
+
+      {deliveryChoiceOrder && (
+        <DeliveryChoiceDialog
+          order={deliveryChoiceOrder}
+          busy={dispatching}
+          onShipday={() => void chooseShipday()}
+          onSelf={() => void chooseSelfDelivery()}
+        />
+      )}
     </div>
   );
 }
 
-function labelFor(s: Status) {
-  return s === "new" ? "New" : s === "accepted" ? "In kitchen" : s === "ready" ? "Ready" : s;
+function DeliveryChoiceDialog({
+  order,
+  busy,
+  onShipday,
+  onSelf,
+}: {
+  order: Order;
+  busy: boolean;
+  onShipday: () => void;
+  onSelf: () => void;
+}) {
+  return (
+    <div className="fixed inset-0 z-50 grid place-items-center bg-black/60 p-4" role="dialog" aria-modal="true">
+      <div className="w-full max-w-lg overflow-hidden rounded-3xl border border-border bg-background shadow-2xl">
+        <div className="border-b border-border p-5">
+          <div className="text-xs font-bold uppercase tracking-[0.2em] text-primary">
+            Delivery accepted · {order.order_number}
+          </div>
+          <h2 className="mt-1 font-display text-3xl">How will this order be delivered?</h2>
+        </div>
+        <div className="space-y-4 p-5">
+          <div className="rounded-2xl border border-border bg-muted/40 p-4">
+            <div className="font-bold">{order.customer_name}</div>
+            <a href={`tel:${order.customer_phone}`} className="mt-1 flex items-center gap-2 text-sm">
+              <Phone className="size-4 text-muted-foreground" /> {order.customer_phone}
+            </a>
+            <div className="mt-3 flex items-start gap-2 text-base font-semibold">
+              <MapPin className="mt-0.5 size-5 shrink-0 text-primary" />
+              <span>{order.delivery_address}</span>
+            </div>
+            {order.when_type === "schedule" && order.scheduled_time && (
+              <div className="mt-3 flex items-center gap-2 text-sm text-muted-foreground">
+                <Clock className="size-4" /> Scheduled for {new Date(order.scheduled_time).toLocaleString()}
+              </div>
+            )}
+          </div>
+
+          <button
+            type="button"
+            disabled={busy}
+            onClick={onShipday}
+            className="flex w-full items-center justify-center gap-2 rounded-2xl bg-primary px-4 py-4 text-sm font-black uppercase tracking-wider text-primary-foreground disabled:opacity-50"
+          >
+            <Truck className="size-5" /> {busy ? "Dispatching…" : "Dispatch to Shipday"}
+          </button>
+          <button
+            type="button"
+            disabled={busy}
+            onClick={onSelf}
+            className="flex w-full items-center justify-center gap-2 rounded-2xl border-2 border-foreground px-4 py-4 text-sm font-black uppercase tracking-wider disabled:opacity-50"
+          >
+            <ShoppingBag className="size-5" /> Deliver ourselves
+          </button>
+          <p className="text-center text-xs text-muted-foreground">
+            Deliver ourselves keeps the order in the internal Dispatch screen for driver assignment.
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function labelFor(status: Status) {
+  return status === "new"
+    ? "New"
+    : status === "accepted"
+      ? "In kitchen"
+      : status === "ready"
+        ? "Ready"
+        : status;
 }
 
 function Filter({ active, onClick, label }: { active: boolean; onClick: () => void; label: string }) {
@@ -346,7 +565,7 @@ function OrderCard({
   onCancel: () => void;
 }) {
   const flow = STATUS_FLOW[o.status];
-  const loc = LOCATIONS.find((l) => l.id === o.location_id);
+  const loc = LOCATIONS.find((location) => location.id === o.location_id);
   const ago = timeAgo(o.created_at);
   const isNew = o.status === "new";
   const refunded = (o.refunded_total ?? 0) > 0;
@@ -377,7 +596,7 @@ function OrderCard({
           <User className="size-3.5 text-muted-foreground" /> {o.customer_name}
         </div>
         <div className="flex items-center gap-2">
-          <Phone className="size-3.5 text-muted-foreground" />{" "}
+          <Phone className="size-3.5 text-muted-foreground" />
           <a href={`tel:${o.customer_phone}`} className="text-foreground">
             {o.customer_phone}
           </a>
@@ -395,35 +614,37 @@ function OrderCard({
               ? new Date(o.scheduled_time).toLocaleString()
               : "Scheduled"}
         </div>
+        {o.shipday_order_id && (
+          <div className="text-xs font-bold uppercase tracking-wider text-secondary">Shipday dispatched</div>
+        )}
       </div>
 
       <ul className="flex-1 space-y-2 p-4 text-sm">
-        {o.items.map((l) => (
-          <li key={l.lineId}>
+        {o.items.map((line, index) => (
+          <li key={line.lineId ?? `${line.itemId}-${index}`}>
             <div className="flex justify-between gap-2 font-semibold">
               <span>
-                {l.quantity}× {l.name}
+                {line.quantity}× {line.name}
               </span>
-              <span>{fmt(l.unitPrice * l.quantity)}</span>
+              <span>{fmt(line.unitPrice * line.quantity)}</span>
             </div>
-            {l.modifiers?.length > 0 && (
+            {line.modifiers?.length > 0 && (
               <ul className="ml-3 text-xs text-muted-foreground">
-                {l.modifiers.map((m) =>
-                  m.options.map((opt) => (
-                    <li key={`${m.groupId}-${opt.id}`}>+ {opt.name}</li>
+                {line.modifiers.map((modifier) =>
+                  modifier.options.map((option) => (
+                    <li key={`${modifier.groupId}-${option.id}`}>+ {option.name}</li>
                   ))
                 )}
               </ul>
             )}
-            {l.notes && <div className="ml-3 text-xs italic text-primary">"{l.notes}"</div>}
+            {line.notes && <div className="ml-3 text-xs italic text-primary">“{line.notes}”</div>}
           </li>
         ))}
       </ul>
 
       <div className="flex items-center justify-between gap-2 border-t border-border p-3">
         <div className="text-sm">
-          <span className="text-muted-foreground">Total</span>{" "}
-          <span className="font-bold">{fmt(o.total)}</span>{" "}
+          <span className="text-muted-foreground">Total</span> <span className="font-bold">{fmt(o.total)}</span>{" "}
           <span className="text-xs text-muted-foreground">· {o.payment_method}</span>
           {refunded && (
             <div className="mt-0.5 text-xs font-bold uppercase tracking-wider text-destructive">
@@ -460,12 +681,12 @@ function OrderCard({
 }
 
 function timeAgo(iso: string) {
-  const s = Math.max(0, Math.floor((Date.now() - new Date(iso).getTime()) / 1000));
-  if (s < 60) return `${s}s ago`;
-  const m = Math.floor(s / 60);
-  if (m < 60) return `${m}m ago`;
-  const h = Math.floor(m / 60);
-  return `${h}h ${m % 60}m ago`;
+  const seconds = Math.max(0, Math.floor((Date.now() - new Date(iso).getTime()) / 1000));
+  if (seconds < 60) return `${seconds}s ago`;
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  return `${hours}h ${minutes % 60}m ago`;
 }
 
 type SystemAlert = {
@@ -492,63 +713,57 @@ function SystemAlertsBanner({
 
   useEffect(() => {
     let mounted = true;
-    (async () => {
-      let q = supabase
+    void (async () => {
+      let query = supabase
         .from("system_alerts")
         .select("id,kind,severity,location_id,order_number,message,created_at,acknowledged_at")
         .is("acknowledged_at", null)
         .order("created_at", { ascending: false })
         .limit(50);
       if (!isAdmin && allowedLocations.length > 0) {
-        q = q.or(`location_id.is.null,location_id.in.(${allowedLocations.join(",")})`);
+        query = query.or(`location_id.is.null,location_id.in.(${allowedLocations.join(",")})`);
       }
-      const { data } = await q;
-      if (!mounted) return;
-      setAlerts((data ?? []) as SystemAlert[]);
+      const { data } = await query;
+      if (mounted) setAlerts((data ?? []) as SystemAlert[]);
     })();
 
     const channel = supabase
       .channel("system-alerts-tablet")
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "system_alerts" },
-        (payload) => {
-          setAlerts((prev) => {
-            if (payload.eventType === "INSERT") {
-              const n = payload.new as SystemAlert;
-              if (!isAdmin && n.location_id && !allowedLocations.includes(n.location_id)) return prev;
-              if (n.acknowledged_at) return prev;
-              toast.error(`⚠️ ${n.kind.replace(/_/g, " ")}`);
-              return [n, ...prev];
-            }
-            if (payload.eventType === "UPDATE") {
-              const n = payload.new as SystemAlert;
-              if (n.acknowledged_at) return prev.filter((a) => a.id !== n.id);
-              return prev.map((a) => (a.id === n.id ? n : a));
-            }
-            return prev;
-          });
-        }
-      )
+      .on("postgres_changes", { event: "*", schema: "public", table: "system_alerts" }, (payload) => {
+        setAlerts((previous) => {
+          if (payload.eventType === "INSERT") {
+            const next = payload.new as SystemAlert;
+            if (!isAdmin && next.location_id && !allowedLocations.includes(next.location_id)) return previous;
+            if (next.acknowledged_at) return previous;
+            toast.error(`⚠️ ${next.kind.replace(/_/g, " ")}`);
+            return [next, ...previous];
+          }
+          if (payload.eventType === "UPDATE") {
+            const next = payload.new as SystemAlert;
+            if (next.acknowledged_at) return previous.filter((alert) => alert.id !== next.id);
+            return previous.map((alert) => (alert.id === next.id ? next : alert));
+          }
+          return previous;
+        });
+      })
       .subscribe();
 
     return () => {
       mounted = false;
-      supabase.removeChannel(channel);
+      void supabase.removeChannel(channel);
     };
   }, [isAdmin, allowedLocations]);
 
   const visible = alerts.filter(
-    (a) => locFilter === "all" || !a.location_id || a.location_id === locFilter
+    (alert) => locFilter === "all" || !alert.location_id || alert.location_id === locFilter
   );
-
   if (visible.length === 0) return null;
 
-  const ack = async (id: string) => {
-    const { data: u } = await supabase.auth.getUser();
+  const acknowledge = async (id: string) => {
+    const { data: user } = await supabase.auth.getUser();
     const { error } = await supabase
       .from("system_alerts")
-      .update({ acknowledged_at: new Date().toISOString(), acknowledged_by: u.user?.id ?? null })
+      .update({ acknowledged_at: new Date().toISOString(), acknowledged_by: user.user?.id ?? null })
       .eq("id", id);
     if (error) toast.error("Could not dismiss alert");
   };
@@ -556,29 +771,29 @@ function SystemAlertsBanner({
   return (
     <div className="border-b border-destructive/40 bg-destructive/10">
       <div className="mx-auto max-w-[1400px] space-y-2 px-4 py-3">
-        {visible.map((a) => (
+        {visible.map((alert) => (
           <div
-            key={a.id}
+            key={alert.id}
             className="flex items-start justify-between gap-3 rounded-lg border border-destructive/40 bg-background p-3"
           >
             <div className="flex items-start gap-2 text-sm">
               <AlertTriangle className="mt-0.5 size-4 shrink-0 text-destructive" />
               <div>
                 <div className="font-bold uppercase tracking-wider text-destructive">
-                  {a.kind.replace(/_/g, " ")}
-                  {a.order_number && <span className="ml-2 text-foreground">#{a.order_number}</span>}
-                  {a.location_id && (
+                  {alert.kind.replace(/_/g, " ")}
+                  {alert.order_number && <span className="ml-2 text-foreground">#{alert.order_number}</span>}
+                  {alert.location_id && (
                     <span className="ml-2 font-normal normal-case tracking-normal text-muted-foreground">
-                      @ {LOCATIONS.find((l) => l.id === a.location_id)?.name ?? a.location_id}
+                      @ {LOCATIONS.find((location) => location.id === alert.location_id)?.name ?? alert.location_id}
                     </span>
                   )}
                 </div>
-                <div className="text-foreground">{a.message}</div>
-                <div className="text-xs text-muted-foreground">{timeAgo(a.created_at)}</div>
+                <div className="text-foreground">{alert.message}</div>
+                <div className="text-xs text-muted-foreground">{timeAgo(alert.created_at)}</div>
               </div>
             </div>
             <button
-              onClick={() => ack(a.id)}
+              onClick={() => void acknowledge(alert.id)}
               className="shrink-0 rounded-full border border-border bg-card px-3 py-1.5 text-xs font-bold uppercase tracking-wider hover:border-foreground"
             >
               Dismiss
@@ -589,4 +804,3 @@ function SystemAlertsBanner({
     </div>
   );
 }
-
