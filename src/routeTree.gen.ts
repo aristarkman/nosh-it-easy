@@ -40,6 +40,7 @@ import { Route as AdminReportsRouteImport } from './routes/admin.reports'
 import { Route as AdminPromosRouteImport } from './routes/admin.promos'
 import { Route as AdminOrdersRouteImport } from './routes/admin.orders'
 import { Route as AdminModifiersRouteImport } from './routes/admin.modifiers'
+import { Route as AdminMenuOrderRouteImport } from './routes/admin.menu-order'
 import { Route as AdminMenuRouteImport } from './routes/admin.menu'
 import { Route as AdminHoursRouteImport } from './routes/admin.hours'
 import { Route as AdminDriversRouteImport } from './routes/admin.drivers'
@@ -209,6 +210,11 @@ const AdminModifiersRoute = AdminModifiersRouteImport.update({
   path: '/modifiers',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminMenuOrderRoute = AdminMenuOrderRouteImport.update({
+  id: '/menu-order',
+  path: '/menu-order',
+  getParentRoute: () => AdminRoute,
+} as any)
 const AdminMenuRoute = AdminMenuRouteImport.update({
   id: '/menu',
   path: '/menu',
@@ -308,6 +314,7 @@ export interface FileRoutesByFullPath {
   '/admin/drivers': typeof AdminDriversRoute
   '/admin/hours': typeof AdminHoursRoute
   '/admin/menu': typeof AdminMenuRoute
+  '/admin/menu-order': typeof AdminMenuOrderRoute
   '/admin/modifiers': typeof AdminModifiersRoute
   '/admin/orders': typeof AdminOrdersRoute
   '/admin/promos': typeof AdminPromosRoute
@@ -353,6 +360,7 @@ export interface FileRoutesByTo {
   '/admin/drivers': typeof AdminDriversRoute
   '/admin/hours': typeof AdminHoursRoute
   '/admin/menu': typeof AdminMenuRoute
+  '/admin/menu-order': typeof AdminMenuOrderRoute
   '/admin/modifiers': typeof AdminModifiersRoute
   '/admin/orders': typeof AdminOrdersRoute
   '/admin/promos': typeof AdminPromosRoute
@@ -400,6 +408,7 @@ export interface FileRoutesById {
   '/admin/drivers': typeof AdminDriversRoute
   '/admin/hours': typeof AdminHoursRoute
   '/admin/menu': typeof AdminMenuRoute
+  '/admin/menu-order': typeof AdminMenuOrderRoute
   '/admin/modifiers': typeof AdminModifiersRoute
   '/admin/orders': typeof AdminOrdersRoute
   '/admin/promos': typeof AdminPromosRoute
@@ -448,6 +457,7 @@ export interface FileRouteTypes {
     | '/admin/drivers'
     | '/admin/hours'
     | '/admin/menu'
+    | '/admin/menu-order'
     | '/admin/modifiers'
     | '/admin/orders'
     | '/admin/promos'
@@ -493,6 +503,7 @@ export interface FileRouteTypes {
     | '/admin/drivers'
     | '/admin/hours'
     | '/admin/menu'
+    | '/admin/menu-order'
     | '/admin/modifiers'
     | '/admin/orders'
     | '/admin/promos'
@@ -539,6 +550,7 @@ export interface FileRouteTypes {
     | '/admin/drivers'
     | '/admin/hours'
     | '/admin/menu'
+    | '/admin/menu-order'
     | '/admin/modifiers'
     | '/admin/orders'
     | '/admin/promos'
@@ -810,6 +822,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminModifiersRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/admin/menu-order': {
+      id: '/admin/menu-order'
+      path: '/menu-order'
+      fullPath: '/admin/menu-order'
+      preLoaderRoute: typeof AdminMenuOrderRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/admin/menu': {
       id: '/admin/menu'
       path: '/menu'
@@ -911,6 +930,7 @@ interface AdminRouteChildren {
   AdminDriversRoute: typeof AdminDriversRoute
   AdminHoursRoute: typeof AdminHoursRoute
   AdminMenuRoute: typeof AdminMenuRoute
+  AdminMenuOrderRoute: typeof AdminMenuOrderRoute
   AdminModifiersRoute: typeof AdminModifiersRoute
   AdminOrdersRoute: typeof AdminOrdersRoute
   AdminPromosRoute: typeof AdminPromosRoute
@@ -928,6 +948,7 @@ const AdminRouteChildren: AdminRouteChildren = {
   AdminDriversRoute: AdminDriversRoute,
   AdminHoursRoute: AdminHoursRoute,
   AdminMenuRoute: AdminMenuRoute,
+  AdminMenuOrderRoute: AdminMenuOrderRoute,
   AdminModifiersRoute: AdminModifiersRoute,
   AdminOrdersRoute: AdminOrdersRoute,
   AdminPromosRoute: AdminPromosRoute,
