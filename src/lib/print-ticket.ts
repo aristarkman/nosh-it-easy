@@ -138,7 +138,7 @@ export function buildOrderTicket(order: TicketOrder, locationName: string | unde
     orderNotes.forEach((n) => b.line(n));
   }
 
-  b.feed(3);
+  b.feed(7);
   b.cut();
   return b;
 }
