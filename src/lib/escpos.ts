@@ -26,6 +26,16 @@ export class EscPosBuilder {
     return this.push(GS, 0x21, on ? 0x11 : 0x00); // GS ! n — double width+height
   }
 
+  /** Double height only, normal width — used as the new bigger base body font. */
+  tallText(on: boolean) {
+    return this.push(GS, 0x21, on ? 0x01 : 0x00); // GS ! n — height x2, width x1
+  }
+
+  /** White-on-black stamp, e.g. for a PAID / NOT PAID banner. */
+  reverse(on: boolean) {
+    return this.push(GS, 0x42, on ? 1 : 0); // GS B n
+  }
+
   align(mode: "left" | "center" | "right") {
     const n = mode === "left" ? 0 : mode === "center" ? 1 : 2;
     return this.push(ESC, 0x61, n); // ESC a n

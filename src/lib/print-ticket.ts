@@ -13,6 +13,7 @@ export type TicketOrder = {
   order_number: string;
   location_id: string;
   order_type: "pickup" | "delivery";
+  payment_method: string;
   customer_name: string;
   customer_phone: string;
   delivery_address: string | null;
@@ -25,6 +26,12 @@ export type TicketOrder = {
   tax: number;
   total: number;
 };
+
+function isPaid(paymentMethod: string): boolean {
+  // "in-person" means the customer pays at pickup/delivery — everything
+  // else (card, applepay, googlepay) is charged via iPOSpays at checkout.
+  return paymentMethod !== "in-person";
+}
 
 function money(n: number): string {
   return `$${n.toFixed(2)}`;
@@ -53,19 +60,38 @@ export function buildOrderTicket(order: TicketOrder, locationName: string | unde
   const b = new EscPosBuilder();
   b.init();
 
+  // Bold + slightly-larger (double-height) is now the default for the whole
+  // ticket, per Ari. Width stays 1x so the 42-char column math below still
+  // lines up — only height increases.
+  b.bold(true);
+  b.tallText(true);
+
   b.align("center");
   b.doubleSize(true);
-  b.bold(true);
   b.line(locationName ?? order.location_id);
-  b.doubleSize(false);
+  b.tallText(true);
   b.line(`#${order.order_number}`);
-  b.bold(false);
   b.align("left");
   b.divider("=", WIDTH);
 
-  b.bold(true);
+  // PAID / NOT PAID — large, reverse-video stamp so it's unmissable.
+  b.align("center");
+  b.reverse(true);
+  b.doubleSize(true);
+  if (isPaid(order.payment_method)) {
+    b.line(" PAID ");
+  } else {
+    b.line(" NOT PAID ");
+  }
+  b.reverse(false);
+  b.tallText(true);
+  if (!isPaid(order.payment_method)) {
+    b.line(`Collect ${money(order.total)} on ${order.order_type}`);
+  }
+  b.align("left");
+  b.divider("=", WIDTH);
+
   b.line(order.order_type === "delivery" ? "DELIVERY" : "PICKUP");
-  b.bold(false);
 
   const when =
     order.when_type === "schedule" && order.scheduled_time
@@ -79,9 +105,7 @@ export function buildOrderTicket(order: TicketOrder, locationName: string | unde
   }
   b.divider("-", WIDTH);
 
-  b.bold(true);
   b.line("ITEMS");
-  b.bold(false);
   for (const item of order.items) {
     b.row(`${item.quantity} x ${item.name}`, money(item.unitPrice * item.quantity), WIDTH);
     for (const mod of item.modifiers ?? []) {
@@ -102,9 +126,7 @@ export function buildOrderTicket(order: TicketOrder, locationName: string | unde
   b.row("Tax", money(order.tax), WIDTH);
   const tip = parseTip(order.notes);
   if (tip) b.row("Tip", money(tip), WIDTH);
-  b.bold(true);
   b.row("TOTAL", money(order.total), WIDTH);
-  b.bold(false);
 
   const orderNotes = (order.notes ?? "")
     .split("|")
@@ -112,9 +134,7 @@ export function buildOrderTicket(order: TicketOrder, locationName: string | unde
     .filter((p) => p && !/^(tip|promo|loyalty|delivery):/i.test(p) && !p.startsWith("{"));
   if (orderNotes.length) {
     b.divider("-", WIDTH);
-    b.bold(true);
     b.line("NOTES");
-    b.bold(false);
     orderNotes.forEach((n) => b.line(n));
   }
 
@@ -125,8 +145,18 @@ export function buildOrderTicket(order: TicketOrder, locationName: string | unde
 
 export function printOrderTicket(order: TicketOrder, locationName: string | undefined) {
   const bytes = buildOrderTicket(order, locationName).toBase64();
-  // Custom URL scheme — Android/Fire OS resolves this to RawBT without
-  // navigating the current page. RawBT sends the raw bytes to whichever
-  // printer it's configured with on this device.
-  window.location.href = `rawbt:base64,${bytes}`;
+  const url = `rawbt:base64,${bytes}`;
+  // Trigger via a hidden iframe rather than window.location.href — on most
+  // Android browsers this invokes the RawBT intent without the top-level
+  // "Open with…" interception dialog that a full-page navigation causes.
+  try {
+    const iframe = document.createElement("iframe");
+    iframe.style.display = "none";
+    iframe.src = url;
+    document.body.appendChild(iframe);
+    setTimeout(() => iframe.remove(), 2000);
+  } catch {
+    // Fallback for browsers that block iframe-triggered intents
+    window.location.href = url;
+  }
 }
