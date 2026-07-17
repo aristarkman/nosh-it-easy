@@ -145,18 +145,9 @@ export function buildOrderTicket(order: TicketOrder, locationName: string | unde
 
 export function printOrderTicket(order: TicketOrder, locationName: string | undefined) {
   const bytes = buildOrderTicket(order, locationName).toBase64();
-  const url = `rawbt:base64,${bytes}`;
-  // Trigger via a hidden iframe rather than window.location.href — on most
-  // Android browsers this invokes the RawBT intent without the top-level
-  // "Open with…" interception dialog that a full-page navigation causes.
-  try {
-    const iframe = document.createElement("iframe");
-    iframe.style.display = "none";
-    iframe.src = url;
-    document.body.appendChild(iframe);
-    setTimeout(() => iframe.remove(), 2000);
-  } catch {
-    // Fallback for browsers that block iframe-triggered intents
-    window.location.href = url;
-  }
+  // Custom URL scheme — Android/Fire OS resolves this to RawBT. This must be
+  // a direct top-level navigation: Chromium-based browsers (Silk included)
+  // block custom-scheme navigation triggered from hidden iframes as an
+  // anti-abuse measure, so that approach silently does nothing.
+  window.location.href = `rawbt:base64,${bytes}`;
 }
