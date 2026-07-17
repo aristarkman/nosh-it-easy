@@ -582,7 +582,9 @@ function CheckoutPage() {
       JSON.stringify({
         orderId: data.order_number,
         name,
+        email: email.trim() || null,
         location: loc?.name,
+        locationId: location,
         orderType,
         whenType,
         scheduledTime,

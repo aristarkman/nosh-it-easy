@@ -8,7 +8,9 @@ import { supabase } from "@/integrations/supabase/client";
 type LastOrder = {
   orderId: string;
   name: string;
+  email?: string | null;
   location: string;
+  locationId?: "glen-rock" | "cresskill" | null;
   orderType: "pickup" | "delivery";
   whenType: "asap" | "schedule";
   scheduledTime: string;
@@ -16,6 +18,20 @@ type LastOrder = {
   total: number;
   items: CartLine[];
 };
+
+// Google Place IDs for each store's Business Profile — used to send a
+// happy customer straight to that location's own review page.
+const GOOGLE_PLACE_IDS: Record<"glen-rock" | "cresskill", string> = {
+  "glen-rock": "ChIJJcQ-tUP7wokRoc8Bx3lR7yw",
+  cresskill: "ChIJ98iq_vvxwokRoEWCDii2TA8",
+};
+
+function googleReviewUrl(locationId: string | null | undefined): string {
+  const placeId = locationId && locationId in GOOGLE_PLACE_IDS ? GOOGLE_PLACE_IDS[locationId as "glen-rock" | "cresskill"] : null;
+  return placeId
+    ? `https://search.google.com/local/writereview?placeid=${placeId}`
+    : "https://www.google.com/search?q=The+Kosher+Nosh+reviews";
+}
 
 type DeliveryStatus = "unassigned" | "assigned" | "out_for_delivery" | "delivered";
 
@@ -39,8 +55,9 @@ export const Route = createFileRoute("/confirmation/$orderId")({
 function Confirmation() {
   const { orderId } = Route.useParams();
   const [order, setOrder] = useState<LastOrder | null>(null);
-  const [feedback, setFeedback] = useState<"" | "happy" | "unhappy">("");
+  const [feedback, setFeedback] = useState<"" | "happy" | "unhappy" | "sent">("");
   const [feedbackText, setFeedbackText] = useState("");
+  const [sendingFeedback, setSendingFeedback] = useState(false);
   const [tracking, setTracking] = useState<{
     url: string | null;
     status: DeliveryStatus | null;
@@ -85,6 +102,26 @@ function Confirmation() {
       clearInterval(t);
     };
   }, [orderId]);
+
+  const sendNegativeFeedback = async () => {
+    if (!feedbackText.trim() || sendingFeedback) return;
+    setSendingFeedback(true);
+    const { error } = await supabase.functions.invoke("send-negative-feedback", {
+      body: {
+        orderNumber: orderId,
+        locationName: order?.location || "Unknown location",
+        customerName: order?.name || null,
+        customerEmail: order?.email || null,
+        feedback: feedbackText.trim(),
+      },
+    });
+    setSendingFeedback(false);
+    if (error) {
+      console.error("Negative feedback send failed:", error);
+      // Still thank the customer — don't make a UI failure their problem.
+    }
+    setFeedback("sent");
+  };
 
   return (
     <div className="mx-auto max-w-2xl px-4 pb-16 pt-10">
@@ -170,7 +207,7 @@ function Confirmation() {
             A Google review really helps a small deli like ours.
           </p>
           <a
-            href="https://search.google.com/local/writereview?placeid=ChIJ"
+            href={googleReviewUrl(order?.locationId)}
             target="_blank"
             rel="noopener noreferrer"
             className="mt-4 inline-flex items-center justify-center rounded-full bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground hover:opacity-90"
@@ -196,11 +233,21 @@ function Confirmation() {
             placeholder="What happened?"
           />
           <button
-            onClick={() => setFeedback("happy")}
-            className="mt-3 rounded-full bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground hover:opacity-90"
+            onClick={() => void sendNegativeFeedback()}
+            disabled={!feedbackText.trim() || sendingFeedback}
+            className="mt-3 rounded-full bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground hover:opacity-90 disabled:opacity-50"
           >
-            Send feedback
+            {sendingFeedback ? "Sending…" : "Send feedback"}
           </button>
+        </div>
+      )}
+
+      {feedback === "sent" && (
+        <div className="mt-8 rounded-2xl border border-border bg-card p-6 text-center">
+          <h2 className="font-display text-xl font-bold">Thank you</h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            We appreciate you telling us. The owner has been notified.
+          </p>
         </div>
       )}
 
