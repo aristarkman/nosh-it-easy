@@ -635,6 +635,35 @@ function CheckoutPage() {
       }).catch((e) => console.error("SMS send failed:", e));
     }
 
+    // Fire-and-forget order confirmation email (only if the customer gave an email)
+    if (email.trim()) {
+      supabase.functions
+        .invoke("send-order-confirmation", {
+          body: {
+            to: email.trim(),
+            orderNumber: data.order_number,
+            customerName: name.trim(),
+            locationName: loc?.name,
+            orderType: orderType ?? "pickup",
+            deliveryAddress: orderType === "delivery" ? `${address.trim()}, ${zip}` : null,
+            whenType,
+            scheduledTime: whenType === "schedule" && scheduledTime ? new Date(scheduledTime).toISOString() : null,
+            items: cart.map((l) => ({
+              name: l.name,
+              quantity: l.quantity,
+              unitPrice: l.unitPrice,
+            })),
+            subtotal,
+            deliveryFee: orderType === "delivery" ? deliveryFee : null,
+            tax,
+            tip: tipAmount || null,
+            total,
+          },
+        })
+        .then(({ error: e }) => e && console.error("Order confirmation email failed:", e))
+        .catch((e) => console.error("Order confirmation email failed:", e));
+    }
+
     // Fire-and-forget staff alert
     sendStaffNewOrderAlert({
       data: {
