@@ -19,6 +19,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { LOCATIONS, fmt, type CartLine } from "@/lib/order-context";
 import { sendOrderStatusSms } from "@/lib/sms.functions";
 import { dispatchShipday } from "@/lib/shipday.functions";
+import { geocodeAddress } from "@/lib/geocoding.functions";
 import { useNewOrderAlarm } from "@/lib/use-new-order-alarm";
 import { toast } from "sonner";
 
@@ -481,6 +482,26 @@ function DeliveryChoiceDialog({
   onShipday: () => void;
   onSelf: () => void;
 }) {
+  const [formattedDeliveryAddress, setFormattedDeliveryAddress] = useState(
+    order.delivery_address ?? ""
+  );
+
+  useEffect(() => {
+    if (!order.delivery_address) return;
+    let cancelled = false;
+    setFormattedDeliveryAddress(order.delivery_address);
+    void geocodeAddress({ data: { address: order.delivery_address } })
+      .then((result) => {
+        if (!cancelled && result.ok && result.formatted) {
+          setFormattedDeliveryAddress(result.formatted);
+        }
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [order.delivery_address]);
+
   return (
     <div className="fixed inset-0 z-50 grid place-items-center bg-black/60 p-4" role="dialog" aria-modal="true">
       <div className="w-full max-w-lg overflow-hidden rounded-3xl border border-border bg-background shadow-2xl">
@@ -498,7 +519,7 @@ function DeliveryChoiceDialog({
             </a>
             <div className="mt-3 flex items-start gap-2 text-base font-semibold">
               <MapPin className="mt-0.5 size-5 shrink-0 text-primary" />
-              <span>{order.delivery_address}</span>
+              <span>{formattedDeliveryAddress || order.delivery_address}</span>
             </div>
             {order.when_type === "schedule" && order.scheduled_time && (
               <div className="mt-3 flex items-center gap-2 text-sm text-muted-foreground">
