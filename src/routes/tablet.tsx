@@ -22,6 +22,7 @@ import { sendOrderStatusSms } from "@/lib/sms.functions";
 import { dispatchShipday } from "@/lib/shipday.functions";
 import { geocodeAddress } from "@/lib/geocoding.functions";
 import { useNewOrderAlarm } from "@/lib/use-new-order-alarm";
+import { useWakeLock } from "@/lib/use-wake-lock";
 import { printOrderTicket } from "@/lib/print-ticket";
 import { toast } from "sonner";
 
@@ -97,6 +98,7 @@ function setDeliveryChoice(notes: string | null, choice: "shipday" | "self"): st
 
 function TabletPage() {
   const nav = useNavigate();
+  useWakeLock();
   const [orders, setOrders] = useState<Order[]>([]);
   const [locFilter, setLocFilter] = useState<string>("all");
   const [tab, setTab] = useState<Status>("new");
