@@ -8,6 +8,7 @@ import {
   LogOut,
   MapPin,
   Phone,
+  Printer,
   ShoppingBag,
   Truck,
   User,
@@ -21,6 +22,7 @@ import { sendOrderStatusSms } from "@/lib/sms.functions";
 import { dispatchShipday } from "@/lib/shipday.functions";
 import { geocodeAddress } from "@/lib/geocoding.functions";
 import { useNewOrderAlarm } from "@/lib/use-new-order-alarm";
+import { printOrderTicket } from "@/lib/print-ticket";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/tablet")({
@@ -220,6 +222,16 @@ function TabletPage() {
           locationName: locName,
         },
       }).catch((error) => console.error("SMS send failed:", error));
+    }
+
+    if (next === "accepted") {
+      const locName = LOCATIONS.find((location) => location.id === order.location_id)?.name;
+      try {
+        printOrderTicket(updatedOrder, locName);
+      } catch (error) {
+        console.error("Ticket print failed:", error);
+        toast.error("Could not open printer app. Reprint from the order card.");
+      }
     }
 
     if (next === "accepted" && order.order_type === "delivery") {
@@ -453,6 +465,15 @@ function TabletPage() {
                 o={order}
                 onAdvance={() => void advance(order)}
                 onCancel={() => void cancel(order)}
+                onPrint={() => {
+                  const locName = LOCATIONS.find((location) => location.id === order.location_id)?.name;
+                  try {
+                    printOrderTicket(order, locName);
+                  } catch (error) {
+                    console.error("Ticket print failed:", error);
+                    toast.error("Could not open printer app.");
+                  }
+                }}
               />
             ))}
           </div>
@@ -580,10 +601,12 @@ function OrderCard({
   o,
   onAdvance,
   onCancel,
+  onPrint,
 }: {
   o: Order;
   onAdvance: () => void;
   onCancel: () => void;
+  onPrint: () => void;
 }) {
   const flow = STATUS_FLOW[o.status];
   const loc = LOCATIONS.find((location) => location.id === o.location_id);
@@ -678,6 +701,13 @@ function OrderCard({
           )}
         </div>
         <div className="flex gap-1.5">
+          <button
+            onClick={onPrint}
+            className="grid size-9 place-items-center rounded-full border border-border text-muted-foreground hover:border-foreground hover:text-foreground"
+            aria-label="Print ticket"
+          >
+            <Printer className="size-4" />
+          </button>
           {o.status !== "ready" && o.status !== "completed" && (
             <button
               onClick={onCancel}
