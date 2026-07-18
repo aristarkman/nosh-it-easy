@@ -109,6 +109,16 @@ function PrivacyPage() {
             <li>Hosting and database providers that store our data securely.</li>
             <li>Law enforcement when required by law.</li>
           </ul>
+          <p className="mt-3 text-muted-foreground">
+            <strong className="text-foreground">
+              No mobile information will be shared with third parties or
+              affiliates for marketing or promotional purposes.
+            </strong>{" "}
+            All other categories exclude text messaging originator opt-in
+            data and consent; this information will not be shared with any
+            third parties, regardless of any affiliate or co-branding
+            relationship.
+          </p>
         </section>
 
         <section>

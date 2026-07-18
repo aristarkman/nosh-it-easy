@@ -770,6 +770,17 @@ function CheckoutPage() {
               <Field label="Phone" value={phone} onChange={setPhone} required />
               <Field label="Email (optional)" value={email} onChange={setEmail} type="email" />
             </div>
+            <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
+              By providing your phone number, you agree to receive
+              transactional SMS text messages from The Kosher Nosh about
+              this order (e.g. order received, ready for pickup, out for
+              delivery). Msg &amp; data rates may apply. Message frequency
+              varies. Reply STOP to opt out, HELP for help. See our{" "}
+              <Link to="/privacy" className="underline hover:text-primary">
+                Privacy Policy
+              </Link>
+              .
+            </p>
           </Section>
 
           {orderType === "delivery" ? (
@@ -1127,7 +1138,15 @@ function CheckoutPage() {
             {submitting ? "Processing…" : `Place order · ${fmt(total)}`}
           </button>
           <p className="mt-3 text-center text-[11px] text-muted-foreground">
-            By placing this order you agree to our terms.
+            By placing this order you agree to our{" "}
+            <Link to="/terms" className="underline hover:text-primary">
+              Terms &amp; Conditions
+            </Link>{" "}
+            and{" "}
+            <Link to="/privacy" className="underline hover:text-primary">
+              Privacy Policy
+            </Link>
+            .
           </p>
         </aside>
 

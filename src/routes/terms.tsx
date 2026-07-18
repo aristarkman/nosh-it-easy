@@ -108,8 +108,11 @@ function TermsPage() {
           <p className="mt-2 text-muted-foreground">
             By providing your phone number, you consent to receive
             transactional text messages and calls related to your order.
-            Message and data rates may apply. Reply STOP to opt out of texts.
-            See our Privacy Policy for more detail.
+            Message and data rates may apply. Message frequency varies based
+            on your order activity. Reply STOP to opt out of texts at any
+            time, or HELP for help. No mobile information will be shared
+            with third parties or affiliates for marketing or promotional
+            purposes. See our Privacy Policy for more detail.
           </p>
         </section>
 
