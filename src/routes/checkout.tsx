@@ -249,8 +249,8 @@ function CheckoutPage() {
     const itemIds = Array.from(new Set(cart.map((l) => l.itemId)));
     const { data, error } = await supabase.rpc("validate_promo", {
       _code: promoInput.trim(),
-      _user_id: auth.userId ?? undefined,
-      _customer_phone: phone.trim() || undefined,
+      _user_id: auth.userId ?? null,
+      _customer_phone: phone.trim() || null,
       _subtotal: subtotal,
       _item_ids: itemIds,
     } as never);
