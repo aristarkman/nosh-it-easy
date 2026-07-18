@@ -50,11 +50,21 @@ function PromosPage() {
   const [counts, setCounts] = useState<Record<string, number>>({});
 
   const load = async () => {
-    const [{ data: ps }, { data: mi }, { data: rs }] = await Promise.all([
+    const [
+      { data: ps, error: psError },
+      { data: mi, error: miError },
+      { data: rs, error: rsError },
+    ] = await Promise.all([
       supabase.from("promo_codes").select("*").order("created_at", { ascending: false }),
       supabase.from("menu_items").select("id,name").eq("active", true).order("name"),
       supabase.from("promo_redemptions").select("promo_code_id"),
     ]);
+    if (psError) {
+      console.error("Failed to load promo codes:", psError);
+      toast.error(`Couldn't load promo codes: ${psError.message}`);
+    }
+    if (miError) console.error("Failed to load menu items:", miError);
+    if (rsError) console.error("Failed to load promo redemptions:", rsError);
     setList((ps ?? []) as Promo[]);
     setItems((mi ?? []) as Item[]);
     const c: Record<string, number> = {};
