@@ -6,6 +6,7 @@ import { OrderProvider } from "@/lib/order-context";
 import { SiteHeader } from "@/components/site-header";
 import { ScrollToTop } from "@/components/scroll-to-top";
 import { WelcomePopup } from "@/components/welcome-popup";
+import { Toaster } from "@/components/ui/sonner";
 
 function NotFoundComponent() {
   return (
@@ -216,6 +217,7 @@ function RootComponent() {
           )}
           {!isChromeless && <ScrollToTop />}
           {!isChromeless && <WelcomePopup />}
+          <Toaster position="top-center" richColors />
         </div>
       </OrderProvider>
     </QueryClientProvider>
