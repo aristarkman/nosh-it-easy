@@ -18,6 +18,7 @@ import {
 import { toast } from "sonner";
 import { geocodeAddress } from "@/lib/geocoding.functions";
 import { recordPromoRedemption } from "@/lib/promo.functions";
+import { priceCart } from "@/lib/order-pricing.functions";
 import { pointInPolygon } from "@/lib/point-in-polygon";
 
 type SavedAddress = {
@@ -469,6 +470,54 @@ function CheckoutPage() {
     const orderId = crypto.randomUUID();
     let paymentMeta: Record<string, unknown> = {};
 
+    // Re-price the order server-side. This is the source of truth for every
+    // dollar amount from here on — the client-computed `subtotal`/`tax`/`total`
+    // above exist only to render a responsive UI while shopping and must never
+    // be used for the actual charge or the order row.
+    const pricing = await priceCart({
+      data: {
+        locationId: location,
+        orderType: orderType ?? "pickup",
+        lines: cart.map((l) => ({
+          itemId: l.itemId,
+          quantity: l.quantity,
+          modifierOptionIds: l.modifiers.flatMap((m) => m.options.map((o) => o.id)),
+          notes: l.notes,
+        })),
+        promoCode: promo?.code ?? null,
+        userId: auth.userId ?? null,
+        customerPhone: phone.trim() || null,
+        rewardsToUse,
+        payMethod: pay,
+        deliveryZoneId: orderType === "delivery" ? matchedZone?.id ?? null : null,
+        tipAmount,
+      },
+    }).catch((e) => ({ ok: false as const, message: e instanceof Error ? e.message : "Couldn't price your order." }));
+
+    if (!pricing.ok) {
+      toast.error(pricing.message || "Couldn't verify pricing. Please refresh and try again.");
+      setSubmitting(false);
+      return;
+    }
+
+    // If what we're about to charge differs meaningfully from what the
+    // customer saw on screen, don't silently charge the different number —
+    // most likely a price changed underneath them (rare), but it's also the
+    // shape a tampering attempt would take. Refresh and make them confirm.
+    if (Math.abs(pricing.total - total) > 0.02) {
+      void reportSystemAlert({
+        kind: "checkout_price_mismatch",
+        message: `Displayed total $${total.toFixed(2)} did not match server-verified total $${pricing.total.toFixed(2)}`,
+        locationId: location,
+        locationName: loc?.name,
+        orderNumber,
+        details: { customer: name.trim(), phone: phone.trim() },
+      });
+      toast.error("Prices changed since you started checkout. Please review your order and try again.");
+      setSubmitting(false);
+      return;
+    }
+
     try {
       if (pay === "card") {
         if (!ftdReady || typeof window.postData !== "function") {
@@ -486,7 +535,7 @@ function CheckoutPage() {
         const res = await chargeWithToken({
           data: {
             paymentTokenId,
-            amountCents: Math.round(total * 100),
+            amountCents: Math.round(pricing.total * 100),
             referenceId: orderNumber,
             invoiceNumber: orderNumber,
           },
@@ -499,7 +548,7 @@ function CheckoutPage() {
             locationId: location,
             locationName: loc?.name,
             orderNumber,
-            details: { amountCents: Math.round(total * 100), customer: name.trim(), phone: phone.trim() },
+            details: { amountCents: Math.round(pricing.total * 100), customer: name.trim(), phone: phone.trim() },
           });
           setSubmitting(false);
           return;
@@ -545,16 +594,16 @@ function CheckoutPage() {
             ? new Date(scheduledTime).toISOString()
             : null,
         payment_method: pay,
-        subtotal,
-        delivery_fee: deliveryFee,
-        tax,
-        card_fee: cardFee,
-        total,
-        items: cart,
+        subtotal: pricing.subtotal,
+        delivery_fee: pricing.deliveryFee,
+        tax: pricing.tax,
+        card_fee: pricing.cardFee,
+        total: pricing.total,
+        items: pricing.lineItems,
         notes: [
-          `tip:${tipAmount.toFixed(2)}`,
-          promo ? `promo:${promo.code}(-${promoDiscount.toFixed(2)})` : null,
-          loyaltyDiscount ? `loyalty:-${loyaltyDiscount.toFixed(2)}` : null,
+          `tip:${pricing.tipAmount.toFixed(2)}`,
+          pricing.promo ? `promo:${pricing.promo.code}(-${pricing.promo.discountAmount.toFixed(2)})` : null,
+          pricing.loyaltyDiscount ? `loyalty:-${pricing.loyaltyDiscount.toFixed(2)}` : null,
           Object.keys(paymentMeta).length ? JSON.stringify(paymentMeta) : null,
         ].filter(Boolean).join(" | "),
       });
@@ -574,7 +623,7 @@ function CheckoutPage() {
         locationId: location,
         locationName: loc?.name,
         orderNumber,
-        details: { customer: name.trim(), phone: phone.trim(), total },
+        details: { customer: name.trim(), phone: phone.trim(), total: pricing.total },
       });
       setSubmitting(false);
       return;
@@ -594,20 +643,20 @@ function CheckoutPage() {
         whenType,
         scheduledTime,
         pay,
-        total,
-        tip: tipAmount,
-        items: cart,
+        total: pricing.total,
+        tip: pricing.tipAmount,
+        items: pricing.lineItems,
       })
     );
     clearCart();
 
     // Record promo redemption via trusted server fn (best-effort)
-    if (promo) {
+    if (pricing.promo) {
       void recordPromoRedemption({
         data: {
-          promoCodeId: promo.id,
+          promoCodeId: pricing.promo.id,
           orderId: data.id,
-          discountAmount: promoDiscount,
+          discountAmount: pricing.promo.discountAmount,
           customerPhone: phone.trim() || null,
           userId: auth.userId ?? null,
         },
@@ -617,14 +666,14 @@ function CheckoutPage() {
     if (auth.userId) {
       const { recordLoyaltyForOrder } = await import("@/lib/loyalty.functions");
       void recordLoyaltyForOrder({
-        data: { orderId: data.id, rewardsRedeemed: effectiveRewards },
+        data: { orderId: data.id, rewardsRedeemed: pricing.rewardsUsed },
       }).catch((e) => console.error("Loyalty record failed:", e));
     }
 
     // Mark abandoned cart as recovered & track conversion
     void markCartRecovered(data.id);
     void track("checkout_completed", {
-      props: { orderId: data.id, orderNumber: data.order_number, total, subtotal, itemCount: cart.reduce((n,l)=>n+l.quantity,0) },
+      props: { orderId: data.id, orderNumber: data.order_number, total: pricing.total, subtotal: pricing.subtotal, itemCount: cart.reduce((n,l)=>n+l.quantity,0) },
       locationId: location, orderType,
     });
 
@@ -655,16 +704,16 @@ function CheckoutPage() {
             deliveryAddress: orderType === "delivery" ? `${address.trim()}, ${zip}` : null,
             whenType,
             scheduledTime: whenType === "schedule" && scheduledTime ? new Date(scheduledTime).toISOString() : null,
-            items: cart.map((l) => ({
+            items: pricing.lineItems.map((l) => ({
               name: l.name,
               quantity: l.quantity,
               unitPrice: l.unitPrice,
             })),
-            subtotal,
-            deliveryFee: orderType === "delivery" ? deliveryFee : null,
-            tax,
-            tip: tipAmount || null,
-            total,
+            subtotal: pricing.subtotal,
+            deliveryFee: orderType === "delivery" ? pricing.deliveryFee : null,
+            tax: pricing.tax,
+            tip: pricing.tipAmount || null,
+            total: pricing.total,
           },
         })
         .then(({ error: e }) => e && console.error("Order confirmation email failed:", e))
@@ -678,7 +727,7 @@ function CheckoutPage() {
         customerName: name.trim(),
         orderType: orderType ?? "pickup",
         locationName: loc?.name,
-        total,
+        total: pricing.total,
         whenType,
         scheduledTime: whenType === "schedule" ? scheduledTime : null,
         itemCount: cart.reduce((n, l) => n + l.quantity, 0),
@@ -696,13 +745,13 @@ function CheckoutPage() {
           customerPhone: phone.trim(),
           customerEmail: email.trim() || null,
           deliveryAddress: `${address.trim()}, ${zip}`,
-          total,
-          subtotal,
-          tax,
-          tip: tipAmount,
-          deliveryFee,
+          total: pricing.total,
+          subtotal: pricing.subtotal,
+          tax: pricing.tax,
+          tip: pricing.tipAmount,
+          deliveryFee: pricing.deliveryFee,
           notes: null,
-          items: cart.map((l) => ({
+          items: pricing.lineItems.map((l) => ({
             name: l.name,
             quantity: l.quantity,
             unitPrice: l.unitPrice,
@@ -716,7 +765,7 @@ function CheckoutPage() {
               .update({
                 shipday_order_id: r.shipdayOrderId,
                 shipday_tracking_url: r.trackingUrl,
-                quoted_delivery_fee: deliveryFee,
+                quoted_delivery_fee: pricing.deliveryFee,
               })
               .eq("id", data.id)
               .then(({ error: e }) => e && console.error("Shipday persist failed:", e));

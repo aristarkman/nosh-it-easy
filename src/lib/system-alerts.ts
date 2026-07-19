@@ -5,7 +5,8 @@ export type AlertKind =
   | "payment_failed"
   | "order_save_failed"
   | "shipday_dispatch_failed"
-  | "sms_failed";
+  | "sms_failed"
+  | "checkout_price_mismatch";
 
 export type ReportAlertInput = {
   kind: AlertKind;

@@ -6,6 +6,7 @@ const AlertKind = z.enum([
   "order_save_failed",
   "shipday_dispatch_failed",
   "sms_failed",
+  "checkout_price_mismatch",
 ]);
 
 const Schema = z.object({
