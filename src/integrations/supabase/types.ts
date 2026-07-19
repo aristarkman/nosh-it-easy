@@ -1173,6 +1173,12 @@ export type Database = {
           starts_at: string | null
           updated_at: string
         }[]
+        SetofOptions: {
+          from: "*"
+          to: "promo_codes"
+          isOneToOne: false
+          isSetofReturn: true
+        }
       }
       current_user_locations: { Args: never; Returns: string[] }
       has_role: {
