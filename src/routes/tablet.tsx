@@ -88,6 +88,15 @@ function parseTip(notes: string | null): number {
   return match ? Number(match[1]) : 0;
 }
 
+function parseOrderNotes(notes: string | null): string[] {
+  return (notes ?? "")
+    .split("|")
+    .map((p) => p.trim())
+    .filter((p) => p.startsWith("note:"))
+    .map((p) => p.slice("note:".length).trim())
+    .filter(Boolean);
+}
+
 function setDeliveryChoice(notes: string | null, choice: "shipday" | "self"): string {
   const cleaned = (notes ?? "")
     .split("|")
@@ -663,6 +672,11 @@ function OrderCard({
         {o.shipday_order_id && (
           <div className="text-xs font-bold uppercase tracking-wider text-secondary">Shipday dispatched</div>
         )}
+        {parseOrderNotes(o.notes).map((n, i) => (
+          <div key={i} className="mt-1 rounded-lg bg-primary/10 px-2 py-1.5 text-xs font-semibold text-primary">
+            📝 {n}
+          </div>
+        ))}
       </div>
 
       <ul className="flex-1 space-y-2 p-4 text-sm">

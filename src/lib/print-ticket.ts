@@ -103,6 +103,25 @@ export function buildOrderTicket(order: TicketOrder, locationName: string | unde
   if (order.order_type === "delivery" && order.delivery_address) {
     b.line(`Address: ${order.delivery_address}`);
   }
+
+  // Order-level notes ("note:" segments in order.notes — see also
+  // tablet.tsx's parseTip/setDeliveryChoice, which read the same
+  // "|"-joined protocol). Printed up top, boxed, before ITEMS: this is
+  // customer-typed free text (delivery instructions, etc.), separate from
+  // per-item special instructions printed under each line item below.
+  const orderNotes = (order.notes ?? "")
+    .split("|")
+    .map((p) => p.trim())
+    .filter((p) => p.startsWith("note:"))
+    .map((p) => p.slice("note:".length).trim())
+    .filter(Boolean);
+  if (orderNotes.length) {
+    b.divider("*", WIDTH);
+    b.line("*** ORDER NOTES ***");
+    orderNotes.forEach((n) => b.line(n));
+    b.divider("*", WIDTH);
+  }
+
   b.divider("-", WIDTH);
 
   b.line("ITEMS");
@@ -127,16 +146,6 @@ export function buildOrderTicket(order: TicketOrder, locationName: string | unde
   const tip = parseTip(order.notes);
   if (tip) b.row("Tip", money(tip), WIDTH);
   b.row("TOTAL", money(order.total), WIDTH);
-
-  const orderNotes = (order.notes ?? "")
-    .split("|")
-    .map((p) => p.trim())
-    .filter((p) => p && !/^(tip|promo|loyalty|delivery):/i.test(p) && !p.startsWith("{"));
-  if (orderNotes.length) {
-    b.divider("-", WIDTH);
-    b.line("NOTES");
-    orderNotes.forEach((n) => b.line(n));
-  }
 
   b.feed(7);
   b.cut();

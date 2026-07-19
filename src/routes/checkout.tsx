@@ -77,6 +77,7 @@ function CheckoutPage() {
   const [scheduledTime, setScheduledTime] = useState(ctxSched ?? "");
   const [pay, setPay] = useState<"card" | "applepay" | "googlepay" | "in-person">("card");
   const [submitting, setSubmitting] = useState(false);
+  const [orderNote, setOrderNote] = useState("");
 
   const [tipMode, setTipMode] = useState<"preset" | "custom" | "none">("preset");
   const [tipPreset, setTipPreset] = useState<number>(0.18);
@@ -469,6 +470,11 @@ function CheckoutPage() {
     const orderNumber = `KN-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
     const orderId = crypto.randomUUID();
     let paymentMeta: Record<string, unknown> = {};
+    // notes is a "|"-joined list of key:value segments (see also tablet.tsx's
+    // parseTip/setDeliveryChoice, which read the same protocol). Strip "|"
+    // and newlines from the customer's free text so it can't inject extra
+    // segments or spoof one of the other prefixes.
+    const cleanOrderNote = orderNote.trim().replace(/\|/g, ",").replace(/\r?\n+/g, " / ").slice(0, 300);
 
     // Re-price the order server-side. This is the source of truth for every
     // dollar amount from here on — the client-computed `subtotal`/`tax`/`total`
@@ -601,6 +607,7 @@ function CheckoutPage() {
         total: pricing.total,
         items: pricing.lineItems,
         notes: [
+          cleanOrderNote ? `note:${cleanOrderNote}` : null,
           `tip:${pricing.tipAmount.toFixed(2)}`,
           pricing.promo ? `promo:${pricing.promo.code}(-${pricing.promo.discountAmount.toFixed(2)})` : null,
           pricing.loyaltyDiscount ? `loyalty:-${pricing.loyaltyDiscount.toFixed(2)}` : null,
@@ -750,7 +757,7 @@ function CheckoutPage() {
           tax: pricing.tax,
           tip: pricing.tipAmount,
           deliveryFee: pricing.deliveryFee,
-          notes: null,
+          notes: cleanOrderNote || null,
           items: pricing.lineItems.map((l) => ({
             name: l.name,
             quantity: l.quantity,
@@ -834,6 +841,21 @@ function CheckoutPage() {
                 Privacy Policy
               </Link>
               .
+            </p>
+          </Section>
+
+          <Section title="Notes for your order">
+            <textarea
+              value={orderNote}
+              onChange={(e) => setOrderNote(e.target.value)}
+              aria-label="Notes for your order"
+              maxLength={300}
+              rows={2}
+              placeholder="Ring the bell, leave at the door, call on arrival, etc."
+              className="w-full rounded-xl border border-border bg-background p-3 text-sm outline-none focus:border-primary"
+            />
+            <p className="text-[11px] text-muted-foreground">
+              This prints on the kitchen ticket{orderType === "delivery" ? " and goes to your driver" : ""}. For notes on a specific item (allergies, extra sauce), use "Special instructions" on that item's page instead.
             </p>
           </Section>
 
