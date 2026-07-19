@@ -36,7 +36,11 @@ const PricingInput = z.object({
   userId: z.string().uuid().optional().nullable(),
   customerPhone: z.string().trim().max(32).optional().nullable(),
   rewardsToUse: z.number().int().min(0).max(1000).default(0),
-  payMethod: z.enum(["card", "applepay", "googlepay", "in-person"]),
+  // "applepay"/"googlepay" are intentionally excluded here: there's no
+  // wallet SDK wired up for them yet (see checkout.tsx submit()), so a
+  // priced order for either would imply a charge that can never happen.
+  // Re-add once real wallet integration exists.
+  payMethod: z.enum(["card", "in-person"]),
   deliveryZoneId: z.string().uuid().optional().nullable(),
   tipAmount: z.number().min(0).default(0),
 });

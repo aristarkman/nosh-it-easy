@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useNavigate, redirect } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ArrowLeft, CreditCard, Wallet, Apple, AlertTriangle, Lock, Tag, Gift } from "lucide-react";
+import { ArrowLeft, CreditCard, Wallet, AlertTriangle, Lock, Tag, Gift } from "lucide-react";
 import { useOrder, fmt, LOCATIONS } from "@/lib/order-context";
 import { useCustomerAuth } from "@/lib/customer-auth";
 import { supabase } from "@/integrations/supabase/client";
@@ -465,6 +465,15 @@ function CheckoutPage() {
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!valid || !location) return;
+    // Only "card" (via iPOSpays FTD) and "in-person" have an actual payment
+    // path. Apple Pay / Google Pay have no wallet SDK wired up — the buttons
+    // are hidden, but this guard is what actually stops an order from being
+    // inserted as PAID with zero payment collected if `pay` ever gets here
+    // some other way (devtools, a stale client, etc).
+    if (pay !== "card" && pay !== "in-person") {
+      toast.error("That payment method isn't available yet. Please use a card or pay in person.");
+      return;
+    }
     setSubmitting(true);
 
     const orderNumber = `KN-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
@@ -1113,12 +1122,11 @@ function CheckoutPage() {
               <PayOption icon={<CreditCard className="size-4" />} active={pay === "card"} onClick={() => setPay("card")}>
                 Credit / Debit Card
               </PayOption>
-              <PayOption icon={<Apple className="size-4" />} active={pay === "applepay"} onClick={() => setPay("applepay")}>
-                Apple Pay
-              </PayOption>
-              <PayOption icon={<Wallet className="size-4" />} active={pay === "googlepay"} onClick={() => setPay("googlepay")}>
-                Google Pay
-              </PayOption>
+              {/* Apple Pay / Google Pay are not wired to any payment SDK yet —
+                  no wallet button, no tokenization, no charge path. Showing
+                  them let someone "pay" with neither and get an order that
+                  printed as PAID. Hidden until real wallet support is built;
+                  see the note in `submit` below before re-enabling. */}
               {canPayInPerson && (
                 <PayOption icon={<Wallet className="size-4" />} active={pay === "in-person"} onClick={() => setPay("in-person")}>
                   Pay in person at {loc?.name}
