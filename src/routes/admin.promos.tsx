@@ -55,7 +55,12 @@ function PromosPage() {
       { data: mi, error: miError },
       { data: rs, error: rsError },
     ] = await Promise.all([
-      supabase.from("promo_codes").select("*").order("created_at", { ascending: false }),
+      // Direct select("*") is blocked for some columns even for admins — a
+      // 2026-05-26 lockdown migration column-restricted SELECT on this table
+      // for the `authenticated` Postgres role, which admins share with
+      // regular customers. Use the admin-only RPC instead, which runs as
+      // SECURITY DEFINER and returns the full row after checking the admin role.
+      supabase.rpc("admin_list_promo_codes"),
       supabase.from("menu_items").select("id,name").eq("active", true).order("name"),
       supabase.from("promo_redemptions").select("promo_code_id"),
     ]);

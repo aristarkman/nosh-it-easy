@@ -1151,6 +1151,26 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      admin_list_promo_codes: {
+        Args: never
+        Returns: {
+          active: boolean
+          bogo_buy_item_id: string | null
+          bogo_get_item_id: string | null
+          code: string
+          created_at: string
+          description: string | null
+          discount_type: string
+          discount_value: number
+          expires_at: string | null
+          id: string
+          max_total_uses: number | null
+          max_uses_per_customer: number
+          min_subtotal: number
+          starts_at: string | null
+          updated_at: string
+        }[]
+      }
       current_user_locations: { Args: never; Returns: string[] }
       has_role: {
         Args: {
