@@ -609,6 +609,7 @@ export type Database = {
           popular: boolean
           slug: string
           sort_order: number
+          taxable: boolean
           updated_at: string
         }
         Insert: {
@@ -626,6 +627,7 @@ export type Database = {
           popular?: boolean
           slug: string
           sort_order?: number
+          taxable?: boolean
           updated_at?: string
         }
         Update: {
@@ -643,6 +645,7 @@ export type Database = {
           popular?: boolean
           slug?: string
           sort_order?: number
+          taxable?: boolean
           updated_at?: string
         }
         Relationships: []

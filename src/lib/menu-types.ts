@@ -20,6 +20,7 @@ export type MenuItem = {
   popular?: boolean;
   soldOut?: boolean;
   glutenFreePossible?: boolean;
+  taxable: boolean;
   modifierGroups?: ModifierGroup[];
 };
 export type Category = { id: string; name: string; blurb?: string };

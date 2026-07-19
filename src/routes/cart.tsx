@@ -22,7 +22,7 @@ export const Route = createFileRoute("/cart")({
 });
 
 function CartPage() {
-  const { cart, subtotal, removeLine, updateQty, addToCart, location, orderType } = useOrder();
+  const { cart, subtotal, taxableSubtotal, removeLine, updateQty, addToCart, location, orderType } = useOrder();
   const loc = LOCATIONS.find((l) => l.id === location);
   const [authed, setAuthed] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -96,7 +96,7 @@ function CartPage() {
   }
 
   const deliveryFee = orderType === "delivery" ? 4.99 : 0;
-  const tax = +(subtotal * 0.06625).toFixed(2);
+  const tax = +(taxableSubtotal * 0.06625).toFixed(2);
   const total = +(subtotal + deliveryFee + tax).toFixed(2);
 
 
@@ -223,6 +223,7 @@ function CartPage() {
                           quantity: 1,
                           modifiers: [],
                           unitPrice: u.price,
+                          taxable: u.taxable,
                         })
                       }
                       className="rounded-full bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground hover:opacity-90"

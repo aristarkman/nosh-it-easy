@@ -17,6 +17,7 @@ export type CartLine = {
   modifiers: { groupId: string; groupName: string; options: ModifierOption[] }[];
   notes?: string;
   unitPrice: number; // base + modifiers
+  taxable: boolean;
 };
 
 type OrderState = {
@@ -37,6 +38,7 @@ type Ctx = OrderState & {
   updateQty: (lineId: string, qty: number) => void;
   clearCart: () => void;
   subtotal: number;
+  taxableSubtotal: number;
   totalQty: number;
 };
 
@@ -156,11 +158,17 @@ export function OrderProvider({ children }: { children: ReactNode }) {
   const clearCart = () => setState((s) => ({ ...s, cart: [] }));
 
   const subtotal = state.cart.reduce((sum, l) => sum + l.unitPrice * l.quantity, 0);
+  // Older persisted carts (pre-taxable field) treat lines as taxable, matching
+  // the DB default for menu_items.
+  const taxableSubtotal = state.cart.reduce(
+    (sum, l) => sum + (l.taxable !== false ? l.unitPrice * l.quantity : 0),
+    0
+  );
   const totalQty = state.cart.reduce((sum, l) => sum + l.quantity, 0);
 
   return (
     <OrderContext.Provider
-      value={{ ...state, setLocation, setOrderType, setWhen, addToCart, replaceLine, removeLine, updateQty, clearCart, subtotal, totalQty }}
+      value={{ ...state, setLocation, setOrderType, setWhen, addToCart, replaceLine, removeLine, updateQty, clearCart, subtotal, taxableSubtotal, totalQty }}
     >
       {children}
     </OrderContext.Provider>
@@ -218,5 +226,6 @@ export function buildLineFromItem(
     modifiers,
     notes,
     unitPrice,
+    taxable: item.taxable,
   };
 }

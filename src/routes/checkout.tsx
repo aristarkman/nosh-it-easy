@@ -63,7 +63,7 @@ declare global {
 
 function CheckoutPage() {
   const navigate = useNavigate();
-  const { cart, subtotal, location, orderType, whenType: ctxWhen, scheduledTime: ctxSched, clearCart, setLocation } = useOrder();
+  const { cart, subtotal, taxableSubtotal, location, orderType, whenType: ctxWhen, scheduledTime: ctxSched, clearCart, setLocation } = useOrder();
   const auth = useCustomerAuth();
   const loc = LOCATIONS.find((l) => l.id === location);
 
@@ -401,7 +401,12 @@ function CheckoutPage() {
   const loyaltyDiscount = discountForRewards(effectiveRewards);
   const discounts = +Math.min(subtotal, promoDiscount + loyaltyDiscount).toFixed(2);
   const discountedSubtotal = +(subtotal - discounts).toFixed(2);
-  const tax = +(discountedSubtotal * 0.06625).toFixed(2);
+  // Spread any discount proportionally across taxable and non-taxable lines
+  // so a promo/loyalty credit doesn't change what fraction of the order is
+  // taxable — then tax only the taxable share of what's left.
+  const discountRatio = subtotal > 0 ? discountedSubtotal / subtotal : 1;
+  const discountedTaxableSubtotal = +(taxableSubtotal * discountRatio).toFixed(2);
+  const tax = +(discountedTaxableSubtotal * 0.06625).toFixed(2);
   const cardFee = pay === "in-person" ? 0 : +((discountedSubtotal + deliveryFee) * 0.03).toFixed(2);
   const total = +(discountedSubtotal + deliveryFee + tax + tipAmount + cardFee).toFixed(2);
 

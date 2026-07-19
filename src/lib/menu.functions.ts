@@ -9,7 +9,7 @@ async function buildMenu(locationId: string): Promise<{ items: MenuItem[]; categ
   const [itemsRes, pricesRes, availRes, migRes, mgRes, moRes, catsRes, photosRes] = await Promise.all([
     supabaseAdmin
       .from("menu_items")
-      .select("id,name,slug,description,category,popular,photo_url,sort_order,gluten_free_possible,available_locations")
+      .select("id,name,slug,description,category,popular,photo_url,sort_order,gluten_free_possible,taxable,available_locations")
       .eq("active", true)
       .contains("available_locations", [locationId])
       .order("sort_order")
@@ -111,6 +111,7 @@ async function buildMenu(locationId: string): Promise<{ items: MenuItem[]; categ
       popular: !!it.popular,
       soldOut: soldOut.has(it.id),
       glutenFreePossible: !!(it as { gluten_free_possible?: boolean }).gluten_free_possible,
+      taxable: (it as { taxable?: boolean }).taxable !== false,
       modifierGroups: itemGroups,
     });
   }

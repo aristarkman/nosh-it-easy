@@ -24,6 +24,7 @@ type Item = {
   photo_url: string | null;
   description: string | null;
   gluten_free_possible: boolean;
+  taxable: boolean;
   available_locations: string[];
 };
 
@@ -56,7 +57,7 @@ function MenuAdmin() {
   async function load() {
     setLoading(true);
     const [i, p, l, g, a, c, ph] = await Promise.all([
-      supabase.from("menu_items").select("id,name,category,active,sort_order,photo_url,description,gluten_free_possible,available_locations").order("category").order("sort_order").order("name"),
+      supabase.from("menu_items").select("id,name,category,active,sort_order,photo_url,description,gluten_free_possible,taxable,available_locations").order("category").order("sort_order").order("name"),
       supabase.from("menu_item_prices").select("menu_item_id,location_id,price"),
       supabase.from("biyo_locations").select("location_id,display_name").order("location_id"),
       supabase.from("modifier_groups").select("id,name").order("name"),
@@ -228,6 +229,16 @@ function MenuAdmin() {
     }
   }
 
+  async function toggleTaxable(it: Item) {
+    const next = !it.taxable;
+    setItems((prev) => prev.map((x) => x.id === it.id ? { ...x, taxable: next } : x));
+    const { error } = await supabase.from("menu_items").update({ taxable: next }).eq("id", it.id);
+    if (error) {
+      setItems((prev) => prev.map((x) => x.id === it.id ? { ...x, taxable: it.taxable } : x));
+      alert(error.message);
+    }
+  }
+
   async function toggleAssign(itemId: string, groupId: string, on: boolean) {
     // optimistic
     if (on) {
@@ -367,7 +378,7 @@ function MenuAdmin() {
       const slug = `${slugify(name)}-${biyo_product_id.slice(-6)}`;
       const { data: ins, error } = await supabase.from("menu_items")
         .insert({ name, category: newCat || null, biyo_product_id, active: true, slug })
-        .select("id,name,category,active,sort_order,photo_url,description,gluten_free_possible,available_locations").single();
+        .select("id,name,category,active,sort_order,photo_url,description,gluten_free_possible,taxable,available_locations").single();
       if (error || !ins) { alert(error?.message ?? "Failed"); return; }
       const { error: pErr } = await supabase.from("menu_item_prices")
         .insert({ menu_item_id: ins.id, location_id: "cresskill", price });
@@ -596,6 +607,7 @@ function MenuAdmin() {
 
                 <th className="px-4 py-3">Modifications</th>
                 <th className="px-4 py-3">GF Possible</th>
+                <th className="px-4 py-3">Taxable</th>
                 <th className="px-4 py-3">Active</th>
               </tr>
             </thead>
@@ -741,6 +753,17 @@ function MenuAdmin() {
                       }`}
                     >
                       {it.gluten_free_possible ? "Yes" : "No"}
+                    </button>
+                  </td>
+                  <td className="px-4 py-3">
+                    <button
+                      onClick={() => toggleTaxable(it)}
+                      title={it.taxable ? "Sales tax is charged on this item" : "No sales tax charged on this item"}
+                      className={`rounded-full px-3 py-1 text-xs font-bold uppercase tracking-wider ${
+                        it.taxable ? "bg-sky-500/15 text-sky-700 dark:text-sky-300" : "bg-muted text-muted-foreground"
+                      }`}
+                    >
+                      {it.taxable ? "Taxable" : "Non-tax"}
                     </button>
                   </td>
                   <td className="px-4 py-3">
