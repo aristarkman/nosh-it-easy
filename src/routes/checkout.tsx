@@ -534,7 +534,22 @@ function CheckoutPage() {
         const tok = await window.postData();
         const paymentTokenId = tok?.payment_token_id ?? tok?.paymentTokenId;
         if (!paymentTokenId) {
+          // The FTD widget didn't hand back a token. This is almost always
+          // iPOSpays itself rejecting the card client-side (bad checksum,
+          // expired, etc.) — but it can also mean the widget returned an
+          // error shape we're not expecting (config/version issue on their
+          // end). Log + report the raw response so real failures are
+          // diagnosable instead of a black box.
+          console.error("FTD tokenization returned no token:", tok);
           toast.error("Card details are invalid. Please check and try again.");
+          void reportSystemAlert({
+            kind: "payment_failed",
+            message: `FTD tokenization returned no payment_token_id: ${JSON.stringify(tok).slice(0, 500)}`,
+            locationId: location,
+            locationName: loc?.name,
+            orderNumber,
+            details: { customer: name.trim(), phone: phone.trim() },
+          });
           setSubmitting(false);
           return;
         }
