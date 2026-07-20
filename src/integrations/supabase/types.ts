@@ -1189,6 +1189,26 @@ export type Database = {
         Returns: boolean
       }
       loyalty_balance: { Args: { _user_id: string }; Returns: number }
+      mark_abandoned_cart_recovered_secure: {
+        Args: { _order_id: string; _session_id: string }
+        Returns: undefined
+      }
+      upsert_abandoned_cart_secure: {
+        Args: {
+          _customer_name?: string
+          _email?: string
+          _item_count?: number
+          _items?: Json
+          _location_id?: string
+          _marketing_email_opt_in?: boolean
+          _marketing_sms_opt_in?: boolean
+          _order_type?: string
+          _phone?: string
+          _session_id: string
+          _subtotal?: number
+        }
+        Returns: undefined
+      }
       user_has_location: {
         Args: { _location_id: string; _user_id: string }
         Returns: boolean
