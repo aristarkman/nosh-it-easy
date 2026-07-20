@@ -2,7 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { getRequestHeader } from "@tanstack/react-start/server";
 import { createClient } from "@supabase/supabase-js";
 import { z } from "zod";
-import type { Database } from "@/integrations/supabase/types";
+import type { Database, Json } from "@/integrations/supabase/types";
 
 const CartLine = z.object({
   itemId: z.string().optional(),
@@ -51,12 +51,12 @@ export const upsertAbandonedCart = createServerFn({ method: "POST" })
 
     const { error } = await supabase.rpc("upsert_abandoned_cart_secure", {
       _session_id: data.sessionId,
-      _customer_name: data.customerName ?? null,
-      _email: data.email ?? null,
-      _phone: data.phone ?? null,
-      _location_id: data.locationId ?? null,
-      _order_type: data.orderType ?? null,
-      _items: data.items,
+      _customer_name: data.customerName ?? undefined,
+      _email: data.email ?? undefined,
+      _phone: data.phone ?? undefined,
+      _location_id: data.locationId ?? undefined,
+      _order_type: data.orderType ?? undefined,
+      _items: data.items as unknown as Json,
       _subtotal: data.subtotal,
       _item_count: data.itemCount,
       _marketing_email_opt_in: data.marketingEmailOptIn ?? false,
