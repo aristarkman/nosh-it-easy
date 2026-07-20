@@ -9,57 +9,16 @@ const FTD_SCRIPT = () =>
     ? "https://payment.ipospays.com/ftd/v1/freedomtodesign.js"
     : "https://payment.ipospays.tech/ftd/v1/freedomtodesign.js";
 
+// iPOSpays support confirmed: the V3 iposTransact endpoint is NOT supported
+// for FTD paymentTokenId sales — V3 requires the merchant account to be
+// separately activated for the "PaymentTokenization" JWT scope. FTD
+// paymentTokenId charges must go through V1 or V2 instead, authenticated
+// with the same simple portal-generated Ecom Token used by the FTD widget
+// itself (IPOSPAYS_API_KEY) — no separate JWT auth flow needed.
 const TRANSACT_URL = () =>
   isLive()
-    ? "https://payment.ipospays.com/api/v3/iposTransact"
-    : "https://payment.ipospays.tech/api/v3/iposTransact";
-
-// The iposTransact API does NOT accept the FTD security key (IPOSPAYS_API_KEY)
-// as its auth token — that key only authenticates the client-side card-capture
-// widget. iposTransact needs its own short-lived JWT, generated from a
-// separate api key + secret key pair via this endpoint. See:
-// https://docs.ipospays.com/ipos-pays-authentication-token-api
-const AUTH_TOKEN_URL = () =>
-  isLive()
-    ? "https://auth.ipospays.com/v1/authenticate-token"
-    : "https://auth.ipospays.tech/v1/authenticate-token";
-
-async function getTransactAuthToken(): Promise<string> {
-  const apiKey = process.env.IPOSPAYS_TRANSACT_API_KEY?.trim();
-  const secretKey = process.env.IPOSPAYS_TRANSACT_SECRET_KEY?.trim();
-  if (!apiKey || !secretKey) {
-    throw new Error(
-      "iPOSpays transact credentials are not configured (IPOSPAYS_TRANSACT_API_KEY / IPOSPAYS_TRANSACT_SECRET_KEY). " +
-        "Generate these under Settings → Generate API & Secret Key in the iPOSpays portal — this is a different pair " +
-        "from the Freedom to Design security key.",
-    );
-  }
-
-  const res = await fetch(AUTH_TOKEN_URL(), {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      apiKey,
-      secretKey,
-      scope: "PaymentTokenization",
-    },
-    // iPOSpays' docs label the apiKey/secretKey/scope block a "Sample Header
-    // Request" but display it as JSON — ambiguous whether they're read from
-    // headers or body. Sending both costs nothing and survives either reading.
-    body: JSON.stringify({ apiKey, secretKey, scope: "PaymentTokenization" }),
-  });
-  const json = await res.json().catch(() => ({}));
-  if (!res.ok || !json?.token) {
-    console.error("iPOSpays auth token request failed", {
-      status: res.status,
-      json,
-      apiKeyLength: apiKey.length,
-      secretKeyLength: secretKey.length,
-    });
-    throw new Error(json?.errorMessage ?? "Could not authenticate with iPOSpays.");
-  }
-  return json.token as string;
-}
+    ? "https://payment.ipospays.com/api/v1/iposTransact"
+    : "https://payment.ipospays.tech/api/v1/iposTransact";
 
 export const getFtdConfig = createServerFn({ method: "GET" }).handler(async () => {
   const authToken = process.env.IPOSPAYS_API_KEY;
@@ -80,8 +39,8 @@ export const chargeWithToken = createServerFn({ method: "POST" })
       .parse(input),
   )
   .handler(async ({ data }) => {
+    const authToken = process.env.IPOSPAYS_API_KEY!;
     const tpn = process.env.IPOSPAYS_TERMINAL_ID!;
-    const authToken = await getTransactAuthToken();
 
     const body = {
       merchantAuthentication: {
@@ -111,18 +70,25 @@ export const chargeWithToken = createServerFn({ method: "POST" })
     });
 
     const json = await res.json().catch(() => ({}));
-    const tr = json?.transactionResponse ?? json?.response ?? {};
-    const status =
-      tr.responseCode ?? json?.responseCode ?? json?.status ?? (res.ok ? "00" : "ERR");
+    // Per iPOSpays' docs the real envelope is "iposTransactResponse" with
+    // responseCode 200/400 — keep the older guessed shapes as fallbacks in
+    // case of version drift, but prefer the documented one.
+    const tr = json?.iposTransactResponse ?? json?.transactionResponse ?? json?.response ?? {};
+    const status = tr.responseCode ?? json?.responseCode ?? json?.status ?? (res.ok ? 200 : "ERR");
     const approved =
       res.ok &&
-      (status === "00" || status === "000" || /approved/i.test(String(tr.responseMessage ?? "")));
+      (status === 200 ||
+        status === "200" ||
+        status === "00" ||
+        status === "000" ||
+        /successful|approved/i.test(String(tr.responseMessage ?? "")));
 
     if (!approved) {
       console.error("iPOSpays declined", { status: res.status, json });
       return {
         ok: false as const,
-        message: tr.responseMessage ?? json?.message ?? "Payment was declined.",
+        message:
+          tr.errResponseMessage ?? tr.responseMessage ?? json?.message ?? "Payment was declined.",
         raw: json,
       };
     }
@@ -130,7 +96,7 @@ export const chargeWithToken = createServerFn({ method: "POST" })
     return {
       ok: true as const,
       rrn: tr.RRN ?? tr.rrn ?? null,
-      authCode: tr.authCode ?? tr.approvalCode ?? null,
+      authCode: tr.responseApprovalCode ?? tr.authCode ?? tr.approvalCode ?? null,
       maskedCard: tr.maskedCardNumber ?? tr.cardNumber ?? null,
       cardType: tr.cardType ?? null,
       transactionId: tr.transactionId ?? tr.txnId ?? null,
