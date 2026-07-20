@@ -70,25 +70,25 @@ export function useNewOrderAlarm(pendingCount: number) {
     const tick = () => {
       const elapsed = (Date.now() - startedAtRef.current) / 1000;
       // Escalation: 0-15s gentle, 15-45s firm, 45s+ urgent
-      let volume = 0.15;
+      let volume = 0.35;
       let freq = 880;
-      let pulses = 2;
+      let pulses = 3;
       if (elapsed > 15) {
-        volume = 0.35;
-        pulses = 3;
+        volume = 0.55;
+        pulses = 4;
       }
       if (elapsed > 45) {
-        volume = 0.7;
+        volume = 0.85;
         freq = 1100;
-        pulses = 4;
+        pulses = 5;
       }
       if (elapsed > 90) {
         volume = 1.0;
         freq = 1320;
-        pulses = 5;
+        pulses = 6;
       }
       for (let i = 0; i < pulses; i++) {
-        setTimeout(() => playBeep(volume, freq, 0.18), i * 220);
+        setTimeout(() => playBeep(volume, freq, 0.35), i * 380);
       }
     };
 
