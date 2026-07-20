@@ -25,8 +25,8 @@ const AUTH_TOKEN_URL = () =>
     : "https://auth.ipospays.tech/v1/authenticate-token";
 
 async function getTransactAuthToken(): Promise<string> {
-  const apiKey = process.env.IPOSPAYS_TRANSACT_API_KEY;
-  const secretKey = process.env.IPOSPAYS_TRANSACT_SECRET_KEY;
+  const apiKey = process.env.IPOSPAYS_TRANSACT_API_KEY?.trim();
+  const secretKey = process.env.IPOSPAYS_TRANSACT_SECRET_KEY?.trim();
   if (!apiKey || !secretKey) {
     throw new Error(
       "iPOSpays transact credentials are not configured (IPOSPAYS_TRANSACT_API_KEY / IPOSPAYS_TRANSACT_SECRET_KEY). " +
@@ -42,7 +42,12 @@ async function getTransactAuthToken(): Promise<string> {
   });
   const json = await res.json().catch(() => ({}));
   if (!res.ok || !json?.token) {
-    console.error("iPOSpays auth token request failed", { status: res.status, json });
+    console.error("iPOSpays auth token request failed", {
+      status: res.status,
+      json,
+      apiKeyLength: apiKey.length,
+      secretKeyLength: secretKey.length,
+    });
     throw new Error(json?.errorMessage ?? "Could not authenticate with iPOSpays.");
   }
   return json.token as string;
