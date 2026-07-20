@@ -14,6 +14,40 @@ const TRANSACT_URL = () =>
     ? "https://payment.ipospays.com/api/v3/iposTransact"
     : "https://payment.ipospays.tech/api/v3/iposTransact";
 
+// The iposTransact API does NOT accept the FTD security key (IPOSPAYS_API_KEY)
+// as its auth token — that key only authenticates the client-side card-capture
+// widget. iposTransact needs its own short-lived JWT, generated from a
+// separate api key + secret key pair via this endpoint. See:
+// https://docs.ipospays.com/ipos-pays-authentication-token-api
+const AUTH_TOKEN_URL = () =>
+  isLive()
+    ? "https://auth.ipospays.com/v1/authenticate-token"
+    : "https://auth.ipospays.tech/v1/authenticate-token";
+
+async function getTransactAuthToken(): Promise<string> {
+  const apiKey = process.env.IPOSPAYS_TRANSACT_API_KEY;
+  const secretKey = process.env.IPOSPAYS_TRANSACT_SECRET_KEY;
+  if (!apiKey || !secretKey) {
+    throw new Error(
+      "iPOSpays transact credentials are not configured (IPOSPAYS_TRANSACT_API_KEY / IPOSPAYS_TRANSACT_SECRET_KEY). " +
+        "Generate these under Settings → Generate API & Secret Key in the iPOSpays portal — this is a different pair " +
+        "from the Freedom to Design security key.",
+    );
+  }
+
+  const res = await fetch(AUTH_TOKEN_URL(), {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ apiKey, secretKey, scope: "PaymentTokenization" }),
+  });
+  const json = await res.json().catch(() => ({}));
+  if (!res.ok || !json?.token) {
+    console.error("iPOSpays auth token request failed", { status: res.status, json });
+    throw new Error(json?.errorMessage ?? "Could not authenticate with iPOSpays.");
+  }
+  return json.token as string;
+}
+
 export const getFtdConfig = createServerFn({ method: "GET" }).handler(async () => {
   const authToken = process.env.IPOSPAYS_API_KEY;
   const tpn = process.env.IPOSPAYS_TERMINAL_ID;
@@ -33,8 +67,8 @@ export const chargeWithToken = createServerFn({ method: "POST" })
       .parse(input),
   )
   .handler(async ({ data }) => {
-    const authToken = process.env.IPOSPAYS_API_KEY!;
     const tpn = process.env.IPOSPAYS_TERMINAL_ID!;
+    const authToken = await getTransactAuthToken();
 
     const body = {
       merchantAuthentication: {
