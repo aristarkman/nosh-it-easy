@@ -99,11 +99,58 @@ function WhenPage() {
     if (loaded && !openNow && choice === "asap") setChoice("schedule");
   }, [loaded, openNow, choice]);
 
-  // When schedule is selected but no time chosen yet, seed with the default
+  // Sensible default for the datetime input: the next slot that's actually
+  // available, i.e. at least 1h of prep lead time from now, and inside
+  // online-ordering hours on a day that isn't closed. Walks forward day by
+  // day (up to 2 weeks) so it never lands on a closure or an already-closed
+  // day. Falls back to the plain +1h/15-min-rounded time if hours haven't
+  // loaded yet or none are configured.
+  const defaultMin = useMemo(() => {
+    const toLocalInput = (d: Date) =>
+      `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}T${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+
+    const bufferStart = new Date(Date.now() + 60 * 60 * 1000);
+    bufferStart.setSeconds(0, 0);
+    bufferStart.setMinutes(Math.ceil(bufferStart.getMinutes() / 15) * 15);
+
+    if (!loaded || hours.length === 0) return toLocalInput(bufferStart);
+
+    for (let dayOffset = 0; dayOffset < 14; dayOffset++) {
+      const day = new Date(bufferStart);
+      day.setDate(day.getDate() + dayOffset);
+      const key = ymd(day);
+
+      const closed = closures.some((c) => c.start_date <= key && c.end_date >= key);
+      if (closed) continue;
+
+      const row = hours.find((r) => r.day_of_week === day.getDay());
+      if (!row || row.is_closed || !row.open_time || !row.close_time) continue;
+
+      const [oh, om] = row.open_time.split(":").map(Number);
+      const [ch, cm] = row.close_time.split(":").map(Number);
+      const openMins = oh * 60 + om;
+      const closeMins = ch * 60 + cm;
+
+      const candidateMins =
+        dayOffset === 0 ? Math.max(bufferStart.getHours() * 60 + bufferStart.getMinutes(), openMins) : openMins;
+      if (candidateMins > closeMins) continue;
+
+      const result = new Date(day);
+      result.setHours(Math.floor(candidateMins / 60), candidateMins % 60, 0, 0);
+      return toLocalInput(result);
+    }
+
+    return toLocalInput(bufferStart);
+  }, [loaded, hours, closures]);
+
+  // When schedule is selected but no time chosen yet, seed with the default.
+  // Re-runs when defaultMin changes (e.g. once store hours finish loading)
+  // so the seeded value reflects real next-available-time, not the
+  // optimistic +1h guess — but only while the customer hasn't typed their
+  // own time yet.
   useEffect(() => {
     if (choice === "schedule" && !time) setTime(defaultMin);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [choice]);
+  }, [choice, defaultMin, time]);
 
   const scheduleCheck = useMemo(() => {
     if (choice !== "schedule") return { ok: true } as { ok: boolean; reason?: string };
@@ -123,13 +170,6 @@ function WhenPage() {
     else setWhen("schedule", time);
     navigate({ to: "/menu" });
   };
-
-  // Sensible default for the datetime input: 1h from now, rounded to 15 min
-  const defaultMin = useMemo(() => {
-    const d = new Date(Date.now() + 60 * 60 * 1000);
-    d.setMinutes(Math.ceil(d.getMinutes() / 15) * 15, 0, 0);
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}T${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
-  }, []);
 
   return (
     <div className="mx-auto max-w-3xl px-4 pb-16 pt-8 sm:pt-14">

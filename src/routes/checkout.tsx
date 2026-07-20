@@ -75,7 +75,7 @@ function CheckoutPage() {
   const [zip, setZip] = useState("");
   const [whenType, setWhenType] = useState<"asap" | "schedule">(ctxWhen ?? "asap");
   const [scheduledTime, setScheduledTime] = useState(ctxSched ?? "");
-  const [pay, setPay] = useState<"card" | "applepay" | "googlepay" | "in-person">("card");
+  const [pay, setPay] = useState<"card" | "in-person">("card");
   const [submitting, setSubmitting] = useState(false);
   const [orderNote, setOrderNote] = useState("");
 
@@ -465,15 +465,6 @@ function CheckoutPage() {
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!valid || !location) return;
-    // Only "card" (via iPOSpays FTD) and "in-person" have an actual payment
-    // path. Apple Pay / Google Pay have no wallet SDK wired up — the buttons
-    // are hidden, but this guard is what actually stops an order from being
-    // inserted as PAID with zero payment collected if `pay` ever gets here
-    // some other way (devtools, a stale client, etc).
-    if (pay !== "card" && pay !== "in-person") {
-      toast.error("That payment method isn't available yet. Please use a card or pay in person.");
-      return;
-    }
     setSubmitting(true);
 
     const orderNumber = `KN-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
@@ -1130,11 +1121,6 @@ function CheckoutPage() {
               {canPayInPerson && (
                 <PayOption icon={<Wallet className="size-4" />} active={pay === "in-person"} onClick={() => setPay("in-person")}>
                   Pay in person at {loc?.name}
-                </PayOption>
-              )}
-              {orderType === "delivery" && (
-                <PayOption icon={<Wallet className="size-4" />} active={pay === "in-person"} onClick={() => setPay("in-person")}>
-                  Pay with cash on delivery
                 </PayOption>
               )}
               {orderType === "pickup" && !canPayInPerson && (
