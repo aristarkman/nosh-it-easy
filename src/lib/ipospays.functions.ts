@@ -37,7 +37,15 @@ async function getTransactAuthToken(): Promise<string> {
 
   const res = await fetch(AUTH_TOKEN_URL(), {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      apiKey,
+      secretKey,
+      scope: "PaymentTokenization",
+    },
+    // iPOSpays' docs label the apiKey/secretKey/scope block a "Sample Header
+    // Request" but display it as JSON — ambiguous whether they're read from
+    // headers or body. Sending both costs nothing and survives either reading.
     body: JSON.stringify({ apiKey, secretKey, scope: "PaymentTokenization" }),
   });
   const json = await res.json().catch(() => ({}));
