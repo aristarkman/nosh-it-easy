@@ -24,6 +24,14 @@ export const getFtdConfig = createServerFn({ method: "GET" }).handler(async () =
   const authToken = process.env.IPOSPAYS_API_KEY;
   const tpn = process.env.IPOSPAYS_TERMINAL_ID;
   if (!authToken || !tpn) throw new Error("iPOSpays credentials are not configured");
+  console.log("iPOSpays FTD config", {
+    tpn,
+    tokenLength: authToken.length,
+    tokenMasked:
+      authToken.length > 8
+        ? `${authToken.slice(0, 4)}…${authToken.slice(-4)}`
+        : "(too short to mask)",
+  });
   return { authToken, tpn, scriptUrl: FTD_SCRIPT(), live: isLive() };
 });
 
@@ -41,6 +49,18 @@ export const chargeWithToken = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const authToken = process.env.IPOSPAYS_API_KEY!;
     const tpn = process.env.IPOSPAYS_TERMINAL_ID!;
+
+    const maskedToken =
+      authToken.length > 8
+        ? `${authToken.slice(0, 4)}…${authToken.slice(-4)}`
+        : "(too short to mask)";
+    console.log("iPOSpays transact request", {
+      url: TRANSACT_URL(),
+      tpn,
+      tokenLength: authToken.length,
+      tokenMasked: maskedToken,
+      referenceId: data.referenceId,
+    });
 
     const body = {
       merchantAuthentication: {
