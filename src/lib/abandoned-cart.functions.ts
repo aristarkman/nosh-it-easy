@@ -1,5 +1,8 @@
 import { createServerFn } from "@tanstack/react-start";
+import { getRequestHeader } from "@tanstack/react-start/server";
+import { createClient } from "@supabase/supabase-js";
 import { z } from "zod";
+import type { Database } from "@/integrations/supabase/types";
 
 const CartLine = z.object({
   itemId: z.string().optional(),
@@ -26,33 +29,39 @@ const UpsertSchema = z.object({
 export const upsertAbandonedCart = createServerFn({ method: "POST" })
   .inputValidator((input: z.infer<typeof UpsertSchema>) => UpsertSchema.parse(input))
   .handler(async ({ data }) => {
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    if (data.items.length === 0) {
-      await supabaseAdmin
-        .from("abandoned_carts")
-        .update({ recovered: true, items: [] as never, item_count: 0, subtotal: 0 })
-        .eq("session_id", data.sessionId);
-      return { ok: true };
-    }
-    const { error } = await supabaseAdmin.from("abandoned_carts").upsert(
-      {
-        session_id: data.sessionId,
-        user_id: data.userId ?? null,
-        customer_name: data.customerName ?? null,
-        email: data.email ?? null,
-        phone: data.phone ?? null,
-        location_id: data.locationId ?? null,
-        order_type: data.orderType ?? null,
-        items: data.items as unknown as never,
-        subtotal: data.subtotal,
-        item_count: data.itemCount,
-        last_activity_at: new Date().toISOString(),
-        recovered: false,
-        marketing_email_opt_in: data.marketingEmailOptIn ?? false,
-        marketing_sms_opt_in: data.marketingSmsOptIn ?? false,
+    const url = process.env.SUPABASE_URL;
+    const key = process.env.SUPABASE_PUBLISHABLE_KEY;
+    if (!url || !key) throw new Error("Backend is missing public database configuration.");
+
+    const authHeader = getRequestHeader("authorization") ?? undefined;
+    const supabase = createClient<Database>(url, key, {
+      auth: { storage: undefined, persistSession: false, autoRefreshToken: false },
+      global: {
+        headers: authHeader ? { Authorization: authHeader } : undefined,
+        fetch: (input, init) => {
+          const headers = new Headers(init?.headers);
+          if (key.startsWith("sb_") && headers.get("Authorization") === `Bearer ${key}`) {
+            headers.delete("Authorization");
+          }
+          headers.set("apikey", key);
+          return fetch(input, { ...init, headers });
+        },
       },
-      { onConflict: "session_id" }
-    );
+    });
+
+    const { error } = await supabase.rpc("upsert_abandoned_cart_secure", {
+      _session_id: data.sessionId,
+      _customer_name: data.customerName ?? null,
+      _email: data.email ?? null,
+      _phone: data.phone ?? null,
+      _location_id: data.locationId ?? null,
+      _order_type: data.orderType ?? null,
+      _items: data.items,
+      _subtotal: data.subtotal,
+      _item_count: data.itemCount,
+      _marketing_email_opt_in: data.marketingEmailOptIn ?? false,
+      _marketing_sms_opt_in: data.marketingSmsOptIn ?? false,
+    });
     if (error) throw new Error(error.message);
     return { ok: true };
   });
@@ -65,10 +74,30 @@ const RecoverSchema = z.object({
 export const markAbandonedCartRecovered = createServerFn({ method: "POST" })
   .inputValidator((input: z.infer<typeof RecoverSchema>) => RecoverSchema.parse(input))
   .handler(async ({ data }) => {
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    await supabaseAdmin
-      .from("abandoned_carts")
-      .update({ recovered: true, recovered_order_id: data.orderId })
-      .eq("session_id", data.sessionId);
+    const url = process.env.SUPABASE_URL;
+    const key = process.env.SUPABASE_PUBLISHABLE_KEY;
+    if (!url || !key) throw new Error("Backend is missing public database configuration.");
+
+    const authHeader = getRequestHeader("authorization") ?? undefined;
+    const supabase = createClient<Database>(url, key, {
+      auth: { storage: undefined, persistSession: false, autoRefreshToken: false },
+      global: {
+        headers: authHeader ? { Authorization: authHeader } : undefined,
+        fetch: (input, init) => {
+          const headers = new Headers(init?.headers);
+          if (key.startsWith("sb_") && headers.get("Authorization") === `Bearer ${key}`) {
+            headers.delete("Authorization");
+          }
+          headers.set("apikey", key);
+          return fetch(input, { ...init, headers });
+        },
+      },
+    });
+
+    const { error } = await supabase.rpc("mark_abandoned_cart_recovered_secure", {
+      _session_id: data.sessionId,
+      _order_id: data.orderId,
+    });
+    if (error) throw new Error(error.message);
     return { ok: true };
   });
