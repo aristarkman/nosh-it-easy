@@ -6,7 +6,7 @@ import { useCustomerAuth } from "@/lib/customer-auth";
 import { supabase } from "@/integrations/supabase/client";
 import { chargeWithToken, getFtdConfig } from "@/lib/ipospays.functions";
 import { sendOrderStatusSms, sendStaffNewOrderAlert } from "@/lib/sms.functions";
-import { dispatchShipday, quoteShipday } from "@/lib/shipday.functions";
+import { dispatchShipday } from "@/lib/shipday.functions";
 import { reportSystemAlert } from "@/lib/system-alerts";
 import { markCartRecovered, track } from "@/lib/analytics";
 import {
@@ -321,51 +321,7 @@ function CheckoutPage() {
     return otherZones.find((z) => pointInPolygon(geo, z.polygon));
   }, [orderType, geo, matchedZone, otherZones]);
 
-  // Live Shipday on-demand quote for ASAP deliveries only.
-  // Scheduled deliveries use the store zone fee because live driver availability
-  // at checkout time does not reflect future availability.
-  const [liveQuote, setLiveQuote] = useState<{
-    fee: number;
-    etaMinutes: number | null;
-  } | null>(null);
-  const [quoteError, setQuoteError] = useState<string | null>(null);
-  const [quoteLoading, setQuoteLoading] = useState(false);
-
-  useEffect(() => {
-    if (orderType !== "delivery" || whenType !== "asap" || !location || address.trim().length < 5 || zip.length !== 5) {
-      setLiveQuote(null);
-      setQuoteError(null);
-      return;
-    }
-    let cancelled = false;
-    setQuoteLoading(true);
-    setQuoteError(null);
-    const handle = setTimeout(async () => {
-      const r = await quoteShipday({
-        data: {
-          locationId: location,
-          deliveryAddress: `${address.trim()}, ${zip}`,
-          total: subtotal,
-        },
-      }).catch(() => ({ ok: false as const, message: "Could not reach delivery service." }));
-      if (cancelled) return;
-      setQuoteLoading(false);
-      if (r.ok) {
-        setLiveQuote({ fee: r.fee, etaMinutes: r.etaMinutes });
-        setQuoteError(null);
-      } else {
-        setLiveQuote(null);
-        setQuoteError(r.message);
-      }
-    }, 600);
-    return () => {
-      cancelled = true;
-      clearTimeout(handle);
-    };
-  }, [orderType, whenType, location, address, zip, subtotal]);
-
-  const deliveryFee =
-    orderType === "delivery" ? liveQuote?.fee ?? matchedZone?.fee ?? 0 : 0;
+  const deliveryFee = orderType === "delivery" ? matchedZone?.fee ?? 0 : 0;
 
   const tipAmount = useMemo(() => {
     if (orderType !== "delivery") return 0;
@@ -460,7 +416,7 @@ function CheckoutPage() {
     scheduleCheck.ok &&
     name.trim().length > 1 &&
     /^[\d\s()+-]{7,}$/.test(phone) &&
-    (orderType === "pickup" || (address.trim().length > 5 && zoneOk && (whenType !== "asap" || !quoteError)));
+    (orderType === "pickup" || (address.trim().length > 5 && zoneOk));
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -952,21 +908,10 @@ function CheckoutPage() {
                   ${minShortfall.toFixed(2)} below the {fmt(matchedZone.minimum)} delivery minimum for {matchedZone.name}.
                 </p>
               )}
-              {matchedZone && zoneOk && !liveQuote && !quoteError && (
+              {matchedZone && zoneOk && (
                 <p className="text-xs text-muted-foreground">
-                  {quoteLoading
-                    ? "Getting a live delivery quote…"
-                    : `${matchedZone.name}: ${fmt(matchedZone.fee)} fee · ${fmt(matchedZone.minimum)} minimum.`}
+                  {matchedZone.name}: {fmt(matchedZone.fee)} fee · {fmt(matchedZone.minimum)} minimum.
                 </p>
-              )}
-              {liveQuote && (
-                <p className="text-xs text-secondary">
-                  Live quote: {fmt(liveQuote.fee)} fee
-                  {liveQuote.etaMinutes ? ` · ~${liveQuote.etaMinutes} min` : ""}
-                </p>
-              )}
-              {whenType === "asap" && quoteError && address.trim().length >= 5 && zip.length === 5 && (
-                <p className="text-xs text-destructive">{quoteError}</p>
               )}
             </Section>
           ) : (

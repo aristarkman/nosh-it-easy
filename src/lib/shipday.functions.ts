@@ -42,16 +42,6 @@ function shipdayErrorMessage(status: number, body: Record<string, unknown>): str
   return apiMessage || `Shipday error (${status})`;
 }
 
-const QuoteInput = z.object({
-  locationId: z.string().min(1).max(64),
-  deliveryAddress: z.string().min(5).max(500),
-  total: z.number().nonnegative(),
-});
-
-export const quoteShipday = createServerFn({ method: "POST" })
-  .inputValidator((input) => QuoteInput.parse(input))
-  .handler(async () => ({ ok: false as const, message: "" }));
-
 const DispatchInput = z.object({
   orderNumber: z.string().min(1).max(64),
   locationId: z.string().min(1).max(64),
