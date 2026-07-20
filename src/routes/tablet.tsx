@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   AlertTriangle,
   Check,
@@ -24,7 +24,13 @@ import { geocodeAddress } from "@/lib/geocoding.functions";
 import { useNewOrderAlarm } from "@/lib/use-new-order-alarm";
 import { useWakeLock } from "@/lib/use-wake-lock";
 import { printOrderTicket } from "@/lib/print-ticket";
+import { reportSystemAlert } from "@/lib/system-alerts";
 import { toast } from "sonner";
+
+// Glen Rock runs unattended: new orders auto-accept, auto-print, and
+// delivery orders always go to Shipday — no staff tap, no self-delivery
+// choice. Cresskill keeps the manual accept + delivery-choice workflow.
+const AUTO_LOCATIONS = new Set(["glen-rock"]);
 
 export const Route = createFileRoute("/tablet")({
   head: () => ({
@@ -103,6 +109,62 @@ function setDeliveryChoice(notes: string | null, choice: "shipday" | "self"): st
     .map((part) => part.trim())
     .filter((part) => part && !part.startsWith("delivery:"));
   return [...cleaned, `delivery:${choice}`].join(" | ");
+}
+
+// Shared by the manual "Ship with Shipday" dialog button and the Glen Rock
+// auto-dispatch path — component state (dispatching/toasts/etc.) stays with
+// each caller, this just does the actual work and reports success/failure.
+async function dispatchOrderToShipday(
+  order: Order,
+): Promise<{ ok: true; patch: Record<string, unknown> } | { ok: false; message: string }> {
+  if (!order.delivery_address) return { ok: false, message: "No delivery address on file." };
+
+  const notes = setDeliveryChoice(order.notes, "shipday");
+  const { error: choiceError } = await supabase.from("orders").update({ notes }).eq("id", order.id);
+  if (choiceError) return { ok: false, message: "Could not save delivery choice" };
+
+  const result = await dispatchShipday({
+    data: {
+      orderNumber: order.order_number,
+      locationId: order.location_id,
+      customerName: order.customer_name,
+      customerPhone: order.customer_phone,
+      customerEmail: order.customer_email,
+      deliveryAddress: order.delivery_address,
+      total: Number(order.total),
+      subtotal: Number(order.subtotal),
+      tax: Number(order.tax),
+      tip: parseTip(order.notes),
+      deliveryFee: Number(order.delivery_fee),
+      notes: order.notes,
+      scheduledTime: order.scheduled_time,
+      items: order.items.map((item) => ({
+        name: item.name,
+        quantity: item.quantity,
+        unitPrice: item.unitPrice,
+      })),
+    },
+  }).catch((error) => ({
+    ok: false as const,
+    message: error instanceof Error ? error.message : "Could not reach Shipday.",
+  }));
+
+  if (!result.ok) return { ok: false, message: result.message || "Could not dispatch to Shipday" };
+
+  const patch = {
+    notes,
+    shipday_order_id: result.shipdayOrderId,
+    shipday_tracking_url: result.trackingUrl,
+    quoted_delivery_fee: Number(order.delivery_fee),
+    dispatched_at: new Date().toISOString(),
+    delivery_status: "unassigned" as const,
+  };
+  const { error: persistError } = await supabase.from("orders").update(patch).eq("id", order.id);
+  if (persistError) {
+    return { ok: false, message: "Shipday accepted the order, but tracking could not be saved" };
+  }
+
+  return { ok: true, patch };
 }
 
 function TabletPage() {
@@ -212,11 +274,22 @@ function TabletPage() {
   const advance = async (order: Order) => {
     const next = STATUS_FLOW[order.status].next;
     if (!next) return;
-    const { error } = await supabase.from("orders").update({ status: next }).eq("id", order.id);
+    // .eq("status", order.status) + checking the returned row count guards
+    // against double-processing the same order — e.g. Glen Rock's
+    // auto-accept effect re-running, or two tablets open on the same order.
+    // If nothing matched, someone/something already advanced it; skip the
+    // side effects below rather than re-printing/re-texting/re-dispatching.
+    const { data, error } = await supabase
+      .from("orders")
+      .update({ status: next })
+      .eq("id", order.id)
+      .eq("status", order.status)
+      .select("id");
     if (error) {
       toast.error("Update failed");
       return;
     }
+    if (!data || data.length === 0) return;
 
     const updatedOrder = { ...order, status: next };
     setOrders((previous) => previous.map((item) => (item.id === order.id ? updatedOrder : item)));
@@ -246,9 +319,61 @@ function TabletPage() {
     }
 
     if (next === "accepted" && order.order_type === "delivery") {
-      setDeliveryChoiceOrder(updatedOrder);
+      if (AUTO_LOCATIONS.has(order.location_id)) {
+        void autoDispatchShipday(updatedOrder);
+      } else {
+        setDeliveryChoiceOrder(updatedOrder);
+      }
     }
   };
+
+  // Glen Rock delivery orders skip the manual choice dialog entirely and go
+  // straight to Shipday. Failures here have no staff present to notice them
+  // via a dialog, so they get a persistent toast plus the same
+  // system_alerts + owner-SMS path used for other unattended failures.
+  const autoDispatchShipday = async (order: Order) => {
+    const result = await dispatchOrderToShipday(order);
+    if (!result.ok) {
+      toast.error(`${order.order_number}: Shipday dispatch failed — ${result.message}`, {
+        duration: 15000,
+      });
+      void reportSystemAlert({
+        kind: "shipday_dispatch_failed",
+        message: result.message,
+        locationId: order.location_id,
+        locationName: LOCATIONS.find((location) => location.id === order.location_id)?.name,
+        orderNumber: order.order_number,
+        orderId: order.id,
+      });
+      return;
+    }
+    setOrders((previous) =>
+      previous.map((item) => (item.id === order.id ? { ...item, ...result.patch } : item)),
+    );
+  };
+
+  // Glen Rock runs unattended: any "new" order for it gets auto-accepted
+  // (which triggers print + SMS + Shipday dispatch via `advance` above)
+  // without waiting for a staff tap. autoAcceptedRef prevents re-triggering
+  // on every re-render/orders update — an order is only ever handed to
+  // `advance` once per page session; `advance`'s own conditional update
+  // (.eq("status", order.status)) is the real guard against double-firing
+  // side effects if e.g. two tablets are open.
+  const autoAcceptedRef = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    if (!authChecked) return;
+    const pending = orders.filter(
+      (order) =>
+        AUTO_LOCATIONS.has(order.location_id) &&
+        order.status === "new" &&
+        !autoAcceptedRef.current.has(order.id),
+    );
+    for (const order of pending) {
+      autoAcceptedRef.current.add(order.id);
+      void advance(order);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [orders, authChecked]);
 
   const cancel = async (order: Order) => {
     const { error } = await supabase.from("orders").update({ status: "cancelled" }).eq("id", order.id);
@@ -282,63 +407,14 @@ function TabletPage() {
     const order = deliveryChoiceOrder;
     if (!order || !order.delivery_address) return;
     setDispatching(true);
-    const notes = setDeliveryChoice(order.notes, "shipday");
-    const { error: choiceError } = await supabase.from("orders").update({ notes }).eq("id", order.id);
-    if (choiceError) {
-      setDispatching(false);
-      toast.error("Could not save delivery choice");
-      return;
-    }
-
-    const result = await dispatchShipday({
-      data: {
-        orderNumber: order.order_number,
-        locationId: order.location_id,
-        customerName: order.customer_name,
-        customerPhone: order.customer_phone,
-        customerEmail: order.customer_email,
-        deliveryAddress: order.delivery_address,
-        total: Number(order.total),
-        subtotal: Number(order.subtotal),
-        tax: Number(order.tax),
-        tip: parseTip(order.notes),
-        deliveryFee: Number(order.delivery_fee),
-        notes: order.notes,
-        scheduledTime: order.scheduled_time,
-        items: order.items.map((item) => ({
-          name: item.name,
-          quantity: item.quantity,
-          unitPrice: item.unitPrice,
-        })),
-      },
-    }).catch((error) => ({
-      ok: false as const,
-      message: error instanceof Error ? error.message : "Could not reach Shipday.",
-    }));
-
-    if (!result.ok) {
-      setDispatching(false);
-      toast.error(result.message || "Could not dispatch to Shipday");
-      return;
-    }
-
-    const patch = {
-      notes,
-      shipday_order_id: result.shipdayOrderId,
-      shipday_tracking_url: result.trackingUrl,
-      quoted_delivery_fee: Number(order.delivery_fee),
-      dispatched_at: new Date().toISOString(),
-      delivery_status: "unassigned" as const,
-    };
-    const { error: persistError } = await supabase.from("orders").update(patch).eq("id", order.id);
+    const result = await dispatchOrderToShipday(order);
     setDispatching(false);
-    if (persistError) {
-      toast.error("Shipday accepted the order, but tracking could not be saved");
+    if (!result.ok) {
+      toast.error(result.message);
       return;
     }
-
     setOrders((previous) =>
-      previous.map((item) => (item.id === order.id ? { ...item, ...patch } : item))
+      previous.map((item) => (item.id === order.id ? { ...item, ...result.patch } : item)),
     );
     setDeliveryChoiceOrder(null);
     toast.success("Order dispatched to Shipday");
