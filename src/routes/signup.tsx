@@ -2,6 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { lovable } from "@/integrations/lovable/index";
+import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/signup")({
@@ -17,6 +18,7 @@ function SignupPage() {
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [smsConsent, setSmsConsent] = useState(false);
   const [loading, setLoading] = useState(false);
 
   const onSubmit = async (e: React.FormEvent) => {
@@ -27,7 +29,12 @@ function SignupPage() {
       password,
       options: {
         emailRedirectTo: window.location.origin + "/welcome/address",
-        data: { full_name: fullName, phone },
+        data: {
+          full_name: fullName,
+          phone,
+          sms_consent: smsConsent,
+          sms_consent_at: smsConsent ? new Date().toISOString() : null,
+        },
       },
     });
     setLoading(false);
@@ -84,6 +91,26 @@ function SignupPage() {
           placeholder="Phone"
           className="w-full rounded-xl border border-border bg-card px-3 py-2.5 text-sm outline-none focus:border-primary"
         />
+        <div className="flex items-start gap-2 mt-2">
+          <Checkbox
+            id="smsConsent"
+            checked={smsConsent}
+            onCheckedChange={(checked) => setSmsConsent(checked === true)}
+          />
+          <label htmlFor="smsConsent" className="text-sm text-muted-foreground leading-snug">
+            I agree to receive order status text messages (order received, ready for pickup, out for
+            delivery) from The Kosher Nosh at the number provided. Message frequency varies. Msg &
+            data rates may apply. Reply STOP to opt out, HELP for help. Consent is not a condition
+            of purchase.{" "}
+            <a href="/privacy" className="underline">
+              Privacy Policy
+            </a>{" "}
+            ·{" "}
+            <a href="/terms" className="underline">
+              Terms
+            </a>
+          </label>
+        </div>
         <input
           required
           type="email"

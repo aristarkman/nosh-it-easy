@@ -16,6 +16,7 @@ import {
   maxRewardsRedeemable,
 } from "@/lib/loyalty";
 import { toast } from "sonner";
+import { Checkbox } from "@/components/ui/checkbox";
 import { geocodeAddress } from "@/lib/geocoding.functions";
 import { recordPromoRedemption } from "@/lib/promo.functions";
 import { priceCart } from "@/lib/order-pricing.functions";
@@ -89,6 +90,7 @@ function CheckoutPage() {
 
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
+  const [smsConsent, setSmsConsent] = useState(false);
   const [email, setEmail] = useState("");
   const [address, setAddress] = useState("");
   const [zip, setZip] = useState("");
@@ -765,6 +767,7 @@ function CheckoutPage() {
       notes: [
         cleanOrderNote ? `note:${cleanOrderNote}` : null,
         `tip:${pricing.tipAmount.toFixed(2)}`,
+        `sms:${smsConsent ? 1 : 0}`,
         pricing.promo
           ? `promo:${pricing.promo.code}(-${pricing.promo.discountAmount.toFixed(2)})`
           : null,
@@ -852,8 +855,8 @@ function CheckoutPage() {
       orderType,
     });
 
-    // Fire-and-forget SMS confirmation to the customer
-    if (phone.trim()) {
+    // Fire-and-forget SMS confirmation to the customer (only with consent)
+    if (phone.trim() && smsConsent) {
       sendOrderStatusSms({
         data: {
           to: phone.trim(),
@@ -1006,16 +1009,26 @@ function CheckoutPage() {
               <Field label="Phone" value={phone} onChange={setPhone} required />
               <Field label="Email (optional)" value={email} onChange={setEmail} type="email" />
             </div>
-            <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
-              By providing your phone number, you agree to receive transactional SMS text messages
-              from The Kosher Nosh about this order (e.g. order received, ready for pickup, out for
-              delivery). Msg &amp; data rates may apply. Message frequency varies. Reply STOP to opt
-              out, HELP for help. See our{" "}
-              <Link to="/privacy" className="underline hover:text-primary">
-                Privacy Policy
-              </Link>
-              .
-            </p>
+            <div className="flex items-start gap-2 mt-2">
+              <Checkbox
+                id="smsConsent"
+                checked={smsConsent}
+                onCheckedChange={(checked) => setSmsConsent(checked === true)}
+              />
+              <label htmlFor="smsConsent" className="text-sm text-muted-foreground leading-snug">
+                I agree to receive order status text messages (order received, ready for pickup, out
+                for delivery) from The Kosher Nosh at the number provided. Message frequency varies.
+                Msg &amp; data rates may apply. Reply STOP to opt out, HELP for help. Consent is not
+                a condition of purchase.{" "}
+                <Link to="/privacy" className="underline">
+                  Privacy Policy
+                </Link>{" "}
+                ·{" "}
+                <Link to="/terms" className="underline">
+                  Terms
+                </Link>
+              </label>
+            </div>
           </Section>
 
           <Section title="Notes for your order">

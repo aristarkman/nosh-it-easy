@@ -99,6 +99,12 @@ function parseTip(notes: string | null): number {
   return match ? Number(match[1]) : 0;
 }
 
+// Orders placed before this consent checkbox existed won't have an
+// "sms:" segment at all — treated as no consent (opt-in, not opt-out).
+function hasSmsConsent(notes: string | null): boolean {
+  return /(?:^|\|\s*)sms:1(?:\s*\||$)/.test(notes ?? "");
+}
+
 function parseOrderNotes(notes: string | null): string[] {
   return (notes ?? "")
     .split("|")
@@ -273,10 +279,9 @@ function TabletPage() {
   const filtered = useMemo(
     () =>
       orders.filter(
-        (order) =>
-          (locFilter === "all" || order.location_id === locFilter) && order.status === tab
+        (order) => (locFilter === "all" || order.location_id === locFilter) && order.status === tab,
       ),
-    [orders, locFilter, tab]
+    [orders, locFilter, tab],
   );
 
   const advance = async (order: Order) => {
@@ -302,7 +307,11 @@ function TabletPage() {
     const updatedOrder = { ...order, status: next };
     setOrders((previous) => previous.map((item) => (item.id === order.id ? updatedOrder : item)));
 
-    if ((next === "accepted" || next === "ready") && order.customer_phone) {
+    if (
+      (next === "accepted" || next === "ready") &&
+      order.customer_phone &&
+      hasSmsConsent(order.notes)
+    ) {
       const locName = LOCATIONS.find((location) => location.id === order.location_id)?.name;
       void sendOrderStatusSms({
         data: {
@@ -410,7 +419,10 @@ function TabletPage() {
   }, [orders, authChecked]);
 
   const cancel = async (order: Order) => {
-    const { error } = await supabase.from("orders").update({ status: "cancelled" }).eq("id", order.id);
+    const { error } = await supabase
+      .from("orders")
+      .update({ status: "cancelled" })
+      .eq("id", order.id);
     if (error) toast.error("Cancel failed");
   };
 
@@ -430,8 +442,8 @@ function TabletPage() {
     }
     setOrders((previous) =>
       previous.map((item) =>
-        item.id === order.id ? { ...item, notes, delivery_status: "unassigned" } : item
-      )
+        item.id === order.id ? { ...item, notes, delivery_status: "unassigned" } : item,
+      ),
     );
     setDeliveryChoiceOrder(null);
     toast.success("Set for in-house delivery. Assign a driver on the Dispatch screen.");
@@ -484,7 +496,9 @@ function TabletPage() {
   }, [alarmEnabled, enableAlarm]);
 
   if (!authChecked) {
-    return <div className="grid min-h-screen place-items-center text-muted-foreground">Loading…</div>;
+    return (
+      <div className="grid min-h-screen place-items-center text-muted-foreground">Loading…</div>
+    );
   }
 
   if (allowedLocations.length === 0) {
@@ -525,7 +539,11 @@ function TabletPage() {
           </div>
           <div className="flex flex-wrap items-center gap-2">
             {showAllFilter && (
-              <Filter active={locFilter === "all"} onClick={() => setLocFilter("all")} label="All" />
+              <Filter
+                active={locFilter === "all"}
+                onClick={() => setLocFilter("all")}
+                label="All"
+              />
             )}
             {visibleLocations.map((location) => (
               <Filter
@@ -600,7 +618,9 @@ function TabletPage() {
                 onAdvance={() => void advance(order)}
                 onCancel={() => void cancel(order)}
                 onPrint={() => {
-                  const locName = LOCATIONS.find((location) => location.id === order.location_id)?.name;
+                  const locName = LOCATIONS.find(
+                    (location) => location.id === order.location_id,
+                  )?.name;
                   try {
                     printOrderTicket(order, locName);
                   } catch (error) {
@@ -638,7 +658,7 @@ function DeliveryChoiceDialog({
   onSelf: () => void;
 }) {
   const [formattedDeliveryAddress, setFormattedDeliveryAddress] = useState(
-    order.delivery_address ?? ""
+    order.delivery_address ?? "",
   );
 
   useEffect(() => {
@@ -658,7 +678,11 @@ function DeliveryChoiceDialog({
   }, [order.delivery_address]);
 
   return (
-    <div className="fixed inset-0 z-50 grid place-items-center bg-black/60 p-4" role="dialog" aria-modal="true">
+    <div
+      className="fixed inset-0 z-50 grid place-items-center bg-black/60 p-4"
+      role="dialog"
+      aria-modal="true"
+    >
       <div className="w-full max-w-lg overflow-hidden rounded-3xl border border-border bg-background shadow-2xl">
         <div className="border-b border-border p-5">
           <div className="text-xs font-bold uppercase tracking-[0.2em] text-primary">
@@ -669,7 +693,10 @@ function DeliveryChoiceDialog({
         <div className="space-y-4 p-5">
           <div className="rounded-2xl border border-border bg-muted/40 p-4">
             <div className="font-bold">{order.customer_name}</div>
-            <a href={`tel:${order.customer_phone}`} className="mt-1 flex items-center gap-2 text-sm">
+            <a
+              href={`tel:${order.customer_phone}`}
+              className="mt-1 flex items-center gap-2 text-sm"
+            >
               <Phone className="size-4 text-muted-foreground" /> {order.customer_phone}
             </a>
             <div className="mt-3 flex items-start gap-2 text-base font-semibold">
@@ -678,7 +705,8 @@ function DeliveryChoiceDialog({
             </div>
             {order.when_type === "schedule" && order.scheduled_time && (
               <div className="mt-3 flex items-center gap-2 text-sm text-muted-foreground">
-                <Clock className="size-4" /> Scheduled for {new Date(order.scheduled_time).toLocaleString()}
+                <Clock className="size-4" /> Scheduled for{" "}
+                {new Date(order.scheduled_time).toLocaleString()}
               </div>
             )}
           </div>
@@ -718,12 +746,22 @@ function labelFor(status: Status) {
         : status;
 }
 
-function Filter({ active, onClick, label }: { active: boolean; onClick: () => void; label: string }) {
+function Filter({
+  active,
+  onClick,
+  label,
+}: {
+  active: boolean;
+  onClick: () => void;
+  label: string;
+}) {
   return (
     <button
       onClick={onClick}
       className={`rounded-full px-3 py-1.5 text-xs font-bold uppercase tracking-wider transition ${
-        active ? "bg-foreground text-background" : "border border-border bg-background text-foreground"
+        active
+          ? "bg-foreground text-background"
+          : "border border-border bg-background text-foreground"
       }`}
     >
       {label}
@@ -764,7 +802,11 @@ function OrderCard({
           </div>
         </div>
         <div className="flex items-center gap-1.5 rounded-full bg-foreground px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-background">
-          {o.order_type === "delivery" ? <Truck className="size-3" /> : <ShoppingBag className="size-3" />}
+          {o.order_type === "delivery" ? (
+            <Truck className="size-3" />
+          ) : (
+            <ShoppingBag className="size-3" />
+          )}
           {o.order_type}
         </div>
       </div>
@@ -793,10 +835,15 @@ function OrderCard({
               : "Scheduled"}
         </div>
         {o.shipday_order_id && (
-          <div className="text-xs font-bold uppercase tracking-wider text-secondary">Shipday dispatched</div>
+          <div className="text-xs font-bold uppercase tracking-wider text-secondary">
+            Shipday dispatched
+          </div>
         )}
         {parseOrderNotes(o.notes).map((n, i) => (
-          <div key={i} className="mt-1 rounded-lg bg-primary/10 px-2 py-1.5 text-xs font-semibold text-primary">
+          <div
+            key={i}
+            className="mt-1 rounded-lg bg-primary/10 px-2 py-1.5 text-xs font-semibold text-primary"
+          >
             📝 {n}
           </div>
         ))}
@@ -816,7 +863,7 @@ function OrderCard({
                 {line.modifiers.map((modifier) =>
                   modifier.options.map((option) => (
                     <li key={`${modifier.groupId}-${option.id}`}>+ {option.name}</li>
-                  ))
+                  )),
                 )}
               </ul>
             )}
@@ -827,7 +874,8 @@ function OrderCard({
 
       <div className="flex items-center justify-between gap-2 border-t border-border p-3">
         <div className="text-sm">
-          <span className="text-muted-foreground">Total</span> <span className="font-bold">{fmt(o.total)}</span>{" "}
+          <span className="text-muted-foreground">Total</span>{" "}
+          <span className="font-bold">{fmt(o.total)}</span>{" "}
           <span className="text-xs text-muted-foreground">· {o.payment_method}</span>
           {refunded && (
             <div className="mt-0.5 text-xs font-bold uppercase tracking-wider text-destructive">
@@ -919,23 +967,28 @@ function SystemAlertsBanner({
 
     const channel = supabase
       .channel("system-alerts-tablet")
-      .on("postgres_changes", { event: "*", schema: "public", table: "system_alerts" }, (payload) => {
-        setAlerts((previous) => {
-          if (payload.eventType === "INSERT") {
-            const next = payload.new as SystemAlert;
-            if (!isAdmin && next.location_id && !allowedLocations.includes(next.location_id)) return previous;
-            if (next.acknowledged_at) return previous;
-            toast.error(`⚠️ ${next.kind.replace(/_/g, " ")}`);
-            return [next, ...previous];
-          }
-          if (payload.eventType === "UPDATE") {
-            const next = payload.new as SystemAlert;
-            if (next.acknowledged_at) return previous.filter((alert) => alert.id !== next.id);
-            return previous.map((alert) => (alert.id === next.id ? next : alert));
-          }
-          return previous;
-        });
-      })
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "system_alerts" },
+        (payload) => {
+          setAlerts((previous) => {
+            if (payload.eventType === "INSERT") {
+              const next = payload.new as SystemAlert;
+              if (!isAdmin && next.location_id && !allowedLocations.includes(next.location_id))
+                return previous;
+              if (next.acknowledged_at) return previous;
+              toast.error(`⚠️ ${next.kind.replace(/_/g, " ")}`);
+              return [next, ...previous];
+            }
+            if (payload.eventType === "UPDATE") {
+              const next = payload.new as SystemAlert;
+              if (next.acknowledged_at) return previous.filter((alert) => alert.id !== next.id);
+              return previous.map((alert) => (alert.id === next.id ? next : alert));
+            }
+            return previous;
+          });
+        },
+      )
       .subscribe();
 
     return () => {
@@ -945,7 +998,7 @@ function SystemAlertsBanner({
   }, [isAdmin, allowedLocations]);
 
   const visible = alerts.filter(
-    (alert) => locFilter === "all" || !alert.location_id || alert.location_id === locFilter
+    (alert) => locFilter === "all" || !alert.location_id || alert.location_id === locFilter,
   );
   if (visible.length === 0) return null;
 
@@ -971,10 +1024,14 @@ function SystemAlertsBanner({
               <div>
                 <div className="font-bold uppercase tracking-wider text-destructive">
                   {alert.kind.replace(/_/g, " ")}
-                  {alert.order_number && <span className="ml-2 text-foreground">#{alert.order_number}</span>}
+                  {alert.order_number && (
+                    <span className="ml-2 text-foreground">#{alert.order_number}</span>
+                  )}
                   {alert.location_id && (
                     <span className="ml-2 font-normal normal-case tracking-normal text-muted-foreground">
-                      @ {LOCATIONS.find((location) => location.id === alert.location_id)?.name ?? alert.location_id}
+                      @{" "}
+                      {LOCATIONS.find((location) => location.id === alert.location_id)?.name ??
+                        alert.location_id}
                     </span>
                   )}
                 </div>
