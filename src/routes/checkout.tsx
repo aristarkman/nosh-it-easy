@@ -1297,13 +1297,20 @@ function CheckoutPage() {
               >
                 Credit / Debit Card
               </PayOption>
-              <PayOption
+              {/* Google Pay is fully wired up (gpay.js, chargeWithToken
+                  googlePayToken path, all working end-to-end in TEST mode)
+                  but temporarily hidden while Ari's Google Pay Business
+                  Console account is pending review. Re-enable by uncommenting
+                  this PayOption once GOOGLE_MERCHANT_ID/GOOGLE_PAY_MODE are
+                  set for real and the account is approved — no other code
+                  changes needed. */}
+              {/* <PayOption
                 icon={<Wallet className="size-4" />}
                 active={pay === "googlepay"}
                 onClick={() => setPay("googlepay")}
               >
                 Google Pay
-              </PayOption>
+              </PayOption> */}
               {/* Apple Pay is not wired to any payment SDK yet — no wallet
                   button, no tokenization, no charge path. Hidden until real
                   Apple Pay integration is built (domain verification, JS API,
