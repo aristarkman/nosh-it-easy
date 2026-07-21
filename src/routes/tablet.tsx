@@ -29,8 +29,13 @@ import { toast } from "sonner";
 
 // Glen Rock runs unattended: new orders auto-accept, auto-print, and
 // delivery orders always go to Shipday — no staff tap, no self-delivery
-// choice. Cresskill keeps the manual accept + delivery-choice workflow.
+// choice.
 const AUTO_LOCATIONS = new Set(["glen-rock"]);
+
+// Cresskill auto-prints the ticket the moment an order arrives, but stays
+// otherwise manual: staff still tap Accept (which won't re-print — see
+// autoPrintedRef below) and still choose self-delivery vs Shipday.
+const AUTO_PRINT_LOCATIONS = new Set(["cresskill"]);
 
 export const Route = createFileRoute("/tablet")({
   head: () => ({
@@ -180,6 +185,9 @@ function TabletPage() {
   const [userEmail, setUserEmail] = useState("");
   const [deliveryChoiceOrder, setDeliveryChoiceOrder] = useState<Order | null>(null);
   const [dispatching, setDispatching] = useState(false);
+  // Shared between advance() and the Cresskill auto-print effect below, so
+  // accepting an order that already auto-printed doesn't print it again.
+  const autoPrintedRef = useRef<Set<string>>(new Set());
 
   useEffect(() => {
     let mounted = true;
@@ -308,7 +316,7 @@ function TabletPage() {
       }).catch((error) => console.error("SMS send failed:", error));
     }
 
-    if (next === "accepted") {
+    if (next === "accepted" && !autoPrintedRef.current.has(order.id)) {
       const locName = LOCATIONS.find((location) => location.id === order.location_id)?.name;
       try {
         printOrderTicket(updatedOrder, locName);
@@ -375,6 +383,32 @@ function TabletPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [orders, authChecked]);
 
+  // Cresskill: print the ticket the instant a "new" order arrives, without
+  // touching its status — staff still tap Accept manually (advance() checks
+  // autoPrintedRef so that tap won't print a second copy) and still get the
+  // self-delivery/Shipday choice dialog as usual.
+  useEffect(() => {
+    if (!authChecked) return;
+    const pending = orders.filter(
+      (order) =>
+        AUTO_PRINT_LOCATIONS.has(order.location_id) &&
+        order.status === "new" &&
+        !autoPrintedRef.current.has(order.id),
+    );
+    for (const order of pending) {
+      autoPrintedRef.current.add(order.id);
+      const locName = LOCATIONS.find((location) => location.id === order.location_id)?.name;
+      try {
+        printOrderTicket(order, locName);
+      } catch (error) {
+        console.error("Auto-print failed:", error);
+        toast.error(
+          `Could not auto-print ${order.order_number}. Print manually from the order card.`,
+        );
+      }
+    }
+  }, [orders, authChecked]);
+
   const cancel = async (order: Order) => {
     const { error } = await supabase.from("orders").update({ status: "cancelled" }).eq("id", order.id);
     if (error) toast.error("Cancel failed");
@@ -435,6 +469,19 @@ function TabletPage() {
   }, [orders, locFilter]);
 
   const { enabled: alarmEnabled, enable: enableAlarm } = useNewOrderAlarm(counts.new);
+
+  // Browsers require a genuine user gesture before audio can play — that's
+  // a hard restriction, not something to work around. But it doesn't have
+  // to be a *specific* button: the first tap/click anywhere on the tablet
+  // screen silently unlocks it, so in practice staff never notice a
+  // separate "enable" step. The manual button stays as a visible
+  // status/fallback.
+  useEffect(() => {
+    if (alarmEnabled) return;
+    const unlock = () => enableAlarm();
+    document.addEventListener("pointerdown", unlock, { once: true });
+    return () => document.removeEventListener("pointerdown", unlock);
+  }, [alarmEnabled, enableAlarm]);
 
   if (!authChecked) {
     return <div className="grid min-h-screen place-items-center text-muted-foreground">Loading…</div>;
