@@ -64,7 +64,9 @@ function AccountPage() {
   }
 
   if (auth.loading) {
-    return <div className="mx-auto max-w-3xl px-4 py-12 text-sm text-muted-foreground">Loading…</div>;
+    return (
+      <div className="mx-auto max-w-3xl px-4 py-12 text-sm text-muted-foreground">Loading…</div>
+    );
   }
 
   return (
@@ -108,7 +110,13 @@ function ProfileCard({ userId }: { userId: string }) {
         .eq("user_id", userId)
         .maybeSingle();
       setProfile(
-        data ?? { full_name: "", phone: "", email: "", marketing_email: false, marketing_sms: false }
+        data ?? {
+          full_name: "",
+          phone: "",
+          email: "",
+          marketing_email: false,
+          marketing_sms: false,
+        },
       );
     })();
   }, [userId]);
@@ -129,20 +137,47 @@ function ProfileCard({ userId }: { userId: string }) {
   return (
     <Card title="Profile">
       <div className="grid gap-3 sm:grid-cols-2">
-        <Input label="Full name" value={profile.full_name ?? ""} onChange={(v) => setProfile({ ...profile, full_name: v })} />
-        <Input label="Phone" value={profile.phone ?? ""} onChange={(v) => setProfile({ ...profile, phone: v })} />
+        <Input
+          label="Full name"
+          value={profile.full_name ?? ""}
+          onChange={(v) => setProfile({ ...profile, full_name: v })}
+        />
+        <Input
+          label="Phone"
+          value={profile.phone ?? ""}
+          onChange={(v) => setProfile({ ...profile, phone: v })}
+        />
       </div>
       <div className="mt-3 space-y-2">
+        <p className="text-[11px] text-muted-foreground">
+          Order status texts (received, ready, out for delivery) are opted into separately each time
+          you check out — the toggles below are for marketing messages only.
+        </p>
         <Toggle
           label="Email me deals & specials"
           checked={profile.marketing_email}
           onChange={(v) => setProfile({ ...profile, marketing_email: v })}
         />
         <Toggle
-          label="Text me order updates & specials"
+          label="Text me deals, specials & cart reminders"
           checked={profile.marketing_sms}
           onChange={(v) => setProfile({ ...profile, marketing_sms: v })}
         />
+        {profile.marketing_sms && (
+          <p className="pl-6 text-[11px] leading-relaxed text-muted-foreground">
+            By checking this box, you agree to receive marketing text messages (deals, specials, and
+            cart reminders) from The Kosher Nosh at the number on file. Message frequency varies.
+            Msg &amp; data rates may apply. Reply STOP to opt out, HELP for help. Consent is not a
+            condition of purchase.{" "}
+            <Link to="/privacy" className="underline">
+              Privacy Policy
+            </Link>{" "}
+            ·{" "}
+            <Link to="/terms" className="underline">
+              Terms
+            </Link>
+          </p>
+        )}
       </div>
       <button
         onClick={save}
@@ -191,13 +226,24 @@ function AddressesCard({ userId }: { userId: string }) {
     if (draft.is_default) {
       await supabase.from("customer_addresses").update({ is_default: false }).eq("user_id", userId);
     }
-    const { error } = await supabase.from("customer_addresses").insert({ user_id: userId, ...draft });
+    const { error } = await supabase
+      .from("customer_addresses")
+      .insert({ user_id: userId, ...draft });
     if (error) {
       toast.error(error.message);
       return;
     }
     setAdding(false);
-    setDraft({ label: "Home", address_line1: "", address_line2: "", city: "", state: "NJ", zip: "", delivery_notes: "", is_default: false });
+    setDraft({
+      label: "Home",
+      address_line1: "",
+      address_line2: "",
+      city: "",
+      state: "NJ",
+      zip: "",
+      delivery_notes: "",
+      is_default: false,
+    });
     load();
   };
 
@@ -217,24 +263,40 @@ function AddressesCard({ userId }: { userId: string }) {
     <Card title="Saved addresses">
       <div className="space-y-2">
         {list.map((a) => (
-          <div key={a.id} className="flex items-start justify-between gap-3 rounded-xl border border-border bg-background p-3">
+          <div
+            key={a.id}
+            className="flex items-start justify-between gap-3 rounded-xl border border-border bg-background p-3"
+          >
             <div className="text-sm">
               <div className="flex items-center gap-2">
                 <span className="font-semibold">{a.label}</span>
-                {a.is_default && <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-widest text-primary">Default</span>}
+                {a.is_default && (
+                  <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-widest text-primary">
+                    Default
+                  </span>
+                )}
               </div>
               <div className="text-muted-foreground">
-                {a.address_line1}{a.address_line2 ? `, ${a.address_line2}` : ""}, {a.city}, {a.state} {a.zip}
+                {a.address_line1}
+                {a.address_line2 ? `, ${a.address_line2}` : ""}, {a.city}, {a.state} {a.zip}
               </div>
-              {a.delivery_notes && <div className="mt-0.5 text-xs text-muted-foreground">Note: {a.delivery_notes}</div>}
+              {a.delivery_notes && (
+                <div className="mt-0.5 text-xs text-muted-foreground">Note: {a.delivery_notes}</div>
+              )}
             </div>
             <div className="flex shrink-0 gap-2">
               {!a.is_default && (
-                <button onClick={() => setDefault(a.id)} className="text-xs font-semibold text-primary hover:underline">
+                <button
+                  onClick={() => setDefault(a.id)}
+                  className="text-xs font-semibold text-primary hover:underline"
+                >
                   Make default
                 </button>
               )}
-              <button onClick={() => remove(a.id)} className="text-muted-foreground hover:text-destructive">
+              <button
+                onClick={() => remove(a.id)}
+                className="text-muted-foreground hover:text-destructive"
+              >
                 <Trash2 className="size-4" />
               </button>
             </div>
@@ -248,20 +310,58 @@ function AddressesCard({ userId }: { userId: string }) {
       {adding ? (
         <div className="mt-4 grid gap-2 rounded-xl border border-border bg-background p-3">
           <div className="grid gap-2 sm:grid-cols-2">
-            <Input label="Label" value={draft.label} onChange={(v) => setDraft({ ...draft, label: v })} />
-            <Input label="Street address" value={draft.address_line1} onChange={(v) => setDraft({ ...draft, address_line1: v })} />
-            <Input label="Apt / Suite (optional)" value={draft.address_line2 ?? ""} onChange={(v) => setDraft({ ...draft, address_line2: v })} />
-            <Input label="City" value={draft.city} onChange={(v) => setDraft({ ...draft, city: v })} />
-            <Input label="State" value={draft.state} onChange={(v) => setDraft({ ...draft, state: v })} />
-            <Input label="ZIP" value={draft.zip} onChange={(v) => setDraft({ ...draft, zip: v.replace(/\D/g, "").slice(0, 5) })} />
+            <Input
+              label="Label"
+              value={draft.label}
+              onChange={(v) => setDraft({ ...draft, label: v })}
+            />
+            <Input
+              label="Street address"
+              value={draft.address_line1}
+              onChange={(v) => setDraft({ ...draft, address_line1: v })}
+            />
+            <Input
+              label="Apt / Suite (optional)"
+              value={draft.address_line2 ?? ""}
+              onChange={(v) => setDraft({ ...draft, address_line2: v })}
+            />
+            <Input
+              label="City"
+              value={draft.city}
+              onChange={(v) => setDraft({ ...draft, city: v })}
+            />
+            <Input
+              label="State"
+              value={draft.state}
+              onChange={(v) => setDraft({ ...draft, state: v })}
+            />
+            <Input
+              label="ZIP"
+              value={draft.zip}
+              onChange={(v) => setDraft({ ...draft, zip: v.replace(/\D/g, "").slice(0, 5) })}
+            />
           </div>
-          <Input label="Delivery notes (optional)" value={draft.delivery_notes ?? ""} onChange={(v) => setDraft({ ...draft, delivery_notes: v })} />
-          <Toggle label="Make this my default address" checked={draft.is_default} onChange={(v) => setDraft({ ...draft, is_default: v })} />
+          <Input
+            label="Delivery notes (optional)"
+            value={draft.delivery_notes ?? ""}
+            onChange={(v) => setDraft({ ...draft, delivery_notes: v })}
+          />
+          <Toggle
+            label="Make this my default address"
+            checked={draft.is_default}
+            onChange={(v) => setDraft({ ...draft, is_default: v })}
+          />
           <div className="flex gap-2">
-            <button onClick={add} className="rounded-full bg-primary px-5 py-2 text-sm font-semibold text-primary-foreground hover:opacity-90">
+            <button
+              onClick={add}
+              className="rounded-full bg-primary px-5 py-2 text-sm font-semibold text-primary-foreground hover:opacity-90"
+            >
               Save address
             </button>
-            <button onClick={() => setAdding(false)} className="rounded-full border border-border px-5 py-2 text-sm font-semibold hover:border-destructive">
+            <button
+              onClick={() => setAdding(false)}
+              className="rounded-full border border-border px-5 py-2 text-sm font-semibold hover:border-destructive"
+            >
               Cancel
             </button>
           </div>
@@ -340,9 +440,7 @@ function useReorderDialog() {
           >
             Merge
           </AlertDialogAction>
-          <AlertDialogAction
-            onClick={() => pending && apply(pending, "replace")}
-          >
+          <AlertDialogAction onClick={() => pending && apply(pending, "replace")}>
             Replace cart
           </AlertDialogAction>
         </AlertDialogFooter>
@@ -408,8 +506,8 @@ function FavoritesCard({ userId }: { userId: string }) {
                     {f.name}
                   </div>
                   <div className="truncate text-xs text-muted-foreground">
-                    {itemCount} item{itemCount === 1 ? "" : "s"} · {fmt(total)} ·{" "}
-                    {f.order_type} · {f.location_id}
+                    {itemCount} item{itemCount === 1 ? "" : "s"} · {fmt(total)} · {f.order_type} ·{" "}
+                    {f.location_id}
                   </div>
                 </div>
                 <div className="flex shrink-0 gap-2">
@@ -459,21 +557,18 @@ function OrdersCard({ userId }: { userId: string }) {
           .eq("user_id", userId)
           .order("created_at", { ascending: false })
           .limit(20),
-        supabase
-          .from("customer_favorites")
-          .select("source_order_id")
-          .eq("user_id", userId),
+        supabase.from("customer_favorites").select("source_order_id").eq("user_id", userId),
       ]);
       setOrders((orderRows ?? []) as unknown as Order[]);
       setSavedSourceIds(
-        new Set((favRows ?? []).map((r) => r.source_order_id).filter(Boolean) as string[])
+        new Set((favRows ?? []).map((r) => r.source_order_id).filter(Boolean) as string[]),
       );
       setLoading(false);
     })();
   }, [userId]);
 
   const saveAsFavorite = async (o: Order) => {
-    const name = window.prompt("Name this favorite (e.g. \"My usual\")", `Order #${o.order_number}`);
+    const name = window.prompt('Name this favorite (e.g. "My usual")', `Order #${o.order_number}`);
     if (!name) return;
     setSavingId(o.id);
     const { error } = await supabase.from("customer_favorites").insert({
@@ -566,10 +661,20 @@ function Card({ title, children }: { title: string; children: React.ReactNode })
   );
 }
 
-function Input({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) {
+function Input({
+  label,
+  value,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+}) {
   return (
     <label className="block">
-      <div className="mb-1 text-xs font-semibold uppercase tracking-widest text-muted-foreground">{label}</div>
+      <div className="mb-1 text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+        {label}
+      </div>
       <input
         value={value}
         onChange={(e) => onChange(e.target.value)}
@@ -579,10 +684,23 @@ function Input({ label, value, onChange }: { label: string; value: string; onCha
   );
 }
 
-function Toggle({ label, checked, onChange }: { label: string; checked: boolean; onChange: (v: boolean) => void }) {
+function Toggle({
+  label,
+  checked,
+  onChange,
+}: {
+  label: string;
+  checked: boolean;
+  onChange: (v: boolean) => void;
+}) {
   return (
     <label className="flex items-center gap-2 text-sm">
-      <input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} className="size-4 accent-primary" />
+      <input
+        type="checkbox"
+        checked={checked}
+        onChange={(e) => onChange(e.target.checked)}
+        className="size-4 accent-primary"
+      />
       {label}
     </label>
   );
@@ -591,13 +709,20 @@ function Toggle({ label, checked, onChange }: { label: string; checked: boolean;
 function RewardsCard({ userId }: { userId: string }) {
   const [balance, setBalance] = useState(0);
   const [loading, setLoading] = useState(true);
-  const [history, setHistory] = useState<Array<{ id: string; kind: string; points: number; note: string | null; created_at: string }>>([]);
+  const [history, setHistory] = useState<
+    Array<{ id: string; kind: string; points: number; note: string | null; created_at: string }>
+  >([]);
 
   useEffect(() => {
     (async () => {
       const [{ data: bal }, { data: rows }] = await Promise.all([
         supabase.rpc("loyalty_balance", { _user_id: userId } as never),
-        supabase.from("loyalty_ledger").select("id,kind,points,note,created_at").eq("user_id", userId).order("created_at", { ascending: false }).limit(10),
+        supabase
+          .from("loyalty_ledger")
+          .select("id,kind,points,note,created_at")
+          .eq("user_id", userId)
+          .order("created_at", { ascending: false })
+          .limit(10),
       ]);
       setBalance(typeof bal === "number" ? bal : 0);
       setHistory((rows ?? []) as never);
@@ -639,8 +764,15 @@ function RewardsCard({ userId }: { userId: string }) {
                   <span className="text-muted-foreground">
                     {new Date(h.created_at).toLocaleDateString()} · {h.note ?? h.kind}
                   </span>
-                  <span className={h.points > 0 ? "font-semibold text-primary" : "font-semibold text-muted-foreground"}>
-                    {h.points > 0 ? "+" : ""}{h.points} pts
+                  <span
+                    className={
+                      h.points > 0
+                        ? "font-semibold text-primary"
+                        : "font-semibold text-muted-foreground"
+                    }
+                  >
+                    {h.points > 0 ? "+" : ""}
+                    {h.points} pts
                   </span>
                 </li>
               ))}
@@ -654,4 +786,3 @@ function RewardsCard({ userId }: { userId: string }) {
 
 // Add a placeholder Link import alias guard so unused imports don't break build
 void Link;
-
