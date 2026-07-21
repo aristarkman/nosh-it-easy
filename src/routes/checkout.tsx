@@ -5,7 +5,11 @@ import { useOrder, fmt, LOCATIONS } from "@/lib/order-context";
 import { useCustomerAuth } from "@/lib/customer-auth";
 import { supabase } from "@/integrations/supabase/client";
 import { chargeWithToken, getFtdConfig, getGooglePayConfig } from "@/lib/ipospays.functions";
-import { sendOrderStatusSms, sendStaffNewOrderAlert } from "@/lib/sms.functions";
+import {
+  sendOrderStatusSms,
+  sendStaffNewOrderAlert,
+  sendSmsOptInConfirmation,
+} from "@/lib/sms.functions";
 import { dispatchShipday } from "@/lib/shipday.functions";
 import { reportSystemAlert } from "@/lib/system-alerts";
 import { markCartRecovered, track } from "@/lib/analytics";
@@ -857,6 +861,15 @@ function CheckoutPage() {
 
     // Fire-and-forget SMS confirmation to the customer (only with consent)
     if (phone.trim() && smsConsent) {
+      // Opt-in confirmation fires once per phone number, not on every order
+      // (localStorage-based dedupe -- no schema change needed; a repeat
+      // send on a different device is a harmless, low-stakes edge case).
+      const optInKey = `smsOptInConfirmed:${phone.trim()}`;
+      if (typeof window !== "undefined" && !window.localStorage.getItem(optInKey)) {
+        sendSmsOptInConfirmation({ data: { to: phone.trim() } })
+          .then(() => window.localStorage.setItem(optInKey, "1"))
+          .catch((e) => console.error("SMS opt-in confirmation failed:", e));
+      }
       sendOrderStatusSms({
         data: {
           to: phone.trim(),

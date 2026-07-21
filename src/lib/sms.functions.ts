@@ -104,6 +104,30 @@ export const sendOrderStatusSms = createServerFn({ method: "POST" })
     }
   });
 
+const OptInSchema = z.object({
+  to: z.string().min(7).max(20),
+});
+
+// Fires once, immediately after a customer opts in to order-status texts —
+// distinct from the order-status texts themselves. This is what campaign
+// registration forms mean by "opt-in message": the confirmation sent right
+// after consent is captured, not the first transactional message.
+export const sendSmsOptInConfirmation = createServerFn({ method: "POST" })
+  .inputValidator((input: unknown) => OptInSchema.parse(input))
+  .handler(async ({ data }) => {
+    const to = normalizePhone(data.to);
+    if (!to) return { ok: false, error: "Invalid phone number" };
+    const body =
+      "The Kosher Nosh: You're subscribed to order status texts. Msg frequency varies. Msg & data rates may apply. Reply STOP to unsubscribe, HELP for help.";
+    try {
+      const result = await sendSms(to, body);
+      return { ok: true, sid: result.sid as string };
+    } catch (err) {
+      console.error("sendSmsOptInConfirmation failed:", err);
+      return { ok: false, error: err instanceof Error ? err.message : "Send failed" };
+    }
+  });
+
 const STAFF_ALERT_NUMBERS = ["+19173352812"];
 
 const StaffAlertSchema = z.object({
