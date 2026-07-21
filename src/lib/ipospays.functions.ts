@@ -20,6 +20,11 @@ const TRANSACT_URL = () =>
     ? "https://payment.ipospays.com/api/v1/iposTransact"
     : "https://payment.ipospays.tech/api/v1/iposTransact";
 
+const GPAY_SCRIPT = () =>
+  isLive()
+    ? "https://payment.ipospays.com/ftd/v1/gpay.js"
+    : "https://payment.ipospays.tech/ftd/v1/gpay.js";
+
 export const getFtdConfig = createServerFn({ method: "GET" }).handler(async () => {
   const authToken = process.env.IPOSPAYS_API_KEY;
   const tpn = process.env.IPOSPAYS_TERMINAL_ID;
@@ -35,14 +40,32 @@ export const getFtdConfig = createServerFn({ method: "GET" }).handler(async () =
   return { authToken, tpn, scriptUrl: FTD_SCRIPT(), live: isLive() };
 });
 
+// GOOGLE_MERCHANT_ID comes from the Google Pay Business Console
+// (pay.google.com/business/console) — a separate signup from iPOSpays.
+// "N/A" is a valid placeholder for TEST mode while that's pending; swap in
+// the real ID and flip GOOGLE_PAY_MODE to "PRODUCTION" once it's issued.
+export const getGooglePayConfig = createServerFn({ method: "GET" }).handler(async () => {
+  const merchantId = process.env.GOOGLE_MERCHANT_ID?.trim() || "N/A";
+  const mode = (
+    process.env.GOOGLE_PAY_MODE?.trim() || (isLive() ? "PRODUCTION" : "TEST")
+  ).toUpperCase();
+  return { scriptUrl: GPAY_SCRIPT(), merchantId, mode };
+});
+
 export const chargeWithToken = createServerFn({ method: "POST" })
   .inputValidator((input) =>
     z
       .object({
-        paymentTokenId: z.string().min(8),
+        paymentTokenId: z.string().min(8).optional(),
+        // Encrypted payload from iPOSpays' gpay.js callback — opaque to us,
+        // passed straight through to iposTransact's preferences.GooglePay.
+        googlePayToken: z.record(z.string(), z.unknown()).optional(),
         amountCents: z.number().int().positive().max(100_000_00),
         referenceId: z.string().min(1).max(40),
         invoiceNumber: z.string().max(40).optional(),
+      })
+      .refine((v) => v.paymentTokenId || v.googlePayToken, {
+        message: "Either paymentTokenId or googlePayToken is required",
       })
       .parse(input),
   )
@@ -70,13 +93,16 @@ export const chargeWithToken = createServerFn({ method: "POST" })
       transactionRequest: {
         transactionType: 1,
         amount: String(data.amountCents),
-        paymentTokenId: data.paymentTokenId,
+        // Per iPOSpays docs: when GooglePay is passed in preferences,
+        // paymentTokenId/cardToken must be omitted (not just null).
+        ...(data.paymentTokenId ? { paymentTokenId: data.paymentTokenId } : {}),
         applySteamSettingTipFeeTax: false,
         invoiceNumber: data.invoiceNumber ?? data.referenceId,
       },
       preferences: {
         eReceipt: false,
         requestCardToken: false,
+        ...(data.googlePayToken ? { GooglePay: data.googlePayToken } : {}),
       },
     };
 

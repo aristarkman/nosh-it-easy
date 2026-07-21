@@ -4,7 +4,7 @@ import { ArrowLeft, CreditCard, Wallet, AlertTriangle, Lock, Tag, Gift } from "l
 import { useOrder, fmt, LOCATIONS } from "@/lib/order-context";
 import { useCustomerAuth } from "@/lib/customer-auth";
 import { supabase } from "@/integrations/supabase/client";
-import { chargeWithToken, getFtdConfig } from "@/lib/ipospays.functions";
+import { chargeWithToken, getFtdConfig, getGooglePayConfig } from "@/lib/ipospays.functions";
 import { sendOrderStatusSms, sendStaffNewOrderAlert } from "@/lib/sms.functions";
 import { dispatchShipday } from "@/lib/shipday.functions";
 import { reportSystemAlert } from "@/lib/system-alerts";
@@ -59,12 +59,31 @@ export const Route = createFileRoute("/checkout")({
 declare global {
   interface Window {
     postData?: () => Promise<{ payment_token_id?: string; paymentTokenId?: string } | undefined>;
+    // gpay.js expects a global function with this exact (typo'd, per
+    // iPOSpays' own docs) name to receive the encrypted payment token.
+    getPayementInfo?: (token: Record<string, unknown>) => void;
+    initializeGooglePay?: (
+      transactionInfo: Record<string, unknown>,
+      merchantId: string,
+      mode: string,
+      buttonStyles: Record<string, unknown>,
+    ) => void;
   }
 }
 
 function CheckoutPage() {
   const navigate = useNavigate();
-  const { cart, subtotal, taxableSubtotal, location, orderType, whenType: ctxWhen, scheduledTime: ctxSched, clearCart, setLocation } = useOrder();
+  const {
+    cart,
+    subtotal,
+    taxableSubtotal,
+    location,
+    orderType,
+    whenType: ctxWhen,
+    scheduledTime: ctxSched,
+    clearCart,
+    setLocation,
+  } = useOrder();
   const auth = useCustomerAuth();
   const loc = LOCATIONS.find((l) => l.id === location);
 
@@ -75,7 +94,7 @@ function CheckoutPage() {
   const [zip, setZip] = useState("");
   const [whenType, setWhenType] = useState<"asap" | "schedule">(ctxWhen ?? "asap");
   const [scheduledTime, setScheduledTime] = useState(ctxSched ?? "");
-  const [pay, setPay] = useState<"card" | "in-person">("card");
+  const [pay, setPay] = useState<"card" | "in-person" | "googlepay">("card");
   const [submitting, setSubmitting] = useState(false);
   const [orderNote, setOrderNote] = useState("");
 
@@ -83,14 +102,27 @@ function CheckoutPage() {
   const [tipPreset, setTipPreset] = useState<number>(0.18);
   const [tipCustom, setTipCustom] = useState<string>("");
 
-  type Zone = { id: string; name: string; fee: number; minimum: number; polygon: { lat: number; lng: number }[] };
+  type Zone = {
+    id: string;
+    name: string;
+    fee: number;
+    minimum: number;
+    polygon: { lat: number; lng: number }[];
+  };
   const [zones, setZones] = useState<Zone[]>([]);
   const [otherZones, setOtherZones] = useState<Zone[]>([]);
   const [geo, setGeo] = useState<{ lat: number; lng: number } | null>(null);
   const [geoError, setGeoError] = useState<string | null>(null);
   const [geoLoading, setGeoLoading] = useState(false);
   const [closedToday, setClosedToday] = useState<string | null>(null);
-  const [onlineHours, setOnlineHours] = useState<{ day_of_week: number; open_time: string | null; close_time: string | null; is_closed: boolean }[]>([]);
+  const [onlineHours, setOnlineHours] = useState<
+    {
+      day_of_week: number;
+      open_time: string | null;
+      close_time: string | null;
+      is_closed: boolean;
+    }[]
+  >([]);
   const [closures, setClosures] = useState<{ start_date: string; end_date: string }[]>([]);
 
   const [savedAddresses, setSavedAddresses] = useState<SavedAddress[]>([]);
@@ -98,6 +130,16 @@ function CheckoutPage() {
 
   const [ftdReady, setFtdReady] = useState(false);
   const ftdLoadedRef = useRef(false);
+
+  const [gpayReady, setGpayReady] = useState(false);
+  const gpayLoadedRef = useRef(false);
+  const [gpayConfig, setGpayConfig] = useState<{
+    scriptUrl: string;
+    merchantId: string;
+    mode: string;
+  } | null>(null);
+  const googlePayTokenRef = useRef<Record<string, unknown> | null>(null);
+  const formRef = useRef<HTMLFormElement>(null);
 
   useEffect(() => {
     if (ctxWhen) setWhenType(ctxWhen);
@@ -148,13 +190,13 @@ function CheckoutPage() {
       const def = list.find((a) => a.is_default) ?? list[0];
       if (def && orderType === "delivery" && !address) {
         setSelectedAddrId(def.id);
-        setAddress(`${def.address_line1}${def.address_line2 ? `, ${def.address_line2}` : ""}, ${def.city}, ${def.state}`);
+        setAddress(
+          `${def.address_line1}${def.address_line2 ? `, ${def.address_line2}` : ""}, ${def.city}, ${def.state}`,
+        );
         setZip(def.zip);
       }
     })();
   }, [auth.authed, auth.userId, auth.email, orderType, address]);
-
-
 
   useEffect(() => {
     if (!location) return;
@@ -162,9 +204,19 @@ function CheckoutPage() {
       const today = new Date().toISOString().slice(0, 10);
       const otherLocationId = LOCATIONS.find((l) => l.id !== location)?.id;
       const [{ data: z }, { data: zOther }, { data: c }, { data: h }] = await Promise.all([
-        supabase.from("delivery_zone_polygons").select("id,name,fee,minimum,polygon").eq("location_id", location).eq("active", true).order("sort_order"),
+        supabase
+          .from("delivery_zone_polygons")
+          .select("id,name,fee,minimum,polygon")
+          .eq("location_id", location)
+          .eq("active", true)
+          .order("sort_order"),
         otherLocationId
-          ? supabase.from("delivery_zone_polygons").select("id,name,fee,minimum,polygon").eq("location_id", otherLocationId).eq("active", true).order("sort_order")
+          ? supabase
+              .from("delivery_zone_polygons")
+              .select("id,name,fee,minimum,polygon")
+              .eq("location_id", otherLocationId)
+              .eq("active", true)
+              .order("sort_order")
           : Promise.resolve({ data: [] as unknown[] }),
         supabase
           .from("store_closures")
@@ -178,7 +230,13 @@ function CheckoutPage() {
       ]);
       const mapZones = (rows: unknown[]): Zone[] =>
         (rows ?? []).map((r) => {
-          const x = r as { id: string; name: string; fee: number | string; minimum: number | string; polygon: unknown };
+          const x = r as {
+            id: string;
+            name: string;
+            fee: number | string;
+            minimum: number | string;
+            polygon: unknown;
+          };
           return {
             id: x.id,
             name: x.name,
@@ -189,10 +247,12 @@ function CheckoutPage() {
         });
       setZones(mapZones((z ?? []) as unknown[]));
       setOtherZones(mapZones((zOther ?? []) as unknown[]));
-      const allClosures = (c ?? []).filter((x) => x.location_id === null || x.location_id === location);
+      const allClosures = (c ?? []).filter(
+        (x) => x.location_id === null || x.location_id === location,
+      );
       setClosures(allClosures.map((x) => ({ start_date: x.start_date, end_date: x.end_date })));
       const hitToday = allClosures.find((x) => x.start_date <= today && x.end_date >= today);
-      setClosedToday(hitToday ? hitToday.reason ?? "Closed today" : null);
+      setClosedToday(hitToday ? (hitToday.reason ?? "Closed today") : null);
       setOnlineHours((h ?? []) as typeof onlineHours);
     })();
   }, [location]);
@@ -220,6 +280,37 @@ function CheckoutPage() {
     })();
   }, [pay]);
 
+  // Load gpay.js + wire up the payment-token callback once Google Pay is
+  // selected. The actual "pay" click happens on Google's own button
+  // (rendered below), which calls window.getPayementInfo with an encrypted
+  // token — we stash it and auto-submit our form, reusing the same
+  // order-creation path as card/in-person (see the pay === "googlepay"
+  // branch in submit()).
+  useEffect(() => {
+    if (pay !== "googlepay" || gpayLoadedRef.current) return;
+    gpayLoadedRef.current = true;
+    window.getPayementInfo = (token) => {
+      googlePayTokenRef.current = token;
+      formRef.current?.requestSubmit();
+    };
+    (async () => {
+      try {
+        const cfg = await getGooglePayConfig();
+        setGpayConfig(cfg);
+        const s = document.createElement("script");
+        s.id = "gpay";
+        s.src = cfg.scriptUrl;
+        s.defer = true;
+        s.onload = () => setGpayReady(true);
+        s.onerror = () => toast.error("Could not load Google Pay.");
+        document.head.appendChild(s);
+      } catch (e) {
+        console.error(e);
+        toast.error("Google Pay is not configured yet.");
+      }
+    })();
+  }, [pay]);
+
   // Loyalty: load points balance
   useEffect(() => {
     if (!auth.authed || !auth.userId) {
@@ -240,7 +331,7 @@ function CheckoutPage() {
       orderType,
     });
     void import("@/lib/tracking").then((m) =>
-      m.trackBeginCheckout({ value: subtotal, numItems: cart.reduce((n, l) => n + l.quantity, 0) })
+      m.trackBeginCheckout({ value: subtotal, numItems: cart.reduce((n, l) => n + l.quantity, 0) }),
     );
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -321,7 +412,7 @@ function CheckoutPage() {
     return otherZones.find((z) => pointInPolygon(geo, z.polygon));
   }, [orderType, geo, matchedZone, otherZones]);
 
-  const deliveryFee = orderType === "delivery" ? matchedZone?.fee ?? 0 : 0;
+  const deliveryFee = orderType === "delivery" ? (matchedZone?.fee ?? 0) : 0;
 
   const tipAmount = useMemo(() => {
     if (orderType !== "delivery") return 0;
@@ -388,7 +479,10 @@ function CheckoutPage() {
     const openMins = oh * 60 + om;
     const closeMins = ch * 60 + cm;
     if (mins < openMins || mins > closeMins) {
-      return { ok: false, reason: `Online ordering for that day runs ${row.open_time.slice(0, 5)}–${row.close_time.slice(0, 5)}.` };
+      return {
+        ok: false,
+        reason: `Online ordering for that day runs ${row.open_time.slice(0, 5)}–${row.close_time.slice(0, 5)}.`,
+      };
     }
     return { ok: true };
   };
@@ -418,6 +512,43 @@ function CheckoutPage() {
     /^[\d\s()+-]{7,}$/.test(phone) &&
     (orderType === "pickup" || (address.trim().length > 5 && zoneOk));
 
+  // (Re)render the Google Pay button whenever it's ready or the total
+  // changes, so the confirmation sheet the customer sees always matches the
+  // current cart total (tip changes, promo entry, etc.). Placed after
+  // `total`/`valid` are declared above since the dependency array below is
+  // evaluated immediately at render time, not deferred like the callback
+  // body — referencing them earlier in the component would be a genuine
+  // temporal-dead-zone error, not just a lint nit.
+  useEffect(() => {
+    if (!gpayReady || !gpayConfig || pay !== "googlepay" || !valid) return;
+    const container = document.getElementById("ipospays-gpay-btn");
+    if (!container || typeof window.initializeGooglePay !== "function") return;
+    container.innerHTML = "";
+    try {
+      window.initializeGooglePay(
+        {
+          countryCode: "US",
+          currencyCode: "USD",
+          totalPriceStatus: "FINAL",
+          totalPrice: total.toFixed(2),
+        },
+        gpayConfig.merchantId,
+        gpayConfig.mode,
+        {
+          buttonColor: "default",
+          buttonType: "plain",
+          buttonRadius: 24,
+          buttonLocale: "en",
+          buttonHeight: "48px",
+          buttonWidth: "100%",
+        },
+      );
+    } catch (e) {
+      console.error(e);
+      toast.error("Could not load the Google Pay button.");
+    }
+  }, [gpayReady, gpayConfig, pay, total, valid]);
+
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!valid || !location) return;
@@ -430,7 +561,11 @@ function CheckoutPage() {
     // parseTip/setDeliveryChoice, which read the same protocol). Strip "|"
     // and newlines from the customer's free text so it can't inject extra
     // segments or spoof one of the other prefixes.
-    const cleanOrderNote = orderNote.trim().replace(/\|/g, ",").replace(/\r?\n+/g, " / ").slice(0, 300);
+    const cleanOrderNote = orderNote
+      .trim()
+      .replace(/\|/g, ",")
+      .replace(/\r?\n+/g, " / ")
+      .slice(0, 300);
 
     // Re-price the order server-side. This is the source of truth for every
     // dollar amount from here on — the client-computed `subtotal`/`tax`/`total`
@@ -451,10 +586,13 @@ function CheckoutPage() {
         customerPhone: phone.trim() || null,
         rewardsToUse,
         payMethod: pay,
-        deliveryZoneId: orderType === "delivery" ? matchedZone?.id ?? null : null,
+        deliveryZoneId: orderType === "delivery" ? (matchedZone?.id ?? null) : null,
         tipAmount,
       },
-    }).catch((e) => ({ ok: false as const, message: e instanceof Error ? e.message : "Couldn't price your order." }));
+    }).catch((e) => ({
+      ok: false as const,
+      message: e instanceof Error ? e.message : "Couldn't price your order.",
+    }));
 
     if (!pricing.ok) {
       toast.error(pricing.message || "Couldn't verify pricing. Please refresh and try again.");
@@ -475,7 +613,9 @@ function CheckoutPage() {
         orderNumber,
         details: { customer: name.trim(), phone: phone.trim() },
       });
-      toast.error("Prices changed since you started checkout. Please review your order and try again.");
+      toast.error(
+        "Prices changed since you started checkout. Please review your order and try again.",
+      );
       setSubmitting(false);
       return;
     }
@@ -525,13 +665,62 @@ function CheckoutPage() {
             locationId: location,
             locationName: loc?.name,
             orderNumber,
-            details: { amountCents: Math.round(pricing.total * 100), customer: name.trim(), phone: phone.trim() },
+            details: {
+              amountCents: Math.round(pricing.total * 100),
+              customer: name.trim(),
+              phone: phone.trim(),
+            },
           });
           setSubmitting(false);
           return;
         }
         paymentMeta = {
           processor: "ipospays",
+          rrn: res.rrn,
+          authCode: res.authCode,
+          maskedCard: res.maskedCard,
+          cardType: res.cardType,
+          transactionId: res.transactionId,
+        };
+      } else if (pay === "googlepay") {
+        // The actual "pay" click already happened on Google's own button,
+        // which called window.getPayementInfo and auto-submitted this form
+        // (see the gpay effect above) — the encrypted token is waiting here.
+        const googlePayToken = googlePayTokenRef.current;
+        if (!googlePayToken) {
+          toast.error("Please complete payment with the Google Pay button above.");
+          setSubmitting(false);
+          return;
+        }
+        const res = await chargeWithToken({
+          data: {
+            googlePayToken,
+            amountCents: Math.round(pricing.total * 100),
+            referenceId: orderNumber,
+            invoiceNumber: orderNumber,
+          },
+        });
+        googlePayTokenRef.current = null; // one-time use either way
+        if (!res.ok) {
+          toast.error(res.message || "Payment was declined.");
+          void reportSystemAlert({
+            kind: "payment_failed",
+            message: res.message || "Google Pay declined at checkout",
+            locationId: location,
+            locationName: loc?.name,
+            orderNumber,
+            details: {
+              amountCents: Math.round(pricing.total * 100),
+              customer: name.trim(),
+              phone: phone.trim(),
+            },
+          });
+          setSubmitting(false);
+          return;
+        }
+        paymentMeta = {
+          processor: "ipospays",
+          method: "googlepay",
           rrn: res.rrn,
           authCode: res.authCode,
           maskedCard: res.maskedCard,
@@ -553,51 +742,52 @@ function CheckoutPage() {
       return;
     }
 
-    const { error } = await supabase
-      .from("orders")
-      .insert({
-        id: orderId,
-        order_number: orderNumber,
-        user_id: auth.userId,
-        location_id: location,
-        order_type: orderType ?? "pickup",
-        customer_name: name.trim(),
-        customer_phone: phone.trim(),
-        customer_email: email.trim() || null,
-        delivery_address: orderType === "delivery" ? `${address.trim()}, ${zip}` : null,
-        when_type: whenType,
-        scheduled_time:
-          whenType === "schedule" && scheduledTime
-            ? new Date(scheduledTime).toISOString()
-            : null,
-        payment_method: pay,
-        subtotal: pricing.subtotal,
-        delivery_fee: pricing.deliveryFee,
-        tax: pricing.tax,
-        card_fee: pricing.cardFee,
-        total: pricing.total,
-        items: pricing.lineItems,
-        notes: [
-          cleanOrderNote ? `note:${cleanOrderNote}` : null,
-          `tip:${pricing.tipAmount.toFixed(2)}`,
-          pricing.promo ? `promo:${pricing.promo.code}(-${pricing.promo.discountAmount.toFixed(2)})` : null,
-          pricing.loyaltyDiscount ? `loyalty:-${pricing.loyaltyDiscount.toFixed(2)}` : null,
-          Object.keys(paymentMeta).length ? JSON.stringify(paymentMeta) : null,
-        ].filter(Boolean).join(" | "),
-      });
+    const { error } = await supabase.from("orders").insert({
+      id: orderId,
+      order_number: orderNumber,
+      user_id: auth.userId,
+      location_id: location,
+      order_type: orderType ?? "pickup",
+      customer_name: name.trim(),
+      customer_phone: phone.trim(),
+      customer_email: email.trim() || null,
+      delivery_address: orderType === "delivery" ? `${address.trim()}, ${zip}` : null,
+      when_type: whenType,
+      scheduled_time:
+        whenType === "schedule" && scheduledTime ? new Date(scheduledTime).toISOString() : null,
+      payment_method: pay,
+      subtotal: pricing.subtotal,
+      delivery_fee: pricing.deliveryFee,
+      tax: pricing.tax,
+      card_fee: pricing.cardFee,
+      total: pricing.total,
+      items: pricing.lineItems,
+      notes: [
+        cleanOrderNote ? `note:${cleanOrderNote}` : null,
+        `tip:${pricing.tipAmount.toFixed(2)}`,
+        pricing.promo
+          ? `promo:${pricing.promo.code}(-${pricing.promo.discountAmount.toFixed(2)})`
+          : null,
+        pricing.loyaltyDiscount ? `loyalty:-${pricing.loyaltyDiscount.toFixed(2)}` : null,
+        Object.keys(paymentMeta).length ? JSON.stringify(paymentMeta) : null,
+      ]
+        .filter(Boolean)
+        .join(" | "),
+    });
 
     if (error) {
       console.error(error);
       toast.error(
         pay === "card"
           ? "Payment captured but order could not be saved. Please call us."
-          : "Could not place order. Please try again."
+          : "Could not place order. Please try again.",
       );
       void reportSystemAlert({
         kind: "order_save_failed",
         message:
-          (pay === "card" ? "Card was charged but order DB insert failed: " : "Order DB insert failed: ") +
-          (error?.message ?? "unknown"),
+          (pay === "card"
+            ? "Card was charged but order DB insert failed: "
+            : "Order DB insert failed: ") + (error?.message ?? "unknown"),
         locationId: location,
         locationName: loc?.name,
         orderNumber,
@@ -624,7 +814,7 @@ function CheckoutPage() {
         total: pricing.total,
         tip: pricing.tipAmount,
         items: pricing.lineItems,
-      })
+      }),
     );
     clearCart();
 
@@ -651,8 +841,15 @@ function CheckoutPage() {
     // Mark abandoned cart as recovered & track conversion
     void markCartRecovered(data.id);
     void track("checkout_completed", {
-      props: { orderId: data.id, orderNumber: data.order_number, total: pricing.total, subtotal: pricing.subtotal, itemCount: cart.reduce((n,l)=>n+l.quantity,0) },
-      locationId: location, orderType,
+      props: {
+        orderId: data.id,
+        orderNumber: data.order_number,
+        total: pricing.total,
+        subtotal: pricing.subtotal,
+        itemCount: cart.reduce((n, l) => n + l.quantity, 0),
+      },
+      locationId: location,
+      orderType,
     });
 
     // Fire-and-forget SMS confirmation to the customer
@@ -681,7 +878,10 @@ function CheckoutPage() {
             orderType: orderType ?? "pickup",
             deliveryAddress: orderType === "delivery" ? `${address.trim()}, ${zip}` : null,
             whenType,
-            scheduledTime: whenType === "schedule" && scheduledTime ? new Date(scheduledTime).toISOString() : null,
+            scheduledTime:
+              whenType === "schedule" && scheduledTime
+                ? new Date(scheduledTime).toISOString()
+                : null,
             items: pricing.lineItems.map((l) => ({
               name: l.name,
               quantity: l.quantity,
@@ -794,7 +994,11 @@ function CheckoutPage() {
         </div>
       )}
 
-      <form onSubmit={submit} className="mt-6 grid gap-6 lg:grid-cols-[1fr_360px] lg:items-start">
+      <form
+        ref={formRef}
+        onSubmit={submit}
+        className="mt-6 grid gap-6 lg:grid-cols-[1fr_360px] lg:items-start"
+      >
         <div className="space-y-6">
           <Section title="Contact">
             <Field label="Full name" value={name} onChange={setName} required />
@@ -803,11 +1007,10 @@ function CheckoutPage() {
               <Field label="Email (optional)" value={email} onChange={setEmail} type="email" />
             </div>
             <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
-              By providing your phone number, you agree to receive
-              transactional SMS text messages from The Kosher Nosh about
-              this order (e.g. order received, ready for pickup, out for
-              delivery). Msg &amp; data rates may apply. Message frequency
-              varies. Reply STOP to opt out, HELP for help. See our{" "}
+              By providing your phone number, you agree to receive transactional SMS text messages
+              from The Kosher Nosh about this order (e.g. order received, ready for pickup, out for
+              delivery). Msg &amp; data rates may apply. Message frequency varies. Reply STOP to opt
+              out, HELP for help. See our{" "}
               <Link to="/privacy" className="underline hover:text-primary">
                 Privacy Policy
               </Link>
@@ -826,7 +1029,9 @@ function CheckoutPage() {
               className="w-full rounded-xl border border-border bg-background p-3 text-sm outline-none focus:border-primary"
             />
             <p className="text-[11px] text-muted-foreground">
-              This prints on the kitchen ticket{orderType === "delivery" ? " and goes to your driver" : ""}. For notes on a specific item (allergies, extra sauce), use "Special instructions" on that item's page instead.
+              This prints on the kitchen ticket
+              {orderType === "delivery" ? " and goes to your driver" : ""}. For notes on a specific
+              item (allergies, extra sauce), use "Special instructions" on that item's page instead.
             </p>
           </Section>
 
@@ -844,19 +1049,27 @@ function CheckoutPage() {
                         type="button"
                         onClick={() => {
                           setSelectedAddrId(a.id);
-                          setAddress(`${a.address_line1}${a.address_line2 ? `, ${a.address_line2}` : ""}, ${a.city}, ${a.state}`);
+                          setAddress(
+                            `${a.address_line1}${a.address_line2 ? `, ${a.address_line2}` : ""}, ${a.city}, ${a.state}`,
+                          );
                           setZip(a.zip);
                         }}
                         className={`rounded-xl border px-3 py-2 text-left text-xs transition ${
-                          selectedAddrId === a.id ? "border-primary bg-primary/5" : "border-border bg-card hover:border-primary"
+                          selectedAddrId === a.id
+                            ? "border-primary bg-primary/5"
+                            : "border-border bg-card hover:border-primary"
                         }`}
                       >
                         <div className="font-semibold">{a.label}</div>
-                        <div className="text-muted-foreground">{a.address_line1}, {a.city} {a.zip}</div>
+                        <div className="text-muted-foreground">
+                          {a.address_line1}, {a.city} {a.zip}
+                        </div>
                       </button>
                     ))}
                   </div>
-                  <div className="text-[11px] text-muted-foreground">Or enter a new address below.</div>
+                  <div className="text-[11px] text-muted-foreground">
+                    Or enter a new address below.
+                  </div>
                 </div>
               )}
               <Field
@@ -879,8 +1092,9 @@ function CheckoutPage() {
               {!geoLoading && geo && !matchedZone && otherMatchedZone && otherLocation && (
                 <div className="rounded-md border border-primary/40 bg-primary/5 p-3 text-xs space-y-2">
                   <p>
-                    Your address is outside our {loc?.name} delivery area, but our {otherLocation.name} location
-                    can deliver to you ({fmt(otherMatchedZone.fee)} fee · {fmt(otherMatchedZone.minimum)} min).
+                    Your address is outside our {loc?.name} delivery area, but our{" "}
+                    {otherLocation.name} location can deliver to you ({fmt(otherMatchedZone.fee)}{" "}
+                    fee · {fmt(otherMatchedZone.minimum)} min).
                   </p>
                   <button
                     type="button"
@@ -905,12 +1119,14 @@ function CheckoutPage() {
               )}
               {matchedZone && !zoneOk && (
                 <p className="text-xs text-destructive">
-                  ${minShortfall.toFixed(2)} below the {fmt(matchedZone.minimum)} delivery minimum for {matchedZone.name}.
+                  ${minShortfall.toFixed(2)} below the {fmt(matchedZone.minimum)} delivery minimum
+                  for {matchedZone.name}.
                 </p>
               )}
               {matchedZone && zoneOk && (
                 <p className="text-xs text-muted-foreground">
-                  {matchedZone.name}: {fmt(matchedZone.fee)} fee · {fmt(matchedZone.minimum)} minimum.
+                  {matchedZone.name}: {fmt(matchedZone.fee)} fee · {fmt(matchedZone.minimum)}{" "}
+                  minimum.
                 </p>
               )}
             </Section>
@@ -934,7 +1150,9 @@ function CheckoutPage() {
                 />
               )}
               {whenType === "asap" && !asapCheck.ok && (
-                <p className="text-xs text-destructive">{asapCheck.reason} Pick "Schedule" to order for later.</p>
+                <p className="text-xs text-destructive">
+                  {asapCheck.reason} Pick "Schedule" to order for later.
+                </p>
               )}
               {whenType === "schedule" && scheduledTime && !scheduleCheck.ok && (
                 <p className="text-xs text-destructive">{scheduleCheck.reason}</p>
@@ -943,41 +1161,41 @@ function CheckoutPage() {
           )}
 
           {orderType === "delivery" && (
-          <Section title="Tip your driver">
-            <p className="text-xs text-muted-foreground">
-              100% of tips go directly to your delivery driver.
-            </p>
-            <div className="grid grid-cols-3 gap-2 sm:grid-cols-5">
-              {TIP_PRESETS.map((p) => (
-                <Pill
-                  key={p}
-                  active={tipMode === "preset" && tipPreset === p}
-                  onClick={() => {
-                    setTipMode("preset");
-                    setTipPreset(p);
-                  }}
-                >
-                  {Math.round(p * 100)}%
+            <Section title="Tip your driver">
+              <p className="text-xs text-muted-foreground">
+                100% of tips go directly to your delivery driver.
+              </p>
+              <div className="grid grid-cols-3 gap-2 sm:grid-cols-5">
+                {TIP_PRESETS.map((p) => (
+                  <Pill
+                    key={p}
+                    active={tipMode === "preset" && tipPreset === p}
+                    onClick={() => {
+                      setTipMode("preset");
+                      setTipPreset(p);
+                    }}
+                  >
+                    {Math.round(p * 100)}%
+                  </Pill>
+                ))}
+                <Pill active={tipMode === "custom"} onClick={() => setTipMode("custom")}>
+                  Custom
                 </Pill>
-              ))}
-              <Pill active={tipMode === "custom"} onClick={() => setTipMode("custom")}>
-                Custom
-              </Pill>
-              <Pill active={tipMode === "none"} onClick={() => setTipMode("none")}>
-                No tip
-              </Pill>
-            </div>
-            {tipMode === "custom" && (
-              <input
-                value={tipCustom}
-                onChange={(e) => setTipCustom(e.target.value.replace(/[^\d.]/g, ""))}
-                inputMode="decimal"
-                aria-label="Custom tip amount"
-                placeholder="$ amount"
-                className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm outline-none focus:border-primary"
-              />
-            )}
-          </Section>
+                <Pill active={tipMode === "none"} onClick={() => setTipMode("none")}>
+                  No tip
+                </Pill>
+              </div>
+              {tipMode === "custom" && (
+                <input
+                  value={tipCustom}
+                  onChange={(e) => setTipCustom(e.target.value.replace(/[^\d.]/g, ""))}
+                  inputMode="decimal"
+                  aria-label="Custom tip amount"
+                  placeholder="$ amount"
+                  className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm outline-none focus:border-primary"
+                />
+              )}
+            </Section>
           )}
 
           <Section title="Promo code & rewards">
@@ -991,8 +1209,8 @@ function CheckoutPage() {
                       {promo.discount_type === "bogo"
                         ? "Buy 1, get 1 free"
                         : promo.discount_type === "percent"
-                        ? `${promo.discount_value}% off`
-                        : `$${promo.discount_value.toFixed(2)} off`}
+                          ? `${promo.discount_value}% off`
+                          : `$${promo.discount_value.toFixed(2)} off`}
                     </div>
                   </div>
                 </div>
@@ -1033,7 +1251,8 @@ function CheckoutPage() {
                   <Gift className="size-4 text-primary" /> Loyalty rewards
                 </div>
                 <div className="mt-1 text-xs text-muted-foreground">
-                  Balance: <strong>{loyaltyBalance} pts</strong> · {POINTS_PER_REWARD} pts = ${REWARD_VALUE} off
+                  Balance: <strong>{loyaltyBalance} pts</strong> · {POINTS_PER_REWARD} pts = $
+                  {REWARD_VALUE} off
                 </div>
                 <div className="mt-2 flex flex-wrap gap-2">
                   {Array.from({ length: maxRewards + 1 }, (_, i) => i).map((n) => (
@@ -1055,7 +1274,8 @@ function CheckoutPage() {
             )}
             {auth.authed && maxRewards === 0 && (
               <p className="text-xs text-muted-foreground">
-                You have {loyaltyBalance} pts. Earn 1 pt per $1 — redeem {POINTS_PER_REWARD} pts for ${REWARD_VALUE} off.
+                You have {loyaltyBalance} pts. Earn 1 pt per $1 — redeem {POINTS_PER_REWARD} pts for
+                ${REWARD_VALUE} off.
               </p>
             )}
             {!auth.authed && (
@@ -1070,21 +1290,39 @@ function CheckoutPage() {
 
           <Section title="Payment">
             <div className="grid gap-2 sm:grid-cols-2">
-              <PayOption icon={<CreditCard className="size-4" />} active={pay === "card"} onClick={() => setPay("card")}>
+              <PayOption
+                icon={<CreditCard className="size-4" />}
+                active={pay === "card"}
+                onClick={() => setPay("card")}
+              >
                 Credit / Debit Card
               </PayOption>
-              {/* Apple Pay / Google Pay are not wired to any payment SDK yet —
-                  no wallet button, no tokenization, no charge path. Showing
-                  them let someone "pay" with neither and get an order that
-                  printed as PAID. Hidden until real wallet support is built;
-                  see the note in `submit` below before re-enabling. */}
+              <PayOption
+                icon={<Wallet className="size-4" />}
+                active={pay === "googlepay"}
+                onClick={() => setPay("googlepay")}
+              >
+                Google Pay
+              </PayOption>
+              {/* Apple Pay is not wired to any payment SDK yet — no wallet
+                  button, no tokenization, no charge path. Hidden until real
+                  Apple Pay integration is built (domain verification, JS API,
+                  encryptedCardData/ApplePay support in chargeWithToken). */}
               {canPayInPerson && (
-                <PayOption icon={<Wallet className="size-4" />} active={pay === "in-person"} onClick={() => setPay("in-person")}>
+                <PayOption
+                  icon={<Wallet className="size-4" />}
+                  active={pay === "in-person"}
+                  onClick={() => setPay("in-person")}
+                >
                   Pay in person at {loc?.name}
                 </PayOption>
               )}
               {orderType === "pickup" && !canPayInPerson && (
-                <PayOption icon={<Wallet className="size-4" />} active={pay === "in-person"} onClick={() => setPay("in-person")}>
+                <PayOption
+                  icon={<Wallet className="size-4" />}
+                  active={pay === "in-person"}
+                  onClick={() => setPay("in-person")}
+                >
                   Pay with cash at pickup
                 </PayOption>
               )}
@@ -1132,6 +1370,24 @@ function CheckoutPage() {
                 </p>
               </div>
             )}
+
+            {pay === "googlepay" && (
+              <div className="mt-2 rounded-xl border border-border bg-background p-4">
+                <div id="ipospays-gpay-btn" className="min-h-[48px]" />
+                {!valid && (
+                  <p className="mt-2 text-[11px] text-muted-foreground">
+                    Fill in your name, phone
+                    {orderType === "delivery" ? ", and delivery address" : ""} above to continue.
+                  </p>
+                )}
+                {valid && !gpayReady && (
+                  <p className="mt-2 text-[11px] text-muted-foreground">Loading Google Pay…</p>
+                )}
+                <p className="mt-2 text-[11px] text-muted-foreground">
+                  Tap the Google Pay button above to confirm payment and place your order.
+                </p>
+              </div>
+            )}
           </Section>
         </div>
 
@@ -1160,13 +1416,19 @@ function CheckoutPage() {
           <div className="mt-2 border-t border-border pt-2">
             <Row label="Total" value={fmt(total)} bold />
           </div>
-          <button
-            type="submit"
-            disabled={!valid || submitting || (pay === "card" && !ftdReady)}
-            className="mt-5 w-full rounded-full bg-primary px-5 py-3 text-sm font-semibold text-primary-foreground transition hover:opacity-90 disabled:opacity-40"
-          >
-            {submitting ? "Processing…" : `Place order · ${fmt(total)}`}
-          </button>
+          {pay === "googlepay" ? (
+            <p className="mt-5 rounded-full border border-border bg-background px-5 py-3 text-center text-sm font-semibold text-muted-foreground">
+              Use the Google Pay button above to place your order · {fmt(total)}
+            </p>
+          ) : (
+            <button
+              type="submit"
+              disabled={!valid || submitting || (pay === "card" && !ftdReady)}
+              className="mt-5 w-full rounded-full bg-primary px-5 py-3 text-sm font-semibold text-primary-foreground transition hover:opacity-90 disabled:opacity-40"
+            >
+              {submitting ? "Processing…" : `Place order · ${fmt(total)}`}
+            </button>
+          )}
           <p className="mt-3 text-center text-[11px] text-muted-foreground">
             By placing this order you agree to our{" "}
             <Link to="/terms" className="underline hover:text-primary">
@@ -1228,13 +1490,23 @@ function Field({
   );
 }
 
-function Pill({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
+function Pill({
+  active,
+  onClick,
+  children,
+}: {
+  active: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
   return (
     <button
       type="button"
       onClick={onClick}
       className={`rounded-xl border py-2.5 font-semibold transition text-sm mx-0 px-0 text-center ${
-        active ? "border-primary bg-primary/5 text-primary" : "border-border text-foreground hover:border-primary/50"
+        active
+          ? "border-primary bg-primary/5 text-primary"
+          : "border-border text-foreground hover:border-primary/50"
       }`}
     >
       {children}
@@ -1258,7 +1530,9 @@ function PayOption({
       type="button"
       onClick={onClick}
       className={`flex items-center gap-2 rounded-xl border px-3 py-2.5 text-sm font-medium transition text-center ${
-        active ? "border-primary bg-primary/5 text-primary" : "border-border text-foreground hover:border-primary/50"
+        active
+          ? "border-primary bg-primary/5 text-primary"
+          : "border-border text-foreground hover:border-primary/50"
       }`}
     >
       <span className={active ? "text-primary" : "text-muted-foreground"}>{icon}</span>
@@ -1269,7 +1543,9 @@ function PayOption({
 
 function Row({ label, value, bold }: { label: string; value: string; bold?: boolean }) {
   return (
-    <div className={`flex items-center justify-between py-0.5 text-sm ${bold ? "text-base font-bold" : ""}`}>
+    <div
+      className={`flex items-center justify-between py-0.5 text-sm ${bold ? "text-base font-bold" : ""}`}
+    >
       <span className={bold ? "" : "text-muted-foreground"}>{label}</span>
       <span>{value}</span>
     </div>
