@@ -721,7 +721,7 @@ function DeliveryChoiceDialog({
             {order.when_type === "schedule" && order.scheduled_time && (
               <div className="mt-3 flex items-center gap-2 text-sm text-muted-foreground">
                 <Clock className="size-4" /> Scheduled for{" "}
-                {new Date(order.scheduled_time).toLocaleString()}
+                {formatScheduledTime(order.scheduled_time)}
               </div>
             )}
           </div>
@@ -784,6 +784,19 @@ function Filter({
   );
 }
 
+function formatScheduledTime(iso: string): string {
+  const d = new Date(iso);
+  const now = new Date();
+  const isToday = d.toDateString() === now.toDateString();
+  const tomorrow = new Date(now);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  const isTomorrow = d.toDateString() === tomorrow.toDateString();
+  const time = d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+  if (isToday) return `Today ${time}`;
+  if (isTomorrow) return `Tomorrow ${time}`;
+  return `${d.toLocaleDateString([], { weekday: "short", month: "short", day: "numeric" })} ${time}`;
+}
+
 function OrderCard({
   o,
   onAdvance,
@@ -800,12 +813,13 @@ function OrderCard({
   const ago = timeAgo(o.created_at);
   const isNew = o.status === "new";
   const refunded = (o.refunded_total ?? 0) > 0;
+  const isScheduled = o.when_type === "schedule";
 
   return (
     <div
       className={`flex flex-col rounded-2xl border bg-card shadow-sm ${
         isNew ? "border-primary ring-2 ring-primary/20" : "border-border"
-      }`}
+      } ${isScheduled ? "border-l-4 border-l-amber-500" : ""}`}
     >
       <div className="flex items-start justify-between gap-2 border-b border-border p-4">
         <div>
@@ -825,6 +839,16 @@ function OrderCard({
           {o.order_type}
         </div>
       </div>
+
+      {isScheduled && (
+        <div className="flex items-center gap-2 border-b border-amber-500/30 bg-amber-500/15 px-4 py-2.5 text-sm font-bold text-amber-800 dark:text-amber-300">
+          <Clock className="size-4 shrink-0" />
+          SCHEDULED — NOT ASAP
+          {o.scheduled_time && (
+            <span className="ml-auto font-extrabold">{formatScheduledTime(o.scheduled_time)}</span>
+          )}
+        </div>
+      )}
 
       <div className="space-y-1 border-b border-border p-4 text-sm">
         <div className="flex items-center gap-2">
@@ -846,7 +870,7 @@ function OrderCard({
           {o.when_type === "asap"
             ? "ASAP"
             : o.scheduled_time
-              ? new Date(o.scheduled_time).toLocaleString()
+              ? formatScheduledTime(o.scheduled_time)
               : "Scheduled"}
         </div>
         {o.shipday_order_id && (
