@@ -193,6 +193,29 @@ function TabletPage() {
   const [userEmail, setUserEmail] = useState("");
   const [deliveryChoiceOrder, setDeliveryChoiceOrder] = useState<Order | null>(null);
   const [dispatching, setDispatching] = useState(false);
+  // Which physical station THIS tablet is. Auto-accept and auto-print must
+  // be scoped to the device's own location: accounts that can see every
+  // location (admin) receive every location's orders in realtime, and
+  // without this guard each tablet races to auto-process ALL auto-enabled
+  // locations' orders — printing them on its own local RawBT printer. That
+  // is exactly how Glen Rock tickets ended up printing at Cresskill.
+  // Persisted per device in localStorage; auto-derived when the signed-in
+  // account is scoped to exactly one location.
+  const [stationId, setStationId] = useState<string | null>(() => {
+    try {
+      return window.localStorage.getItem("tablet-station");
+    } catch {
+      return null;
+    }
+  });
+  const pickStation = (id: string) => {
+    setStationId(id);
+    try {
+      window.localStorage.setItem("tablet-station", id);
+    } catch {
+      // localStorage unavailable -- station just won't persist across reloads
+    }
+  };
   // Shared between advance() and the Cresskill auto-print effect below, so
   // accepting an order that already auto-printed doesn't print it again.
   const autoPrintedRef = useRef<Set<string>>(new Set());
@@ -216,6 +239,8 @@ function TabletPage() {
       setIsAdmin(admin);
       const assigned = (locs ?? []).map((l) => l.location_id);
       setAllowedLocations(admin ? LOCATIONS.map((l) => l.id) : assigned);
+      // Single-location staff accounts unambiguously identify the station.
+      if (!admin && assigned.length === 1) pickStation(assigned[0]);
       setAuthChecked(true);
     })();
 
@@ -404,6 +429,7 @@ function TabletPage() {
     if (!authChecked) return;
     const pending = orders.filter(
       (order) =>
+        order.location_id === stationId &&
         AUTO_LOCATIONS.has(order.location_id) &&
         order.status === "new" &&
         !autoAcceptedRef.current.has(order.id),
@@ -418,7 +444,7 @@ function TabletPage() {
       acceptTimersRef.current.push(window.setTimeout(() => void advance(order), 10_000));
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [orders, authChecked]);
+  }, [orders, authChecked, stationId]);
   useEffect(() => {
     return () => {
       // Intentionally reading the ref at unmount time: we want every timer
@@ -436,6 +462,7 @@ function TabletPage() {
     if (!authChecked) return;
     const pending = orders.filter(
       (order) =>
+        order.location_id === stationId &&
         AUTO_PRINT_LOCATIONS.has(order.location_id) &&
         order.status === "new" &&
         !autoPrintedRef.current.has(order.id),
@@ -452,7 +479,7 @@ function TabletPage() {
         );
       }
     }
-  }, [orders, authChecked]);
+  }, [orders, authChecked, stationId]);
 
   const cancel = async (order: Order) => {
     const { error } = await supabase
@@ -574,6 +601,26 @@ function TabletPage() {
             <div className="text-xs text-muted-foreground">{userEmail}</div>
           </div>
           <div className="flex flex-wrap items-center gap-2">
+            {allowedLocations.length > 1 && (
+              <div className="flex items-center gap-1.5 rounded-full border border-border bg-muted/50 px-2 py-1">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                  This tablet:
+                </span>
+                {visibleLocations.map((location) => (
+                  <button
+                    key={location.id}
+                    onClick={() => pickStation(location.id)}
+                    className={`rounded-full px-2.5 py-0.5 text-[11px] font-bold ${
+                      stationId === location.id
+                        ? "bg-foreground text-background"
+                        : "text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    {location.name}
+                  </button>
+                ))}
+              </div>
+            )}
             {showAllFilter && (
               <Filter
                 active={locFilter === "all"}
@@ -631,6 +678,13 @@ function TabletPage() {
           ))}
         </div>
       </div>
+
+      {allowedLocations.length > 1 && !stationId && (
+        <div className="border-b border-amber-500/30 bg-amber-500/15 px-4 py-2.5 text-center text-sm font-bold text-amber-800 dark:text-amber-300">
+          ⚠ Pick which store this tablet is (top right) — auto-accept and auto-print are paused
+          until you do.
+        </div>
+      )}
 
       <SystemAlertsBanner
         isAdmin={isAdmin}
