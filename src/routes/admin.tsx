@@ -18,6 +18,7 @@ import {
   FolderTree,
   ReceiptText,
   MessageSquare,
+  Mail,
 } from "lucide-react";
 import { useAdminAuth } from "@/lib/admin-auth";
 
@@ -43,6 +44,7 @@ const NAV = [
   { to: "/admin/biyo", label: "Biyo sync", icon: Utensils, adminOnly: true },
   { to: "/admin/promos", label: "Promo codes", icon: Tag, adminOnly: true },
   { to: "/admin/marketing", label: "Marketing SMS", icon: MessageSquare, adminOnly: true },
+  { to: "/admin/marketing-email", label: "Marketing Email", icon: Mail, adminOnly: true },
 ];
 
 function AdminLayout() {
