@@ -400,10 +400,17 @@ function TabletPage() {
         order.status === "new" &&
         !autoAcceptedRef.current.has(order.id),
     );
+    const timers: number[] = [];
     for (const order of pending) {
       autoAcceptedRef.current.add(order.id);
-      void advance(order);
+      // 5s delay before actually accepting -- gives the alarm time to
+      // actually ding a few times instead of getting silenced almost
+      // instantly once Glen Rock auto-accepts.
+      timers.push(window.setTimeout(() => void advance(order), 5000));
     }
+    return () => {
+      for (const t of timers) window.clearTimeout(t);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [orders, authChecked]);
 
