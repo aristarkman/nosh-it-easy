@@ -91,12 +91,24 @@ export function buildOrderTicket(order: TicketOrder, locationName: string | unde
   b.align("left");
   b.divider("=", WIDTH);
 
+  // SCHEDULED — same unmissable reverse-video treatment as the PAID stamp,
+  // so a future order can't be mistaken for an ASAP walk-in at a glance.
+  const isScheduled = order.when_type === "schedule" && order.scheduled_time;
+  if (isScheduled) {
+    b.align("center");
+    b.reverse(true);
+    b.doubleSize(true);
+    b.line(" SCHEDULED ");
+    b.reverse(false);
+    b.tallText(true);
+    b.line(`>>> ${formatScheduledTime(order.scheduled_time!)} <<<`);
+    b.align("left");
+    b.divider("=", WIDTH);
+  }
+
   b.line(order.order_type === "delivery" ? "DELIVERY" : "PICKUP");
 
-  const when =
-    order.when_type === "schedule" && order.scheduled_time
-      ? formatScheduledTime(order.scheduled_time)
-      : "ASAP";
+  const when = isScheduled ? formatScheduledTime(order.scheduled_time!) : "ASAP";
   b.line(`When: ${when}`);
   b.line(`Customer: ${order.customer_name}`);
   b.line(`Phone: ${order.customer_phone}`);
