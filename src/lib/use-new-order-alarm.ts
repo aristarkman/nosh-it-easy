@@ -104,21 +104,15 @@ export function useNewOrderAlarm(pendingCount: number) {
 
       const tick = () => {
         const elapsed = (Date.now() - startedAtRef.current) / 1000;
-        // Escalation: 0-15s gentle, 15-45s firm, 45s+ urgent
-        let volume = 0.35;
-        let freq = 880;
-        let pulses = 3;
+        // Full volume from the very first ding -- escalation adds more
+        // pulses and a sharper pitch over time rather than ramping volume.
+        const volume = 1.0;
+        let freq = 1100;
+        let pulses = 4;
         if (elapsed > 15) {
-          volume = 0.55;
-          pulses = 4;
-        }
-        if (elapsed > 45) {
-          volume = 0.85;
-          freq = 1100;
           pulses = 5;
         }
-        if (elapsed > 90) {
-          volume = 1.0;
+        if (elapsed > 45) {
           freq = 1320;
           pulses = 6;
         }

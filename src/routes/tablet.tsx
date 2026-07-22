@@ -392,6 +392,14 @@ function TabletPage() {
   // (.eq("status", order.status)) is the real guard against double-firing
   // side effects if e.g. two tablets are open.
   const autoAcceptedRef = useRef<Set<string>>(new Set());
+  // Timers deliberately live in a ref and are NOT cancelled when this
+  // effect re-runs: the effect fires on every `orders` change (realtime
+  // events, the 90s poll's full array replace), and cancelling pending
+  // timers on each re-run silently killed the delayed auto-accept/print
+  // whenever any other update landed inside the delay window --
+  // autoAcceptedRef had already marked the order as handled, so it never
+  // retried. Timers are only cleared on real unmount.
+  const acceptTimersRef = useRef<number[]>([]);
   useEffect(() => {
     if (!authChecked) return;
     const pending = orders.filter(
@@ -400,19 +408,25 @@ function TabletPage() {
         order.status === "new" &&
         !autoAcceptedRef.current.has(order.id),
     );
-    const timers: number[] = [];
     for (const order of pending) {
       autoAcceptedRef.current.add(order.id);
-      // 5s delay before actually accepting -- gives the alarm time to
-      // actually ding a few times instead of getting silenced almost
-      // instantly once Glen Rock auto-accepts.
-      timers.push(window.setTimeout(() => void advance(order), 5000));
+      // 10s delay before actually accepting -- gives the alarm time to
+      // ring several times instead of getting silenced almost instantly
+      // once Glen Rock auto-accepts. advance()'s conditional update
+      // (.eq status) still guards against double-processing if staff
+      // manually accept during the window.
+      acceptTimersRef.current.push(window.setTimeout(() => void advance(order), 10_000));
     }
-    return () => {
-      for (const t of timers) window.clearTimeout(t);
-    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [orders, authChecked]);
+  useEffect(() => {
+    return () => {
+      // Intentionally reading the ref at unmount time: we want every timer
+      // scheduled over the component's lifetime, not a stale snapshot.
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+      for (const t of acceptTimersRef.current) window.clearTimeout(t);
+    };
+  }, []);
 
   // Cresskill: print the ticket the instant a "new" order arrives, without
   // touching its status — staff still tap Accept manually (advance() checks
