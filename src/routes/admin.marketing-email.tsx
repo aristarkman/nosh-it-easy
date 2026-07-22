@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -70,6 +70,51 @@ function parseCsv(text: string): Contact[] {
   return out;
 }
 
+const BRAND_COLOR = "#D6472E";
+
+function esc(s: string): string {
+  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+function nl2br(s: string): string {
+  return esc(s).replace(/\n/g, "<br>");
+}
+
+// Client-side mirror of the edge function's buildHtml, for an accurate
+// live preview before actually sending. Kept in sync by hand -- if the
+// edge function's template changes, update this too.
+function buildPreviewHtml(input: {
+  message: string;
+  contentType: "text" | "html";
+  ctaLabel: string;
+  ctaUrl: string;
+}): string {
+  const body = input.contentType === "html" ? input.message : nl2br(input.message);
+  const cta =
+    input.ctaLabel.trim() && input.ctaUrl.trim()
+      ? `<table role="presentation" style="margin:28px 0 4px;"><tr><td style="border-radius:999px;background:${BRAND_COLOR};"><a href="${esc(
+          input.ctaUrl,
+        )}" style="display:inline-block;padding:14px 32px;font-size:15px;font-weight:700;color:#ffffff;text-decoration:none;border-radius:999px;">${esc(
+          input.ctaLabel,
+        )}</a></td></tr></table>`
+      : "";
+  return `<!doctype html><html><body style="margin:0;padding:0;background:#f4f4f5;">
+    <table role="presentation" width="100%" style="background:#f4f4f5;padding:32px 16px;"><tr><td align="center">
+      <table role="presentation" width="100%" style="max-width:560px;background:#ffffff;border-radius:16px;overflow:hidden;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+        <tr><td style="background:${BRAND_COLOR};padding:28px 32px;">
+          <span style="font-size:20px;font-weight:800;color:#ffffff;letter-spacing:0.02em;">The Kosher Nosh</span>
+        </td></tr>
+        <tr><td style="padding:32px;">
+          <div style="font-size:15px;line-height:1.65;color:#1a1a1a;">${body}</div>
+          ${cta}
+        </td></tr>
+        <tr><td style="padding:20px 32px;background:#fafafa;border-top:1px solid #eee;">
+          <p style="font-size:11px;color:#999;line-height:1.6;margin:0;">[Your mailing address]<br><a href="#" style="color:#999;">Unsubscribe</a></p>
+        </td></tr>
+      </table>
+    </td></tr></table>
+  </body></html>`;
+}
+
 function MarketingEmailPage() {
   const [audienceMode, setAudienceMode] = useState<"optedIn" | "import">("optedIn");
   const [optedInCount, setOptedInCount] = useState<number | null>(null);
@@ -78,7 +123,11 @@ function MarketingEmailPage() {
   const [importedContacts, setImportedContacts] = useState<Contact[]>([]);
 
   const [subject, setSubject] = useState("");
+  const [contentType, setContentType] = useState<"text" | "html">("text");
   const [message, setMessage] = useState("");
+  const [ctaLabel, setCtaLabel] = useState("");
+  const [ctaUrl, setCtaUrl] = useState("");
+
   const [sending, setSending] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [result, setResult] = useState<{
@@ -121,6 +170,11 @@ function MarketingEmailPage() {
     setImportedContacts(csvText.trim() ? parseCsv(csvText) : []);
   }, [csvText]);
 
+  const previewHtml = useMemo(
+    () => buildPreviewHtml({ message, contentType, ctaLabel, ctaUrl }),
+    [message, contentType, ctaLabel, ctaUrl],
+  );
+
   const audienceSize = audienceMode === "optedIn" ? (optedInCount ?? 0) : importedContacts.length;
   const canSend = subject.trim() && message.trim() && audienceSize > 0 && !sending;
 
@@ -136,18 +190,18 @@ function MarketingEmailPage() {
         setErr("Please sign in again.");
         return;
       }
+      const content = {
+        subject: subject.trim(),
+        message: message.trim(),
+        contentType,
+        ctaLabel: ctaLabel.trim() || undefined,
+        ctaUrl: ctaUrl.trim() || undefined,
+      };
       const res =
         audienceMode === "optedIn"
-          ? await sendOptedIn({
-              data: { accessToken: token, subject: subject.trim(), message: message.trim() },
-            })
+          ? await sendOptedIn({ data: { accessToken: token, ...content } })
           : await sendList({
-              data: {
-                accessToken: token,
-                subject: subject.trim(),
-                message: message.trim(),
-                contacts: importedContacts,
-              },
+              data: { accessToken: token, ...content, contacts: importedContacts },
             });
       if (res.ok) {
         setResult({
@@ -158,6 +212,8 @@ function MarketingEmailPage() {
         });
         setSubject("");
         setMessage("");
+        setCtaLabel("");
+        setCtaUrl("");
         setCsvText("");
       } else {
         setErr(res.error ?? "Send failed");
@@ -176,9 +232,8 @@ function MarketingEmailPage() {
         <h1 className="font-display text-2xl">Marketing Email</h1>
         <p className="mt-1 text-sm text-muted-foreground">
           Send to customers who opted in via account settings, or import an external list (e.g. a
-          GloriaFood export) for a one-off send. Sent via Resend — imported contacts are never added
-          to this app's own customer list, so they get a reply-to-unsubscribe instruction instead of
-          a one-click link.
+          GloriaFood export) for a one-off send. Sent via Resend, wrapped in a branded template
+          automatically.
         </p>
         <div className="mt-2 rounded-lg bg-amber-500/10 p-3 text-xs text-amber-800 dark:text-amber-200">
           One-time setup: set{" "}
@@ -190,106 +245,167 @@ function MarketingEmailPage() {
         </div>
       </div>
 
-      <section className="rounded-2xl border border-border bg-card p-5">
-        <div className="flex gap-2">
-          <button
-            onClick={() => setAudienceMode("optedIn")}
-            className={`rounded-full px-4 py-2 text-sm font-bold ${
-              audienceMode === "optedIn"
-                ? "bg-primary text-primary-foreground"
-                : "border border-border"
-            }`}
-          >
-            Opted-in customers
-          </button>
-          <button
-            onClick={() => setAudienceMode("import")}
-            className={`rounded-full px-4 py-2 text-sm font-bold ${
-              audienceMode === "import"
-                ? "bg-primary text-primary-foreground"
-                : "border border-border"
-            }`}
-          >
-            Import a list
-          </button>
-        </div>
-
-        {audienceMode === "optedIn" ? (
-          <div className="mt-4 flex items-center gap-2 text-sm text-muted-foreground">
-            <Users className="size-4" />
-            {loadingCount
-              ? "Loading…"
-              : `${optedInCount ?? 0} opted-in recipient${optedInCount === 1 ? "" : "s"}`}
+      <div className="grid gap-6 lg:grid-cols-[1fr_420px]">
+        <section className="rounded-2xl border border-border bg-card p-5">
+          <div className="flex gap-2">
+            <button
+              onClick={() => setAudienceMode("optedIn")}
+              className={`rounded-full px-4 py-2 text-sm font-bold ${
+                audienceMode === "optedIn"
+                  ? "bg-primary text-primary-foreground"
+                  : "border border-border"
+              }`}
+            >
+              Opted-in customers
+            </button>
+            <button
+              onClick={() => setAudienceMode("import")}
+              className={`rounded-full px-4 py-2 text-sm font-bold ${
+                audienceMode === "import"
+                  ? "bg-primary text-primary-foreground"
+                  : "border border-border"
+              }`}
+            >
+              Import a list
+            </button>
           </div>
-        ) : (
-          <div className="mt-4 space-y-3">
-            <label className="block text-sm font-semibold">
-              <Upload className="mr-1 inline size-4" />
-              Paste CSV content (from GloriaFood's Marketing → Customers → Export, or any name/email
-              export)
-            </label>
-            <textarea
-              value={csvText}
-              onChange={(e) => setCsvText(e.target.value)}
-              rows={6}
-              placeholder={"name,email,phone\nJane Doe,jane@example.com,201-555-0100"}
-              className="w-full rounded-xl border border-border bg-background px-3 py-2.5 font-mono text-xs outline-none focus:border-primary"
-            />
-            <div className="text-sm text-muted-foreground">
-              <Users className="mr-1 inline size-4" />
-              {importedContacts.length} valid recipient{importedContacts.length === 1 ? "" : "s"}{" "}
-              detected
+
+          {audienceMode === "optedIn" ? (
+            <div className="mt-4 flex items-center gap-2 text-sm text-muted-foreground">
+              <Users className="size-4" />
+              {loadingCount
+                ? "Loading…"
+                : `${optedInCount ?? 0} opted-in recipient${optedInCount === 1 ? "" : "s"}`}
+            </div>
+          ) : (
+            <div className="mt-4 space-y-3">
+              <label className="block text-sm font-semibold">
+                <Upload className="mr-1 inline size-4" />
+                Paste CSV content (from GloriaFood's Marketing → Customers → Export, or any
+                name/email export)
+              </label>
+              <textarea
+                value={csvText}
+                onChange={(e) => setCsvText(e.target.value)}
+                rows={6}
+                placeholder={"name,email,phone\nJane Doe,jane@example.com,201-555-0100"}
+                className="w-full rounded-xl border border-border bg-background px-3 py-2.5 font-mono text-xs outline-none focus:border-primary"
+              />
+              <div className="text-sm text-muted-foreground">
+                <Users className="mr-1 inline size-4" />
+                {importedContacts.length} valid recipient{importedContacts.length === 1 ? "" : "s"}{" "}
+                detected
+              </div>
+            </div>
+          )}
+
+          <label className="mt-5 block text-sm font-semibold">Subject</label>
+          <input
+            value={subject}
+            onChange={(e) => setSubject(e.target.value)}
+            placeholder="Our new online ordering site is here!"
+            maxLength={200}
+            className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm outline-none focus:border-primary"
+          />
+
+          <div className="mt-4 flex items-center justify-between">
+            <label className="block text-sm font-semibold">Message</label>
+            <div className="flex gap-1 rounded-full bg-muted p-0.5 text-xs font-bold">
+              <button
+                onClick={() => setContentType("text")}
+                className={`rounded-full px-3 py-1 ${contentType === "text" ? "bg-background shadow-sm" : "text-muted-foreground"}`}
+              >
+                Plain text
+              </button>
+              <button
+                onClick={() => setContentType("html")}
+                className={`rounded-full px-3 py-1 ${contentType === "html" ? "bg-background shadow-sm" : "text-muted-foreground"}`}
+              >
+                Custom HTML
+              </button>
             </div>
           </div>
-        )}
+          <textarea
+            value={message}
+            onChange={(e) => setMessage(e.target.value)}
+            rows={8}
+            placeholder={
+              contentType === "text"
+                ? "Write the body of the email here. Line breaks become paragraphs automatically."
+                : "Paste your own HTML here \u2014 sent as-is inside the branded header/footer."
+            }
+            className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2.5 font-mono text-xs outline-none focus:border-primary"
+          />
 
-        <label className="mt-5 block text-sm font-semibold">Subject</label>
-        <input
-          value={subject}
-          onChange={(e) => setSubject(e.target.value)}
-          placeholder="Our new online ordering site is here!"
-          maxLength={200}
-          className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm outline-none focus:border-primary"
-        />
-
-        <label className="mt-4 block text-sm font-semibold">Message</label>
-        <textarea
-          value={message}
-          onChange={(e) => setMessage(e.target.value)}
-          rows={8}
-          placeholder="Write the body of the email here. This becomes the email content, wrapped in Kosher Nosh branding automatically."
-          className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm outline-none focus:border-primary"
-        />
-
-        <button
-          onClick={() => setConfirmOpen(true)}
-          disabled={!canSend}
-          className="mt-4 inline-flex items-center gap-2 rounded-full bg-primary px-5 py-2.5 text-sm font-bold text-primary-foreground disabled:opacity-40"
-        >
-          {sending ? <Loader2 className="size-4 animate-spin" /> : <Send className="size-4" />}
-          {sending
-            ? "Sending…"
-            : `Send to ${audienceSize} recipient${audienceSize === 1 ? "" : "s"}`}
-        </button>
-
-        {result && (
-          <div className="mt-4 flex items-start gap-2 rounded-lg bg-green-500/10 p-3 text-sm text-green-700 dark:text-green-300">
-            <CheckCircle2 className="mt-0.5 size-4 shrink-0" />
-            <span>
-              Sent {result.sent} of {result.audience}
-              {result.failed > 0 && `, ${result.failed} failed`}.
-              {result.truncated &&
-                " Audience list was capped at 2,000 — run again to reach the rest."}
-            </span>
+          <div className="mt-4 grid gap-3 sm:grid-cols-2">
+            <div>
+              <label className="block text-xs font-semibold text-muted-foreground">
+                Button text (optional)
+              </label>
+              <input
+                value={ctaLabel}
+                onChange={(e) => setCtaLabel(e.target.value)}
+                placeholder="Order Now"
+                className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-1.5 text-sm outline-none focus:border-primary"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-muted-foreground">
+                Button link
+              </label>
+              <input
+                value={ctaUrl}
+                onChange={(e) => setCtaUrl(e.target.value)}
+                placeholder="https://takeout.koshernosh.com"
+                className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-1.5 text-sm outline-none focus:border-primary"
+              />
+            </div>
           </div>
-        )}
-        {err && (
-          <div className="mt-4 flex items-start gap-2 rounded-lg bg-destructive/10 p-3 text-sm text-destructive">
-            <AlertCircle className="mt-0.5 size-4 shrink-0" />
-            <span className="break-all">{err}</span>
+
+          <button
+            onClick={() => setConfirmOpen(true)}
+            disabled={!canSend}
+            className="mt-4 inline-flex items-center gap-2 rounded-full bg-primary px-5 py-2.5 text-sm font-bold text-primary-foreground disabled:opacity-40"
+          >
+            {sending ? <Loader2 className="size-4 animate-spin" /> : <Send className="size-4" />}
+            {sending
+              ? "Sending…"
+              : `Send to ${audienceSize} recipient${audienceSize === 1 ? "" : "s"}`}
+          </button>
+
+          {result && (
+            <div className="mt-4 flex items-start gap-2 rounded-lg bg-green-500/10 p-3 text-sm text-green-700 dark:text-green-300">
+              <CheckCircle2 className="mt-0.5 size-4 shrink-0" />
+              <span>
+                Sent {result.sent} of {result.audience}
+                {result.failed > 0 && `, ${result.failed} failed`}.
+                {result.truncated &&
+                  " Audience list was capped at 2,000 — run again to reach the rest."}
+              </span>
+            </div>
+          )}
+          {err && (
+            <div className="mt-4 flex items-start gap-2 rounded-lg bg-destructive/10 p-3 text-sm text-destructive">
+              <AlertCircle className="mt-0.5 size-4 shrink-0" />
+              <span className="break-all">{err}</span>
+            </div>
+          )}
+        </section>
+
+        <section className="rounded-2xl border border-border bg-card p-3">
+          <div className="mb-2 px-2 text-xs font-bold uppercase tracking-wider text-muted-foreground">
+            Live preview
           </div>
-        )}
-      </section>
+          <div className="overflow-hidden rounded-xl border border-border bg-white">
+            <iframe
+              title="Email preview"
+              srcDoc={previewHtml}
+              className="h-[600px] w-full"
+              sandbox=""
+            />
+          </div>
+        </section>
+      </div>
 
       <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
         <AlertDialogContent>
@@ -299,7 +415,9 @@ function MarketingEmailPage() {
               This sends a real email to every recipient right now. This can't be undone once sent.
               <div className="mt-3 rounded-lg bg-muted/50 p-3 text-sm text-foreground">
                 <div className="font-semibold">{subject}</div>
-                <div className="mt-1 whitespace-pre-wrap">{message}</div>
+                <div className="mt-1 text-xs text-muted-foreground">
+                  Check the live preview on the page to confirm formatting before sending.
+                </div>
               </div>
             </AlertDialogDescription>
           </AlertDialogHeader>

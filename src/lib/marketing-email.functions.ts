@@ -24,15 +24,27 @@ async function requireAdmin(accessToken: string) {
   return { ok: true as const, supabaseAdmin };
 }
 
+const ContentSchema = z.object({
+  subject: z.string().min(1).max(200),
+  message: z.string().min(1).max(20000),
+  contentType: z.enum(["text", "html"]).default("text"),
+  ctaLabel: z.string().max(60).optional(),
+  ctaUrl: z.string().url().optional(),
+});
+type Content = z.infer<typeof ContentSchema>;
+
 async function sendOneEmail(
   supabaseAdmin: AdminClient,
-  input: { to: string; subject: string; message: string; oneClickUnsubscribe: boolean },
+  input: Content & { to: string; oneClickUnsubscribe: boolean },
 ) {
   const { data, error } = await supabaseAdmin.functions.invoke("send-marketing-email", {
     body: {
       to: input.to,
       subject: input.subject,
       message: input.message,
+      contentType: input.contentType,
+      ctaLabel: input.ctaLabel ?? null,
+      ctaUrl: input.ctaUrl ?? null,
       includeOneClickUnsubscribe: input.oneClickUnsubscribe,
     },
   });
@@ -64,8 +76,7 @@ const BLAST_CONCURRENCY = 5;
 async function runBlast(
   supabaseAdmin: AdminClient,
   recipients: Array<{ email: string }>,
-  subject: string,
-  message: string,
+  content: Content,
   oneClickUnsubscribe: boolean,
 ) {
   let sent = 0;
@@ -75,7 +86,7 @@ async function runBlast(
     const results = await Promise.all(
       batch.map(async (r) => {
         try {
-          await sendOneEmail(supabaseAdmin, { to: r.email, subject, message, oneClickUnsubscribe });
+          await sendOneEmail(supabaseAdmin, { ...content, to: r.email, oneClickUnsubscribe });
           return true;
         } catch (err) {
           console.error("marketing email blast failed:", r.email, err);
@@ -91,11 +102,7 @@ async function runBlast(
   return { sent, failed };
 }
 
-const OptedInBlastSchema = z.object({
-  accessToken: z.string().min(1),
-  subject: z.string().min(1).max(200),
-  message: z.string().min(1).max(20000),
-});
+const OptedInBlastSchema = z.object({ accessToken: z.string().min(1) }).merge(ContentSchema);
 
 // Sends to customer_profiles rows with marketing_email = true -- the app's
 // own opted-in list (account settings toggle). Gets a real one-click
@@ -116,13 +123,7 @@ export const sendMarketingEmailBlastToOptedIn = createServerFn({ method: "POST" 
 
     const recipients = (rows ?? []).filter((r): r is { email: string } => !!r.email);
 
-    const { sent, failed } = await runBlast(
-      admin.supabaseAdmin,
-      recipients,
-      data.subject,
-      data.message,
-      true,
-    );
+    const { sent, failed } = await runBlast(admin.supabaseAdmin, recipients, data, true);
     return {
       ok: true as const,
       audience: recipients.length,
@@ -132,15 +133,15 @@ export const sendMarketingEmailBlastToOptedIn = createServerFn({ method: "POST" 
     };
   });
 
-const ListBlastSchema = z.object({
-  accessToken: z.string().min(1),
-  subject: z.string().min(1).max(200),
-  message: z.string().min(1).max(20000),
-  contacts: z
-    .array(z.object({ email: z.string().email(), name: z.string().max(120).optional() }))
-    .min(1)
-    .max(MAX_BLAST_RECIPIENTS),
-});
+const ListBlastSchema = z
+  .object({
+    accessToken: z.string().min(1),
+    contacts: z
+      .array(z.object({ email: z.string().email(), name: z.string().max(120).optional() }))
+      .min(1)
+      .max(MAX_BLAST_RECIPIENTS),
+  })
+  .merge(ContentSchema);
 
 // Sends to a client-supplied list (e.g. a CSV import from GloriaFood or
 // another external source) -- never persisted into customer_profiles,
@@ -162,12 +163,6 @@ export const sendMarketingEmailBlastToList = createServerFn({ method: "POST" })
         return true;
       });
 
-    const { sent, failed } = await runBlast(
-      admin.supabaseAdmin,
-      recipients,
-      data.subject,
-      data.message,
-      false,
-    );
+    const { sent, failed } = await runBlast(admin.supabaseAdmin, recipients, data, false);
     return { ok: true as const, audience: recipients.length, sent, failed, truncated: false };
   });
