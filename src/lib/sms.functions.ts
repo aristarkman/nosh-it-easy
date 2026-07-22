@@ -197,3 +197,105 @@ export const sendOwnerErrorAlert = createServerFn({ method: "POST" })
     }
     return { results };
   });
+
+// ---------------------------------------------------------------------
+// Marketing SMS blast (deals & specials) — admin-only, sent only to
+// customer_profiles rows with marketing_sms = true. Separate consent scope
+// from order-status texts; see account.tsx's "Text me deals, specials &
+// cart reminders" toggle.
+// ---------------------------------------------------------------------
+
+async function requireAdmin(accessToken: string) {
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const { data: userData, error: userErr } = await supabaseAdmin.auth.getUser(accessToken);
+  if (userErr || !userData?.user) return { ok: false as const, error: "Not authenticated" };
+  const { data: roles } = await supabaseAdmin
+    .from("user_roles")
+    .select("role")
+    .eq("user_id", userData.user.id);
+  const isAdmin = (roles ?? []).some((r) => r.role === "admin");
+  if (!isAdmin) return { ok: false as const, error: "Admin only" };
+  return { ok: true as const, supabaseAdmin };
+}
+
+const AudienceSchema = z.object({ accessToken: z.string().min(1) });
+
+export const getMarketingSmsAudienceCount = createServerFn({ method: "POST" })
+  .inputValidator((input: unknown) => AudienceSchema.parse(input))
+  .handler(async ({ data }) => {
+    const admin = await requireAdmin(data.accessToken);
+    if (!admin.ok) return { ok: false as const, error: admin.error };
+    const { count, error } = await admin.supabaseAdmin
+      .from("customer_profiles")
+      .select("user_id", { count: "exact", head: true })
+      .eq("marketing_sms", true)
+      .not("phone", "is", null);
+    if (error) return { ok: false as const, error: error.message };
+    return { ok: true as const, count: count ?? 0 };
+  });
+
+const MAX_BLAST_RECIPIENTS = 2000;
+const BLAST_CONCURRENCY = 5;
+
+const BlastSchema = z.object({
+  accessToken: z.string().min(1),
+  message: z.string().min(1).max(300),
+});
+
+export const sendMarketingSmsBlast = createServerFn({ method: "POST" })
+  .inputValidator((input: unknown) => BlastSchema.parse(input))
+  .handler(async ({ data }) => {
+    const admin = await requireAdmin(data.accessToken);
+    if (!admin.ok) return { ok: false as const, error: admin.error };
+
+    let body = data.message.trim();
+    if (!/reply stop/i.test(body)) body += " Reply STOP to opt out.";
+    if (!/^the kosher nosh/i.test(body)) body = `The Kosher Nosh: ${body}`;
+
+    const { data: rows, error } = await admin.supabaseAdmin
+      .from("customer_profiles")
+      .select("user_id,phone,full_name")
+      .eq("marketing_sms", true)
+      .not("phone", "is", null)
+      .limit(MAX_BLAST_RECIPIENTS);
+    if (error) return { ok: false as const, error: error.message };
+
+    const recipients = (rows ?? []).filter(
+      (r): r is { user_id: string; phone: string; full_name: string | null } => !!r.phone,
+    );
+    let sent = 0;
+    let failed = 0;
+    const failures: string[] = [];
+
+    for (let i = 0; i < recipients.length; i += BLAST_CONCURRENCY) {
+      const batch = recipients.slice(i, i + BLAST_CONCURRENCY);
+      const results = await Promise.all(
+        batch.map(async (r) => {
+          const to = normalizePhone(r.phone);
+          if (!to) return { ok: false, phone: r.phone };
+          try {
+            await sendSms(to, body);
+            return { ok: true };
+          } catch (err) {
+            console.error("marketing blast SMS failed:", r.phone, err);
+            return { ok: false, phone: r.phone };
+          }
+        }),
+      );
+      for (const r of results) {
+        if (r.ok) sent++;
+        else {
+          failed++;
+          if (r.phone) failures.push(r.phone);
+        }
+      }
+    }
+
+    return {
+      ok: true as const,
+      audience: recipients.length,
+      sent,
+      failed,
+      truncated: recipients.length >= MAX_BLAST_RECIPIENTS,
+    };
+  });
