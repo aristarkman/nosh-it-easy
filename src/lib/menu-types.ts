@@ -19,6 +19,7 @@ export type MenuItem = {
   images?: string[];
   popular?: boolean;
   soldOut?: boolean;
+  soldOutUntil?: string | null;
   glutenFreePossible?: boolean;
   taxable: boolean;
   modifierGroups?: ModifierGroup[];

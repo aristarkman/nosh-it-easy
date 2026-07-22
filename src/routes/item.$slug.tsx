@@ -6,6 +6,7 @@ import { useOrder, fmt, buildLineFromItem } from "@/lib/order-context";
 import { menuItemAlt } from "@/lib/alt-text";
 import { getMenuItem } from "@/lib/menu.functions";
 import { thumb } from "@/lib/image-url";
+import { soldOutLabel } from "@/lib/sold-out";
 import { z } from "zod";
 
 function readLocationFromStorage(): string {
@@ -155,9 +156,11 @@ function ItemPage() {
     0
   );
   const unit = item.price + modPrice;
-  const valid = (item.modifierGroups ?? []).every(
-    (g) => !g.required || (selections[g.id]?.length ?? 0) >= Math.max(1, g.min)
-  );
+  const valid =
+    !item.soldOut &&
+    (item.modifierGroups ?? []).every(
+      (g) => !g.required || (selections[g.id]?.length ?? 0) >= Math.max(1, g.min)
+    );
 
   const add = () => {
     const line = buildLineFromItem(item, selections, qty, notes.trim() || undefined);
@@ -207,6 +210,11 @@ function ItemPage() {
           <h1 className="font-display text-4xl font-black sm:text-5xl">{item.name}</h1>
           <p className="mt-2 text-muted-foreground">{item.description}</p>
           <div className="mt-3 text-lg font-semibold">{fmt(item.price)}</div>
+          {item.soldOut && (
+            <div className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-muted px-3 py-1 text-xs font-bold uppercase tracking-wider text-muted-foreground">
+              {soldOutLabel(item.soldOutUntil)}
+            </div>
+          )}
         </div>
       </div>
 
@@ -261,7 +269,7 @@ function ItemPage() {
             onClick={add}
             className="flex flex-1 items-center justify-between rounded-full bg-primary px-5 py-3 text-sm font-semibold text-primary-foreground transition hover:opacity-90 disabled:opacity-40"
           >
-            <span>{isEditing ? `Update ${qty} in cart` : `Add ${qty} to cart`}</span>
+            <span>{item.soldOut ? soldOutLabel(item.soldOutUntil) : isEditing ? `Update ${qty} in cart` : `Add ${qty} to cart`}</span>
             <span>{fmt(unit * qty)}</span>
           </button>
         </div>

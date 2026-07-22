@@ -439,18 +439,21 @@ export type Database = {
           location_id: string
           menu_item_id: string
           sold_out: boolean
+          sold_out_until: string | null
           updated_at: string
         }
         Insert: {
           location_id: string
           menu_item_id: string
           sold_out?: boolean
+          sold_out_until?: string | null
           updated_at?: string
         }
         Update: {
           location_id?: string
           menu_item_id?: string
           sold_out?: boolean
+          sold_out_until?: string | null
           updated_at?: string
         }
         Relationships: [

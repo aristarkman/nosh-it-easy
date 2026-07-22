@@ -7,6 +7,7 @@ import { getMenu } from "@/lib/menu.functions";
 import { thumb } from "@/lib/image-url";
 import type { Category } from "@/lib/menu-types";
 import { useStoreHours } from "@/lib/use-store-hours";
+import { soldOutLabel } from "@/lib/sold-out";
 
 function readLocationFromStorage(): string {
   if (typeof window === "undefined") return "cresskill";
@@ -229,7 +230,7 @@ function MenuPage() {
                         )}
                         {i.soldOut && (
                           <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-                            Sold out
+                            {soldOutLabel(i.soldOutUntil)}
                           </span>
                         )}
                       </div>

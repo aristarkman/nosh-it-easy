@@ -20,7 +20,7 @@ async function buildMenu(locationId: string): Promise<{ items: MenuItem[]; categ
       .eq("location_id", "cresskill"),
     supabaseAdmin
       .from("menu_item_availability")
-      .select("menu_item_id,sold_out")
+      .select("menu_item_id,sold_out,sold_out_until")
       .eq("location_id", locationId)
       .eq("sold_out", true),
     supabaseAdmin.from("menu_item_modifier_groups").select("menu_item_id,modifier_group_id,sort_order"),
@@ -37,7 +37,13 @@ async function buildMenu(locationId: string): Promise<{ items: MenuItem[]; categ
   const priceById = new Map<string, number>();
   for (const p of pricesRes.data ?? []) priceById.set(p.menu_item_id, Number(p.price));
 
-  const soldOut = new Set<string>((availRes.data ?? []).map((r) => r.menu_item_id));
+  // A row with sold_out_until in the past has auto-expired back to available.
+  const now = Date.now();
+  const soldOutUntilById = new Map<string, string | null>();
+  for (const r of availRes.data ?? []) {
+    if (r.sold_out_until && new Date(r.sold_out_until).getTime() <= now) continue;
+    soldOutUntilById.set(r.menu_item_id, r.sold_out_until);
+  }
 
   const optsByGroup = new Map<string, ModifierOption[]>();
   for (const o of moRes.data ?? []) {
@@ -109,7 +115,8 @@ async function buildMenu(locationId: string): Promise<{ items: MenuItem[]; categ
       image: primary,
       images: photos.length > 0 ? photos : (it.photo_url ? [it.photo_url] : []),
       popular: !!it.popular,
-      soldOut: soldOut.has(it.id),
+      soldOut: soldOutUntilById.has(it.id),
+      soldOutUntil: soldOutUntilById.get(it.id) ?? null,
       glutenFreePossible: !!(it as { gluten_free_possible?: boolean }).gluten_free_possible,
       taxable: (it as { taxable?: boolean }).taxable !== false,
       modifierGroups: itemGroups,
