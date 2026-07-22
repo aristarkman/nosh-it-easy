@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
-import { Loader2, Search, Sparkles, Trash2, X } from "lucide-react";
+import { Loader2, Search, Sparkles, Trash2, X, ArrowUp, ArrowDown } from "lucide-react";
 import { toWebP } from "@/lib/image-convert";
 import { thumb } from "@/lib/image-url";
 import { slugify } from "@/lib/slugify";
@@ -32,7 +32,7 @@ type Price = { menu_item_id: string; location_id: string; price: number };
 type Loc = { location_id: string; display_name: string | null };
 type Group = { id: string; name: string };
 type CatRow = { id: string; name: string; sort_order: number };
-type Assign = { menu_item_id: string; modifier_group_id: string };
+type Assign = { menu_item_id: string; modifier_group_id: string; sort_order: number };
 type Photo = { id: string; menu_item_id: string; url: string; sort_order: number };
 
 function fmt(n: number | undefined) {
@@ -61,7 +61,7 @@ function MenuAdmin() {
       supabase.from("menu_item_prices").select("menu_item_id,location_id,price"),
       supabase.from("biyo_locations").select("location_id,display_name").order("location_id"),
       supabase.from("modifier_groups").select("id,name").order("name"),
-      supabase.from("menu_item_modifier_groups").select("menu_item_id,modifier_group_id"),
+      supabase.from("menu_item_modifier_groups").select("menu_item_id,modifier_group_id,sort_order"),
       supabase.from("menu_categories").select("id,name,sort_order").eq("active", true).order("sort_order").order("name"),
       supabase.from("menu_item_photos").select("id,menu_item_id,url,sort_order").order("sort_order"),
     ]);
@@ -242,21 +242,59 @@ function MenuAdmin() {
   async function toggleAssign(itemId: string, groupId: string, on: boolean) {
     // optimistic
     if (on) {
-      setAssigns((p) => [...p, { menu_item_id: itemId, modifier_group_id: groupId }]);
-      const { error } = await supabase.from("menu_item_modifier_groups").insert({ menu_item_id: itemId, modifier_group_id: groupId });
+      const itemAssigns = assigns.filter((a) => a.menu_item_id === itemId);
+      const nextSort = itemAssigns.reduce((m, a) => Math.max(m, a.sort_order), -1) + 1;
+      setAssigns((p) => [...p, { menu_item_id: itemId, modifier_group_id: groupId, sort_order: nextSort }]);
+      const { error } = await supabase
+        .from("menu_item_modifier_groups")
+        .insert({ menu_item_id: itemId, modifier_group_id: groupId, sort_order: nextSort });
       if (error) {
         setAssigns((p) => p.filter((a) => !(a.menu_item_id === itemId && a.modifier_group_id === groupId)));
         alert(error.message);
       }
     } else {
+      const removed = assigns.find((a) => a.menu_item_id === itemId && a.modifier_group_id === groupId);
       setAssigns((p) => p.filter((a) => !(a.menu_item_id === itemId && a.modifier_group_id === groupId)));
       const { error } = await supabase.from("menu_item_modifier_groups")
         .delete().eq("menu_item_id", itemId).eq("modifier_group_id", groupId);
-      if (error) {
-        setAssigns((p) => [...p, { menu_item_id: itemId, modifier_group_id: groupId }]);
+      if (error && removed) {
+        setAssigns((p) => [...p, removed]);
         alert(error.message);
       }
     }
+  }
+
+  async function moveAssignedGroup(itemId: string, groupId: string, dir: -1 | 1) {
+    const itemAssigns = assigns
+      .filter((a) => a.menu_item_id === itemId)
+      .slice()
+      .sort((a, b) => a.sort_order - b.sort_order);
+    const idx = itemAssigns.findIndex((a) => a.modifier_group_id === groupId);
+    const swapIdx = idx + dir;
+    if (idx < 0 || swapIdx < 0 || swapIdx >= itemAssigns.length) return;
+    // Normalize sort_orders to indexes to avoid ties, then swap.
+    const normalized = itemAssigns.map((a, i) => ({ ...a, sort_order: i }));
+    const aSort = normalized[idx].sort_order;
+    const bSort = normalized[swapIdx].sort_order;
+    normalized[idx].sort_order = bSort;
+    normalized[swapIdx].sort_order = aSort;
+    setAssigns((prev) => {
+      const map = new Map(normalized.map((a) => [a.modifier_group_id, a.sort_order]));
+      return prev.map((a) =>
+        a.menu_item_id === itemId && map.has(a.modifier_group_id)
+          ? { ...a, sort_order: map.get(a.modifier_group_id)! }
+          : a,
+      );
+    });
+    await Promise.all(
+      normalized.map((a) =>
+        supabase
+          .from("menu_item_modifier_groups")
+          .update({ sort_order: a.sort_order })
+          .eq("menu_item_id", itemId)
+          .eq("modifier_group_id", a.modifier_group_id),
+      ),
+    );
   }
 
   const [editingMods, setEditingMods] = useState<string | null>(null);
@@ -733,15 +771,56 @@ function MenuAdmin() {
                       <div className="mt-2 max-w-xs space-y-1 rounded-lg border border-border bg-background p-2">
                         {groups.length === 0 ? (
                           <div className="text-xs text-muted-foreground">No modifier groups yet. <Link to="/admin/modifiers" className="text-primary underline">Create one</Link></div>
-                        ) : groups.map((g) => {
-                          const on = assignsByItem.get(it.id)?.has(g.id) ?? false;
-                          return (
-                            <label key={g.id} className="flex cursor-pointer items-center gap-2 text-xs">
-                              <input type="checkbox" checked={on} onChange={(e) => toggleAssign(it.id, g.id, e.target.checked)} />
-                              {g.name}
-                            </label>
-                          );
-                        })}
+                        ) : (
+                          <>
+                            {assigns
+                              .filter((a) => a.menu_item_id === it.id)
+                              .slice()
+                              .sort((a, b) => a.sort_order - b.sort_order)
+                              .map((a, i, arr) => {
+                                const g = groups.find((g) => g.id === a.modifier_group_id);
+                                if (!g) return null;
+                                return (
+                                  <div key={g.id} className="flex items-center gap-1.5 text-xs">
+                                    <div className="flex flex-col">
+                                      <button
+                                        onClick={() => moveAssignedGroup(it.id, g.id, -1)}
+                                        disabled={i === 0}
+                                        aria-label="Move up"
+                                        className="p-0.5 text-muted-foreground hover:text-foreground disabled:opacity-30 disabled:cursor-not-allowed"
+                                      >
+                                        <ArrowUp className="size-3" />
+                                      </button>
+                                      <button
+                                        onClick={() => moveAssignedGroup(it.id, g.id, 1)}
+                                        disabled={i === arr.length - 1}
+                                        aria-label="Move down"
+                                        className="p-0.5 text-muted-foreground hover:text-foreground disabled:opacity-30 disabled:cursor-not-allowed"
+                                      >
+                                        <ArrowDown className="size-3" />
+                                      </button>
+                                    </div>
+                                    <label className="flex flex-1 cursor-pointer items-center gap-2">
+                                      <input type="checkbox" checked onChange={(e) => toggleAssign(it.id, g.id, e.target.checked)} />
+                                      {g.name}
+                                    </label>
+                                  </div>
+                                );
+                              })}
+                            {groups.filter((g) => !(assignsByItem.get(it.id)?.has(g.id) ?? false)).length > 0 && (
+                              <div className="mt-1.5 border-t border-border pt-1.5">
+                                {groups
+                                  .filter((g) => !(assignsByItem.get(it.id)?.has(g.id) ?? false))
+                                  .map((g) => (
+                                    <label key={g.id} className="flex cursor-pointer items-center gap-2 py-0.5 text-xs text-muted-foreground">
+                                      <input type="checkbox" checked={false} onChange={(e) => toggleAssign(it.id, g.id, e.target.checked)} />
+                                      {g.name}
+                                    </label>
+                                  ))}
+                              </div>
+                            )}
+                          </>
+                        )}
                       </div>
                     )}
                   </td>
