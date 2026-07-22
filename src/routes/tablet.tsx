@@ -23,6 +23,7 @@ import { dispatchShipday } from "@/lib/shipday.functions";
 import { geocodeAddress } from "@/lib/geocoding.functions";
 import { useNewOrderAlarm } from "@/lib/use-new-order-alarm";
 import { useWakeLock } from "@/lib/use-wake-lock";
+import { useAutoReloadWatchdog } from "@/lib/use-tablet-watchdog";
 import { printOrderTicket } from "@/lib/print-ticket";
 import { reportSystemAlert } from "@/lib/system-alerts";
 import { toast } from "sonner";
@@ -181,6 +182,7 @@ async function dispatchOrderToShipday(
 function TabletPage() {
   const nav = useNavigate();
   useWakeLock();
+  useAutoReloadWatchdog();
   const [orders, setOrders] = useState<Order[]>([]);
   const [locFilter, setLocFilter] = useState<string>("all");
   const [tab, setTab] = useState<Status>("new");
@@ -229,7 +231,8 @@ function TabletPage() {
   useEffect(() => {
     if (!authChecked) return;
     let mounted = true;
-    void (async () => {
+
+    const fetchOrders = async () => {
       let query = supabase
         .from("orders")
         .select("*")
@@ -241,10 +244,21 @@ function TabletPage() {
       }
       const { data, error } = await query;
       if (!mounted) return;
-      if (error) toast.error("Failed to load orders");
-      else setOrders((data ?? []) as unknown as Order[]);
+      if (error) {
+        toast.error("Failed to load orders");
+        return;
+      }
+      setOrders((data ?? []) as unknown as Order[]);
       setLoading(false);
-    })();
+    };
+    void fetchOrders();
+
+    // Belt-and-suspenders re-fetch: catches a silently-dead realtime
+    // WebSocket that doesn't trigger a visibilitychange event (e.g. a
+    // flaky WiFi blip while the tablet stays on screen) -- the watchdog
+    // hook above handles the "tab was backgrounded" case, this handles
+    // "tab stayed visible but the socket died anyway."
+    const pollInterval = setInterval(() => void fetchOrders(), 90_000);
 
     const channel = supabase
       .channel("orders-tablet")
@@ -272,6 +286,7 @@ function TabletPage() {
 
     return () => {
       mounted = false;
+      clearInterval(pollInterval);
       void supabase.removeChannel(channel);
     };
   }, [authChecked, isAdmin, allowedLocations]);
