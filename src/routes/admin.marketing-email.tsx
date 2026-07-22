@@ -76,7 +76,6 @@ function MarketingEmailPage() {
   const [loadingCount, setLoadingCount] = useState(true);
   const [csvText, setCsvText] = useState("");
   const [importedContacts, setImportedContacts] = useState<Contact[]>([]);
-  const [importTag, setImportTag] = useState("gloriafood-import");
 
   const [subject, setSubject] = useState("");
   const [message, setMessage] = useState("");
@@ -123,12 +122,7 @@ function MarketingEmailPage() {
   }, [csvText]);
 
   const audienceSize = audienceMode === "optedIn" ? (optedInCount ?? 0) : importedContacts.length;
-  const canSend =
-    subject.trim() &&
-    message.trim() &&
-    audienceSize > 0 &&
-    !sending &&
-    (audienceMode === "optedIn" || importTag.trim());
+  const canSend = subject.trim() && message.trim() && audienceSize > 0 && !sending;
 
   async function confirmSend() {
     setConfirmOpen(false);
@@ -153,7 +147,6 @@ function MarketingEmailPage() {
                 subject: subject.trim(),
                 message: message.trim(),
                 contacts: importedContacts,
-                tag: importTag.trim() || "imported-list",
               },
             });
       if (res.ok) {
@@ -183,17 +176,17 @@ function MarketingEmailPage() {
         <h1 className="font-display text-2xl">Marketing Email</h1>
         <p className="mt-1 text-sm text-muted-foreground">
           Send to customers who opted in via account settings, or import an external list (e.g. a
-          GloriaFood export) for a one-off send. Imported contacts are sent through GHL directly —
-          they're never added to this app's own customer list.
+          GloriaFood export) for a one-off send. Sent via Resend — imported contacts are never added
+          to this app's own customer list, so they get a reply-to-unsubscribe instruction instead of
+          a one-click link.
         </p>
         <div className="mt-2 rounded-lg bg-amber-500/10 p-3 text-xs text-amber-800 dark:text-amber-200">
-          One-time setup required: a GHL email template with your branding, a physical mailing
-          address, and an unsubscribe footer, containing the merge tag{" "}
-          <code className="rounded bg-black/10 px-1 py-0.5">
-            {"{{contact.custom.blast_message}}"}
-          </code>{" "}
-          where the composed message should appear. Set that template's ID as{" "}
-          <code className="rounded bg-black/10 px-1 py-0.5">GHL_BLAST_TEMPLATE_ID</code>.
+          One-time setup: set{" "}
+          <code className="rounded bg-black/10 px-1 py-0.5">BUSINESS_MAILING_ADDRESS</code>{" "}
+          (required on every marketing email by law) and{" "}
+          <code className="rounded bg-black/10 px-1 py-0.5">UNSUBSCRIBE_SECRET</code> (same value in
+          both Lovable Cloud secrets and the send-marketing-email Supabase Edge Function secrets)
+          before sending anything for real.
         </div>
       </div>
 
@@ -247,16 +240,6 @@ function MarketingEmailPage() {
               {importedContacts.length} valid recipient{importedContacts.length === 1 ? "" : "s"}{" "}
               detected
             </div>
-            <div>
-              <label className="block text-xs font-semibold text-muted-foreground">
-                Tag applied to these contacts in GHL
-              </label>
-              <input
-                value={importTag}
-                onChange={(e) => setImportTag(e.target.value)}
-                className="mt-1 w-56 rounded-lg border border-border bg-background px-3 py-1.5 text-sm outline-none focus:border-primary"
-              />
-            </div>
           </div>
         )}
 
@@ -274,7 +257,7 @@ function MarketingEmailPage() {
           value={message}
           onChange={(e) => setMessage(e.target.value)}
           rows={8}
-          placeholder="Write the body of the email here. This gets inserted into your branded GHL template."
+          placeholder="Write the body of the email here. This becomes the email content, wrapped in Kosher Nosh branding automatically."
           className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm outline-none focus:border-primary"
         />
 

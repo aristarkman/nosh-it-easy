@@ -52,6 +52,7 @@ import { Route as AdminBiyoRouteImport } from './routes/admin.biyo'
 import { Route as Char91DotwellKnownChar93OauthProtectedResourceRouteImport } from './routes/[.well-known]/oauth-protected-resource'
 import { Route as Char91DotmcpChar93ListToolsRouteImport } from './routes/[.mcp]/list-tools'
 import { Route as Char91DotmcpChar93InvokeToolToolRouteImport } from './routes/[.mcp]/invoke-tool/$tool'
+import { Route as ApiPublicHooksUnsubscribeEmailRouteImport } from './routes/api/public/hooks/unsubscribe-email'
 import { Route as ApiPublicHooksSyncBiyoRouteImport } from './routes/api/public/hooks/sync-biyo'
 import { Route as ApiPublicHooksShipdayRouteImport } from './routes/api/public/hooks/shipday'
 import { Route as ApiPublicHooksRequoteScheduledRouteImport } from './routes/api/public/hooks/requote-scheduled'
@@ -275,6 +276,12 @@ const Char91DotmcpChar93InvokeToolToolRoute =
     path: '/.mcp/invoke-tool/$tool',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicHooksUnsubscribeEmailRoute =
+  ApiPublicHooksUnsubscribeEmailRouteImport.update({
+    id: '/api/public/hooks/unsubscribe-email',
+    path: '/api/public/hooks/unsubscribe-email',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicHooksSyncBiyoRoute = ApiPublicHooksSyncBiyoRouteImport.update({
   id: '/api/public/hooks/sync-biyo',
   path: '/api/public/hooks/sync-biyo',
@@ -346,6 +353,7 @@ export interface FileRoutesByFullPath {
   '/api/public/hooks/requote-scheduled': typeof ApiPublicHooksRequoteScheduledRoute
   '/api/public/hooks/shipday': typeof ApiPublicHooksShipdayRoute
   '/api/public/hooks/sync-biyo': typeof ApiPublicHooksSyncBiyoRoute
+  '/api/public/hooks/unsubscribe-email': typeof ApiPublicHooksUnsubscribeEmailRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -394,6 +402,7 @@ export interface FileRoutesByTo {
   '/api/public/hooks/requote-scheduled': typeof ApiPublicHooksRequoteScheduledRoute
   '/api/public/hooks/shipday': typeof ApiPublicHooksShipdayRoute
   '/api/public/hooks/sync-biyo': typeof ApiPublicHooksSyncBiyoRoute
+  '/api/public/hooks/unsubscribe-email': typeof ApiPublicHooksUnsubscribeEmailRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -444,6 +453,7 @@ export interface FileRoutesById {
   '/api/public/hooks/requote-scheduled': typeof ApiPublicHooksRequoteScheduledRoute
   '/api/public/hooks/shipday': typeof ApiPublicHooksShipdayRoute
   '/api/public/hooks/sync-biyo': typeof ApiPublicHooksSyncBiyoRoute
+  '/api/public/hooks/unsubscribe-email': typeof ApiPublicHooksUnsubscribeEmailRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -495,6 +505,7 @@ export interface FileRouteTypes {
     | '/api/public/hooks/requote-scheduled'
     | '/api/public/hooks/shipday'
     | '/api/public/hooks/sync-biyo'
+    | '/api/public/hooks/unsubscribe-email'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -543,6 +554,7 @@ export interface FileRouteTypes {
     | '/api/public/hooks/requote-scheduled'
     | '/api/public/hooks/shipday'
     | '/api/public/hooks/sync-biyo'
+    | '/api/public/hooks/unsubscribe-email'
   id:
     | '__root__'
     | '/'
@@ -592,6 +604,7 @@ export interface FileRouteTypes {
     | '/api/public/hooks/requote-scheduled'
     | '/api/public/hooks/shipday'
     | '/api/public/hooks/sync-biyo'
+    | '/api/public/hooks/unsubscribe-email'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -625,6 +638,7 @@ export interface RootRouteChildren {
   ApiPublicHooksRequoteScheduledRoute: typeof ApiPublicHooksRequoteScheduledRoute
   ApiPublicHooksShipdayRoute: typeof ApiPublicHooksShipdayRoute
   ApiPublicHooksSyncBiyoRoute: typeof ApiPublicHooksSyncBiyoRoute
+  ApiPublicHooksUnsubscribeEmailRoute: typeof ApiPublicHooksUnsubscribeEmailRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -930,6 +944,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof Char91DotmcpChar93InvokeToolToolRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/hooks/unsubscribe-email': {
+      id: '/api/public/hooks/unsubscribe-email'
+      path: '/api/public/hooks/unsubscribe-email'
+      fullPath: '/api/public/hooks/unsubscribe-email'
+      preLoaderRoute: typeof ApiPublicHooksUnsubscribeEmailRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/hooks/sync-biyo': {
       id: '/api/public/hooks/sync-biyo'
       path: '/api/public/hooks/sync-biyo'
@@ -1035,6 +1056,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicHooksRequoteScheduledRoute: ApiPublicHooksRequoteScheduledRoute,
   ApiPublicHooksShipdayRoute: ApiPublicHooksShipdayRoute,
   ApiPublicHooksSyncBiyoRoute: ApiPublicHooksSyncBiyoRoute,
+  ApiPublicHooksUnsubscribeEmailRoute: ApiPublicHooksUnsubscribeEmailRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
