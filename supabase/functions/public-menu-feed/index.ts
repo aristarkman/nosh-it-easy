@@ -124,7 +124,7 @@ Deno.serve(async (req) => {
         .select("menu_item_id,location_id,price"),
       supabase
         .from("menu_item_availability")
-        .select("menu_item_id,location_id,sold_out"),
+        .select("menu_item_id,location_id,sold_out,sold_out_until"),
       supabase
         .from("menu_item_photos")
         .select("menu_item_id,url,sort_order")
@@ -165,10 +165,14 @@ Deno.serve(async (req) => {
       priceByItemLoc.set(p.menu_item_id as string, itemMap);
     }
 
-    // Sold-out set per location
+    // Sold-out set per location. A row with sold_out_until in the past has
+    // auto-expired back to available, same as the ordering site.
+    const now = Date.now();
     const soldOut = new Set<string>();
     for (const a of availRes.data ?? []) {
-      if (a.sold_out) soldOut.add(`${a.menu_item_id}::${a.location_id}`);
+      if (!a.sold_out) continue;
+      if (a.sold_out_until && new Date(a.sold_out_until as string).getTime() <= now) continue;
+      soldOut.add(`${a.menu_item_id}::${a.location_id}`);
     }
 
     // Photos

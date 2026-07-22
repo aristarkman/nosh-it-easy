@@ -34,6 +34,30 @@ type Group = { id: string; name: string };
 type CatRow = { id: string; name: string; sort_order: number };
 type Assign = { menu_item_id: string; modifier_group_id: string; sort_order: number };
 type Photo = { id: string; menu_item_id: string; url: string; sort_order: number };
+type Avail = { menu_item_id: string; location_id: string; sold_out: boolean; sold_out_until: string | null };
+
+function stockLabel(a: Avail | undefined): string {
+  if (!a?.sold_out) return "In stock";
+  if (!a.sold_out_until) return "Out of stock";
+  const d = new Date(a.sold_out_until);
+  if (Number.isNaN(d.getTime())) return "Out of stock";
+  const now = new Date();
+  const sameDay = d.toDateString() === now.toDateString();
+  const time = d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+  return sameDay ? `Back ${time}` : `Back ${d.toLocaleDateString([], { month: "short", day: "numeric" })} ${time}`;
+}
+
+function isCurrentlyOut(a: Avail | undefined): boolean {
+  if (!a?.sold_out) return false;
+  if (!a.sold_out_until) return true;
+  return new Date(a.sold_out_until).getTime() > Date.now();
+}
+
+// <input type="datetime-local"> wants local wall-clock time with no timezone.
+function toDatetimeLocalValue(d: Date): string {
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
 
 function fmt(n: number | undefined) {
   if (n == null) return "—";
@@ -48,6 +72,7 @@ function MenuAdmin() {
   const [catRows, setCatRows] = useState<CatRow[]>([]);
   const [assigns, setAssigns] = useState<Assign[]>([]);
   const [photos, setPhotos] = useState<Photo[]>([]);
+  const [avail, setAvail] = useState<Avail[]>([]);
   const [loading, setLoading] = useState(true);
   const [q, setQ] = useState("");
   const [cat, setCat] = useState<string>("");
@@ -56,7 +81,7 @@ function MenuAdmin() {
 
   async function load() {
     setLoading(true);
-    const [i, p, l, g, a, c, ph] = await Promise.all([
+    const [i, p, l, g, a, c, ph, av] = await Promise.all([
       supabase.from("menu_items").select("id,name,category,active,sort_order,photo_url,description,gluten_free_possible,taxable,available_locations").order("category").order("sort_order").order("name"),
       supabase.from("menu_item_prices").select("menu_item_id,location_id,price"),
       supabase.from("biyo_locations").select("location_id,display_name").order("location_id"),
@@ -64,6 +89,7 @@ function MenuAdmin() {
       supabase.from("menu_item_modifier_groups").select("menu_item_id,modifier_group_id,sort_order"),
       supabase.from("menu_categories").select("id,name,sort_order").eq("active", true).order("sort_order").order("name"),
       supabase.from("menu_item_photos").select("id,menu_item_id,url,sort_order").order("sort_order"),
+      supabase.from("menu_item_availability").select("menu_item_id,location_id,sold_out,sold_out_until"),
     ]);
     setItems((i.data ?? []) as Item[]);
     setPrices((p.data ?? []) as Price[]);
@@ -72,6 +98,7 @@ function MenuAdmin() {
     setAssigns((a.data ?? []) as Assign[]);
     setCatRows((c.data ?? []) as CatRow[]);
     setPhotos((ph.data ?? []) as Photo[]);
+    setAvail((av.data ?? []) as Avail[]);
     setLoading(false);
   }
   useEffect(() => { load(); }, []);
@@ -110,8 +137,42 @@ function MenuAdmin() {
     return m;
   }, [assigns]);
 
+  const availByItem = useMemo(() => {
+    const m = new Map<string, Map<string, Avail>>();
+    for (const a of avail) {
+      if (!m.has(a.menu_item_id)) m.set(a.menu_item_id, new Map());
+      m.get(a.menu_item_id)!.set(a.location_id, a);
+    }
+    return m;
+  }, [avail]);
+
   function priceFor(itemId: string, locId: string) {
     return pricesByItem.get(itemId)?.get(locId);
+  }
+  function stockFor(itemId: string, locId: string) {
+    return availByItem.get(itemId)?.get(locId);
+  }
+
+  async function markOutOfStock(itemId: string, locId: string, until: string | null) {
+    const prev = avail;
+    const row: Avail = { menu_item_id: itemId, location_id: locId, sold_out: true, sold_out_until: until };
+    setAvail((p) => [...p.filter((a) => !(a.menu_item_id === itemId && a.location_id === locId)), row]);
+    const { error } = await supabase
+      .from("menu_item_availability")
+      .upsert(
+        { menu_item_id: itemId, location_id: locId, sold_out: true, sold_out_until: until },
+        { onConflict: "menu_item_id,location_id" },
+      );
+    if (error) { setAvail(prev); alert(error.message); }
+  }
+
+  async function markInStock(itemId: string, locId: string) {
+    const prev = avail;
+    setAvail((p) => p.filter((a) => !(a.menu_item_id === itemId && a.location_id === locId)));
+    const { error } = await supabase
+      .from("menu_item_availability")
+      .delete().eq("menu_item_id", itemId).eq("location_id", locId);
+    if (error) { setAvail(prev); alert(error.message); }
   }
   function modCount(itemId: string) {
     return assignsByItem.get(itemId)?.size ?? 0;
@@ -298,6 +359,8 @@ function MenuAdmin() {
   }
 
   const [editingMods, setEditingMods] = useState<string | null>(null);
+  const [editingStock, setEditingStock] = useState<string | null>(null); // `${itemId}:${locId}`
+  const [stockUntilInput, setStockUntilInput] = useState("");
   const [uploading, setUploading] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
   const [newName, setNewName] = useState("");
@@ -360,10 +423,11 @@ function MenuAdmin() {
     if (ids.length === 0) return;
     if (!window.confirm(`Delete ${ids.length} item${ids.length === 1 ? "" : "s"}? This removes them from the online menu, prices, availability, and modifier assignments. If they still exist in Biyo, they may return on next sync — disable them there too.`)) return;
     setBulkBusy(true);
-    const prevItems = items, prevPrices = prices, prevAssigns = assigns;
+    const prevItems = items, prevPrices = prices, prevAssigns = assigns, prevAvail = avail;
     setItems((p) => p.filter((x) => !selected.has(x.id)));
     setPrices((p) => p.filter((x) => !selected.has(x.menu_item_id)));
     setAssigns((p) => p.filter((x) => !selected.has(x.menu_item_id)));
+    setAvail((p) => p.filter((x) => !selected.has(x.menu_item_id)));
     const [a1, a2, a3, a4] = await Promise.all([
       supabase.from("menu_item_modifier_groups").delete().in("menu_item_id", ids),
       supabase.from("menu_item_prices").delete().in("menu_item_id", ids),
@@ -372,14 +436,14 @@ function MenuAdmin() {
     ]);
     const childErr = a1.error || a2.error || a3.error || a4.error;
     if (childErr) {
-      setItems(prevItems); setPrices(prevPrices); setAssigns(prevAssigns);
+      setItems(prevItems); setPrices(prevPrices); setAssigns(prevAssigns); setAvail(prevAvail);
       setBulkBusy(false);
       alert(childErr.message);
       return;
     }
     const { error } = await supabase.from("menu_items").delete().in("id", ids);
     if (error) {
-      setItems(prevItems); setPrices(prevPrices); setAssigns(prevAssigns);
+      setItems(prevItems); setPrices(prevPrices); setAssigns(prevAssigns); setAvail(prevAvail);
       alert(error.message);
     } else {
       setSelected(new Set());
@@ -479,9 +543,11 @@ function MenuAdmin() {
     const prevItems = items;
     const prevPrices = prices;
     const prevAssigns = assigns;
+    const prevAvail = avail;
     setItems((p) => p.filter((x) => x.id !== it.id));
     setPrices((p) => p.filter((x) => x.menu_item_id !== it.id));
     setAssigns((p) => p.filter((x) => x.menu_item_id !== it.id));
+    setAvail((p) => p.filter((x) => x.menu_item_id !== it.id));
     const [a1, a2, a3, a4] = await Promise.all([
       supabase.from("menu_item_modifier_groups").delete().eq("menu_item_id", it.id),
       supabase.from("menu_item_prices").delete().eq("menu_item_id", it.id),
@@ -490,13 +556,13 @@ function MenuAdmin() {
     ]);
     const childErr = a1.error || a2.error || a3.error || a4.error;
     if (childErr) {
-      setItems(prevItems); setPrices(prevPrices); setAssigns(prevAssigns);
+      setItems(prevItems); setPrices(prevPrices); setAssigns(prevAssigns); setAvail(prevAvail);
       alert(childErr.message);
       return;
     }
     const { error } = await supabase.from("menu_items").delete().eq("id", it.id);
     if (error) {
-      setItems(prevItems); setPrices(prevPrices); setAssigns(prevAssigns);
+      setItems(prevItems); setPrices(prevPrices); setAssigns(prevAssigns); setAvail(prevAvail);
       alert(error.message);
     }
   }
@@ -642,6 +708,7 @@ function MenuAdmin() {
                 <th className="px-4 py-3">Menu item</th>
                 <th className="px-4 py-3">Price</th>
                 <th className="px-4 py-3">Available at</th>
+                <th className="px-4 py-3">Stock</th>
 
                 <th className="px-4 py-3">Modifications</th>
                 <th className="px-4 py-3">GF Possible</th>
@@ -757,6 +824,75 @@ function MenuAdmin() {
                           </label>
                         );
                       })}
+                    </div>
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="flex flex-col gap-1.5">
+                      {(it.available_locations ?? []).map((locId) => {
+                        const loc = locs.find((l) => l.location_id === locId);
+                        const st = stockFor(it.id, locId);
+                        const key = `${it.id}:${locId}`;
+                        const out = isCurrentlyOut(st);
+                        return (
+                          <div key={locId} className="text-xs">
+                            <button
+                              onClick={() => {
+                                if (editingStock === key) { setEditingStock(null); return; }
+                                setEditingStock(key);
+                                setStockUntilInput(toDatetimeLocalValue(new Date(Date.now() + 60 * 60 * 1000)));
+                              }}
+                              className={`rounded-full px-2 py-0.5 text-[11px] font-bold uppercase tracking-wider ${
+                                out ? "bg-amber-500/15 text-amber-700 dark:text-amber-300" : "bg-muted text-muted-foreground"
+                              }`}
+                            >
+                              {loc?.display_name ?? locId}: {stockLabel(st)}
+                            </button>
+                            {editingStock === key && (
+                              <div className="mt-1 w-48 space-y-1.5 rounded-lg border border-border bg-background p-2">
+                                {out ? (
+                                  <button
+                                    onClick={() => { markInStock(it.id, locId); setEditingStock(null); }}
+                                    className="w-full rounded border border-border px-2 py-1 text-left hover:border-primary"
+                                  >
+                                    Mark available now
+                                  </button>
+                                ) : (
+                                  <button
+                                    onClick={() => { markOutOfStock(it.id, locId, null); setEditingStock(null); }}
+                                    className="w-full rounded border border-border px-2 py-1 text-left hover:border-primary"
+                                  >
+                                    Mark out of stock
+                                  </button>
+                                )}
+                                <div className="flex items-center gap-1">
+                                  <input
+                                    type="datetime-local"
+                                    value={stockUntilInput}
+                                    onChange={(e) => setStockUntilInput(e.target.value)}
+                                    className="w-full rounded border border-border bg-background px-1 py-0.5 text-xs"
+                                  />
+                                  <button
+                                    onClick={() => {
+                                      if (!stockUntilInput) return;
+                                      const d = new Date(stockUntilInput);
+                                      if (Number.isNaN(d.getTime())) return;
+                                      markOutOfStock(it.id, locId, d.toISOString());
+                                      setEditingStock(null);
+                                    }}
+                                    title="Out of stock until this time, then back automatically"
+                                    className="shrink-0 rounded border border-border px-2 py-0.5 hover:border-primary"
+                                  >
+                                    Until
+                                  </button>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                      {(it.available_locations ?? []).length === 0 && (
+                        <span className="text-xs text-muted-foreground">—</span>
+                      )}
                     </div>
                   </td>
 
