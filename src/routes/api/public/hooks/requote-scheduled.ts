@@ -50,6 +50,27 @@ function parseTip(notes: string | null): number {
   return match ? Number(match[1]) : 0;
 }
 
+// Shipday wants expectedPickupTime as HH:mm:ss (and a separate expectedDeliveryDate
+// as YYYY-MM-DD) in local time — not a single ISO datetime string.
+function toShipdayDateTime(isoString: string): { date: string; time: string } {
+  const d = new Date(isoString);
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/New_York",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false,
+  }).formatToParts(d);
+  const get = (type: string) => parts.find((p) => p.type === type)?.value ?? "00";
+  return {
+    date: `${get("year")}-${get("month")}-${get("day")}`,
+    time: `${get("hour")}:${get("minute")}:${get("second")}`,
+  };
+}
+
 async function dispatch(
   order: OrderRow
 ): Promise<
@@ -62,6 +83,7 @@ async function dispatch(
   if (!order.delivery_address) return { ok: false, message: "Missing delivery address" };
 
   const items = Array.isArray(order.items) ? (order.items as CartItem[]) : [];
+  const scheduled = order.scheduled_time ? toShipdayDateTime(order.scheduled_time) : null;
   const payload = {
     orderNumber: order.order_number,
     customerName: order.customer_name,
@@ -83,7 +105,8 @@ async function dispatch(
     totalOrderCost: Number(order.total),
     deliveryInstruction: order.notes || undefined,
     paymentMethod: "credit_card",
-    expectedPickupTime: order.scheduled_time || undefined,
+    expectedPickupTime: scheduled?.time,
+    expectedDeliveryDate: scheduled?.date,
   };
 
   try {

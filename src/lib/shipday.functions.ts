@@ -42,6 +42,27 @@ function shipdayErrorMessage(status: number, body: Record<string, unknown>): str
   return apiMessage || `Shipday error (${status})`;
 }
 
+// Shipday wants expectedPickupTime as HH:mm:ss (and a separate expectedDeliveryDate
+// as YYYY-MM-DD) in local time — not a single ISO datetime string.
+function toShipdayDateTime(isoString: string): { date: string; time: string } {
+  const d = new Date(isoString);
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/New_York",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false,
+  }).formatToParts(d);
+  const get = (type: string) => parts.find((p) => p.type === type)?.value ?? "00";
+  return {
+    date: `${get("year")}-${get("month")}-${get("day")}`,
+    time: `${get("hour")}:${get("minute")}:${get("second")}`,
+  };
+}
+
 const DispatchInput = z.object({
   orderNumber: z.string().min(1).max(64),
   locationId: z.string().min(1).max(64),
@@ -110,6 +131,8 @@ export const dispatchShipday = createServerFn({ method: "POST" })
       return { ok: false as const, message: `No pickup address for ${data.locationId}` };
     }
 
+    const scheduled = data.scheduledTime ? toShipdayDateTime(data.scheduledTime) : null;
+
     const payload = {
       orderNumber: data.orderNumber,
       customerName: data.customerName,
@@ -131,7 +154,8 @@ export const dispatchShipday = createServerFn({ method: "POST" })
       totalOrderCost: data.total,
       deliveryInstruction: data.notes || undefined,
       paymentMethod: "credit_card",
-      expectedPickupTime: data.scheduledTime || undefined,
+      expectedPickupTime: scheduled?.time,
+      expectedDeliveryDate: scheduled?.date,
     };
 
     try {
