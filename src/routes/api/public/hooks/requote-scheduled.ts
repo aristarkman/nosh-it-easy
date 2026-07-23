@@ -99,8 +99,9 @@ async function dispatch(
     } catch {
       body = { raw: text };
     }
-    if (!response.ok) {
+    if (!response.ok || body.success === false) {
       const apiMessage =
+        (typeof body.response === "string" && body.response) ||
         (typeof body.message === "string" && body.message) ||
         (typeof body.error === "string" && body.error) ||
         `Shipday error (${response.status})`;
@@ -110,6 +111,9 @@ async function dispatch(
       (body.orderId as string | number | undefined) ??
       (body.id as string | number | undefined) ??
       null;
+    if (id == null) {
+      return { ok: false, message: "Shipday did not return an order ID." };
+    }
     const trackingUrl =
       (body.trackingLink as string | undefined) ??
       (body.trackingUrl as string | undefined) ??

@@ -150,22 +150,37 @@ export const dispatchShipday = createServerFn({ method: "POST" })
       } catch {
         body = { raw: text };
       }
-      if (!response.ok) {
+      if (!response.ok || body.success === false) {
         console.error("Shipday create order failed:", {
           status: response.status,
           locationId: data.locationId,
           orderNumber: data.orderNumber,
           body,
         });
+        const apiMessage =
+          (typeof body.response === "string" && body.response) ||
+          (typeof body.message === "string" && body.message) ||
+          undefined;
         return {
           ok: false as const,
-          message: shipdayErrorMessage(response.status, body),
+          message: apiMessage || shipdayErrorMessage(response.status, body),
         };
       }
       const id =
         (body.orderId as string | number | undefined) ??
         (body.id as string | number | undefined) ??
         null;
+      if (id == null) {
+        console.error("Shipday create order returned no orderId:", {
+          locationId: data.locationId,
+          orderNumber: data.orderNumber,
+          body,
+        });
+        return {
+          ok: false as const,
+          message: "Shipday did not return an order ID. Contact support with this order number.",
+        };
+      }
       const trackingUrl =
         (body.trackingLink as string | undefined) ??
         (body.trackingUrl as string | undefined) ??
