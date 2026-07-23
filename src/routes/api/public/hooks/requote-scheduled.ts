@@ -114,6 +114,22 @@ async function dispatch(
       (body.trackingLink as string | undefined) ??
       (body.trackingUrl as string | undefined) ??
       null;
+
+    // Explicitly flag the order ready-to-pickup so Shipday moves it from the
+    // Scheduled tab to Current immediately, rather than waiting on Shipday's
+    // own Dispatch Time Window setting to do it.
+    if (id != null) {
+      try {
+        await fetch(`${SHIPDAY_BASE}/orders/${id}/meta`, {
+          method: "PUT",
+          headers: { Authorization: `Basic ${apiKey}`, "Content-Type": "application/json" },
+          body: JSON.stringify({ readyToPickup: true }),
+        });
+      } catch (e) {
+        console.error(`Failed to mark Shipday order ${id} ready-to-pickup:`, e);
+      }
+    }
+
     return { ok: true, id: id != null ? String(id) : null, trackingUrl };
   } catch {
     return { ok: false, message: "Could not reach Shipday." };
