@@ -51,24 +51,12 @@ function parseTip(notes: string | null): number {
 }
 
 // Shipday wants expectedPickupTime as HH:mm:ss (and a separate expectedDeliveryDate
-// as YYYY-MM-DD) in local time — not a single ISO datetime string.
+// as YYYY-MM-DD). Send the raw UTC components — Shipday converts to the account's
+// local timezone for display itself; pre-converting to Eastern here caused a
+// double offset (e.g. 4:45pm EDT showed up in Shipday as 12:45pm).
 function toShipdayDateTime(isoString: string): { date: string; time: string } {
-  const d = new Date(isoString);
-  const parts = new Intl.DateTimeFormat("en-US", {
-    timeZone: "America/New_York",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
-    hour12: false,
-  }).formatToParts(d);
-  const get = (type: string) => parts.find((p) => p.type === type)?.value ?? "00";
-  return {
-    date: `${get("year")}-${get("month")}-${get("day")}`,
-    time: `${get("hour")}:${get("minute")}:${get("second")}`,
-  };
+  const iso = new Date(isoString).toISOString(); // e.g. "2026-07-23T20:45:00.000Z"
+  return { date: iso.slice(0, 10), time: iso.slice(11, 19) };
 }
 
 async function dispatch(
