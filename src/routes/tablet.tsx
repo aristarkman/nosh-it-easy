@@ -992,6 +992,19 @@ function OrderCard({
         {o.shipday_order_id && (
           <div className="text-xs font-bold uppercase tracking-wider text-secondary">
             Shipday dispatched
+            {o.delivery_status && o.delivery_status !== "unassigned" && o.shipday_tracking_url && (
+              <>
+                {" · "}
+                <a
+                  href={o.shipday_tracking_url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="underline underline-offset-2"
+                >
+                  Track driver
+                </a>
+              </>
+            )}
           </div>
         )}
         {needsShipdayRetry && (
