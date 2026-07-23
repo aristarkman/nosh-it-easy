@@ -162,6 +162,13 @@ async function dispatchOrderToShipday(
   }));
 
   if (!result.ok) return { ok: false, message: result.message || "Could not dispatch to Shipday" };
+  if (result.skipped) {
+    return {
+      ok: false,
+      message:
+        "Shipday did not receive this order — the server didn't see it as accepted/ready yet. Try again.",
+    };
+  }
 
   const patch = {
     notes,
@@ -512,6 +519,26 @@ function TabletPage() {
     toast.success("Set for in-house delivery. Assign a driver on the Dispatch screen.");
   };
 
+  const [retryingIds, setRetryingIds] = useState<Set<string>>(new Set());
+
+  const retryShipday = async (order: Order) => {
+    setRetryingIds((previous) => new Set(previous).add(order.id));
+    const result = await dispatchOrderToShipday(order);
+    setRetryingIds((previous) => {
+      const next = new Set(previous);
+      next.delete(order.id);
+      return next;
+    });
+    if (!result.ok) {
+      toast.error(`${order.order_number}: ${result.message}`, { duration: 15000 });
+      return;
+    }
+    setOrders((previous) =>
+      previous.map((item) => (item.id === order.id ? { ...item, ...result.patch } : item)),
+    );
+    toast.success(`${order.order_number}: dispatched to Shipday.`);
+  };
+
   const chooseShipday = async () => {
     const order = deliveryChoiceOrder;
     if (!order || !order.delivery_address) return;
@@ -718,6 +745,8 @@ function TabletPage() {
                     toast.error("Could not open printer app.");
                   }
                 }}
+                onRetryShipday={() => void retryShipday(order)}
+                retryingShipday={retryingIds.has(order.id)}
               />
             ))}
           </div>
@@ -877,11 +906,15 @@ function OrderCard({
   onAdvance,
   onCancel,
   onPrint,
+  onRetryShipday,
+  retryingShipday,
 }: {
   o: Order;
   onAdvance: () => void;
   onCancel: () => void;
   onPrint: () => void;
+  onRetryShipday?: () => void;
+  retryingShipday?: boolean;
 }) {
   const flow = STATUS_FLOW[o.status];
   const loc = LOCATIONS.find((location) => location.id === o.location_id);
@@ -889,6 +922,14 @@ function OrderCard({
   const isNew = o.status === "new";
   const refunded = (o.refunded_total ?? 0) > 0;
   const isScheduled = o.when_type === "schedule";
+  // Delivery method was chosen (notes has "delivery:shipday") but the
+  // create-order call to Shipday never actually succeeded — e.g. the
+  // "skipped" race where the server reports ok:true without dispatching.
+  const needsShipdayRetry =
+    o.order_type === "delivery" &&
+    !o.shipday_order_id &&
+    (o.notes ?? "").includes("delivery:shipday") &&
+    (o.status === "accepted" || o.status === "ready");
 
   return (
     <div
@@ -951,6 +992,18 @@ function OrderCard({
         {o.shipday_order_id && (
           <div className="text-xs font-bold uppercase tracking-wider text-secondary">
             Shipday dispatched
+          </div>
+        )}
+        {needsShipdayRetry && (
+          <div className="mt-1 flex items-center justify-between gap-2 rounded-lg bg-destructive/10 px-2 py-1.5 text-xs font-bold text-destructive">
+            <span>⚠ Shipday never confirmed this order</span>
+            <button
+              onClick={onRetryShipday}
+              disabled={retryingShipday}
+              className="rounded-full border border-destructive px-2 py-0.5 text-[10px] uppercase tracking-wider hover:bg-destructive hover:text-destructive-foreground disabled:opacity-50"
+            >
+              {retryingShipday ? "Retrying…" : "Retry"}
+            </button>
           </div>
         )}
         {parseOrderNotes(o.notes).map((n, i) => (
