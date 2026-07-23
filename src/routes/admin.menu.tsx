@@ -841,11 +841,16 @@ function MenuAdmin() {
                                 setEditingStock(key);
                                 setStockUntilInput(toDatetimeLocalValue(new Date(Date.now() + 60 * 60 * 1000)));
                               }}
-                              className={`rounded-full px-2 py-0.5 text-[11px] font-bold uppercase tracking-wider ${
-                                out ? "bg-amber-500/15 text-amber-700 dark:text-amber-300" : "bg-muted text-muted-foreground"
-                              }`}
+                              className="inline-flex w-full items-center justify-between gap-2 whitespace-nowrap"
                             >
-                              {loc?.display_name ?? locId}: {stockLabel(st)}
+                              <span className="text-muted-foreground">{loc?.display_name ?? locId}</span>
+                              <span
+                                className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${
+                                  out ? "bg-amber-500/15 text-amber-700 dark:text-amber-300" : "bg-muted text-muted-foreground"
+                                }`}
+                              >
+                                {stockLabel(st)}
+                              </span>
                             </button>
                             {editingStock === key && (
                               <div className="mt-1 w-48 space-y-1.5 rounded-lg border border-border bg-background p-2">
