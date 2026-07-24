@@ -83,10 +83,11 @@ function PrivacyPage() {
         <section>
           <h2 className="font-display text-2xl">4. SMS / text messaging</h2>
           <p className="mt-2 text-muted-foreground">
-            If you provide your mobile number when placing an order or creating
-            an account, you consent to receive transactional text messages from
-            us related to your order (for example, "order received," "ready for
-            pickup," or "out for delivery"). Message and data rates may apply.
+            If you check the SMS consent box when placing an order or
+            creating an account, you agree to receive transactional text
+            messages from us related to your order (for example, "order
+            received," "ready for pickup," or "out for delivery"). Consent is
+            not a condition of purchase. Message and data rates may apply.
             Message frequency varies based on your order activity. Reply{" "}
             <strong className="text-foreground">STOP</strong> to opt out at any
             time, or <strong className="text-foreground">HELP</strong> for help.

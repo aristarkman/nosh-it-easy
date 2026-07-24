@@ -90,12 +90,62 @@ export const sendRefundIssuedSms = createServerFn({ method: "POST" })
     }
   });
 
+const OPT_IN_CONFIRMATION_BODY =
+  "The Kosher Nosh: You're signed up for order status texts (order received, ready for pickup, out for delivery). Msg frequency varies. Msg & data rates may apply. Reply HELP for help, STOP to opt out.";
+
+// Sends the one-time opt-in confirmation SMS the first time we ever text a
+// given phone number an order status update, then records it so it never
+// sends again for that number. Only fires for numbers with consent — since
+// sendOrderStatusSms is only ever called by callers who already gated on the
+// order's own SMS consent checkbox, a first-seen number here is treated as
+// consented; a number explicitly marked sms_consent = false is skipped.
+async function ensureOptInConfirmation(to: string): Promise<void> {
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+  const { data: existing, error: selectError } = await supabaseAdmin
+    .from("sms_subscribers")
+    .select("sms_consent, confirmation_sent_at")
+    .eq("phone", to)
+    .maybeSingle();
+  if (selectError) {
+    console.error("sms_subscribers lookup failed:", selectError);
+    return;
+  }
+
+  if (!existing) {
+    const { error: insertError } = await supabaseAdmin
+      .from("sms_subscribers")
+      .insert({ phone: to, sms_consent: true, source: "order" });
+    if (insertError) {
+      console.error("sms_subscribers insert failed:", insertError);
+      return;
+    }
+  } else {
+    if (!existing.sms_consent) return;
+    if (existing.confirmation_sent_at) return;
+  }
+
+  try {
+    await sendSms(to, OPT_IN_CONFIRMATION_BODY);
+  } catch (err) {
+    console.error("Opt-in confirmation SMS failed:", err);
+    return; // confirmation_sent_at stays null, so we retry on the next order status send
+  }
+
+  const { error: updateError } = await supabaseAdmin
+    .from("sms_subscribers")
+    .update({ confirmation_sent_at: new Date().toISOString() })
+    .eq("phone", to);
+  if (updateError) console.error("sms_subscribers confirmation update failed:", updateError);
+}
+
 export const sendOrderStatusSms = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => Schema.parse(input))
   .handler(async ({ data }) => {
     const to = normalizePhone(data.to);
     if (!to) return { ok: false, error: "Invalid phone number" };
     try {
+      await ensureOptInConfirmation(to);
       const result = await sendSms(to, buildMessage(data));
       return { ok: true, sid: result.sid as string };
     } catch (err) {
@@ -104,28 +154,34 @@ export const sendOrderStatusSms = createServerFn({ method: "POST" })
     }
   });
 
-const OptInSchema = z.object({
-  to: z.string().min(7).max(20),
+const SubscribeSchema = z.object({
+  phone: z.string().min(7).max(20),
+  consent: z.boolean(),
 });
 
-// Fires once, immediately after a customer opts in to order-status texts —
-// distinct from the order-status texts themselves. This is what campaign
-// registration forms mean by "opt-in message": the confirmation sent right
-// after consent is captured, not the first transactional message.
-export const sendSmsOptInConfirmation = createServerFn({ method: "POST" })
-  .inputValidator((input: unknown) => OptInSchema.parse(input))
+// Called by the standalone /sms-opt-in page. Persists consent by phone
+// number only — no order, no account required. Sends no SMS itself; the
+// one-time confirmation text fires lazily off the first order-status SMS
+// (see ensureOptInConfirmation above).
+export const subscribeToSmsUpdates = createServerFn({ method: "POST" })
+  .inputValidator((input: unknown) => SubscribeSchema.parse(input))
   .handler(async ({ data }) => {
-    const to = normalizePhone(data.to);
-    if (!to) return { ok: false, error: "Invalid phone number" };
-    const body =
-      "The Kosher Nosh: You're subscribed to order status texts. Msg frequency varies. Msg & data rates may apply. Reply STOP to unsubscribe, HELP for help.";
-    try {
-      const result = await sendSms(to, body);
-      return { ok: true, sid: result.sid as string };
-    } catch (err) {
-      console.error("sendSmsOptInConfirmation failed:", err);
-      return { ok: false, error: err instanceof Error ? err.message : "Send failed" };
+    const to = normalizePhone(data.phone);
+    if (!to) return { ok: false as const, error: "Invalid phone number" };
+    if (!data.consent) return { ok: false as const, error: "Consent required" };
+
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { error } = await supabaseAdmin
+      .from("sms_subscribers")
+      .upsert(
+        { phone: to, sms_consent: true, source: "sms_opt_in_page", updated_at: new Date().toISOString() },
+        { onConflict: "phone" },
+      );
+    if (error) {
+      console.error("subscribeToSmsUpdates failed:", error);
+      return { ok: false as const, error: "Could not save your opt-in. Please try again." };
     }
+    return { ok: true as const };
   });
 
 const STAFF_ALERT_NUMBERS = ["+19173352812"];

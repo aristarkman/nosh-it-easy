@@ -8,7 +8,6 @@ import { chargeWithToken, getFtdConfig, getGooglePayConfig } from "@/lib/ipospay
 import {
   sendOrderStatusSms,
   sendStaffNewOrderAlert,
-  sendSmsOptInConfirmation,
 } from "@/lib/sms.functions";
 import { dispatchShipday } from "@/lib/shipday.functions";
 import { reportSystemAlert } from "@/lib/system-alerts";
@@ -859,17 +858,10 @@ function CheckoutPage() {
       orderType,
     });
 
-    // Fire-and-forget SMS confirmation to the customer (only with consent)
+    // Fire-and-forget SMS status update to the customer (only with consent).
+    // The one-time opt-in confirmation text (if this is the first message to
+    // this phone number) is sent server-side inside sendOrderStatusSms.
     if (phone.trim() && smsConsent) {
-      // Opt-in confirmation fires once per phone number, not on every order
-      // (localStorage-based dedupe -- no schema change needed; a repeat
-      // send on a different device is a harmless, low-stakes edge case).
-      const optInKey = `smsOptInConfirmed:${phone.trim()}`;
-      if (typeof window !== "undefined" && !window.localStorage.getItem(optInKey)) {
-        sendSmsOptInConfirmation({ data: { to: phone.trim() } })
-          .then(() => window.localStorage.setItem(optInKey, "1"))
-          .catch((e) => console.error("SMS opt-in confirmation failed:", e));
-      }
       sendOrderStatusSms({
         data: {
           to: phone.trim(),

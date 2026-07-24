@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as WhenRouteImport } from './routes/when'
 import { Route as TermsRouteImport } from './routes/terms'
 import { Route as TabletRouteImport } from './routes/tablet'
+import { Route as SmsOptInRouteImport } from './routes/sms-opt-in'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as SignupRouteImport } from './routes/signup'
 import { Route as RobotsDottxtRouteImport } from './routes/robots[.]txt'
@@ -72,6 +73,11 @@ const TermsRoute = TermsRouteImport.update({
 const TabletRoute = TabletRouteImport.update({
   id: '/tablet',
   path: '/tablet',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SmsOptInRoute = SmsOptInRouteImport.update({
+  id: '/sms-opt-in',
+  path: '/sms-opt-in',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
@@ -329,6 +335,7 @@ export interface FileRoutesByFullPath {
   '/robots.txt': typeof RobotsDottxtRoute
   '/signup': typeof SignupRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/sms-opt-in': typeof SmsOptInRoute
   '/tablet': typeof TabletRoute
   '/terms': typeof TermsRoute
   '/when': typeof WhenRoute
@@ -379,6 +386,7 @@ export interface FileRoutesByTo {
   '/robots.txt': typeof RobotsDottxtRoute
   '/signup': typeof SignupRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/sms-opt-in': typeof SmsOptInRoute
   '/tablet': typeof TabletRoute
   '/terms': typeof TermsRoute
   '/when': typeof WhenRoute
@@ -431,6 +439,7 @@ export interface FileRoutesById {
   '/robots.txt': typeof RobotsDottxtRoute
   '/signup': typeof SignupRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/sms-opt-in': typeof SmsOptInRoute
   '/tablet': typeof TabletRoute
   '/terms': typeof TermsRoute
   '/when': typeof WhenRoute
@@ -484,6 +493,7 @@ export interface FileRouteTypes {
     | '/robots.txt'
     | '/signup'
     | '/sitemap.xml'
+    | '/sms-opt-in'
     | '/tablet'
     | '/terms'
     | '/when'
@@ -534,6 +544,7 @@ export interface FileRouteTypes {
     | '/robots.txt'
     | '/signup'
     | '/sitemap.xml'
+    | '/sms-opt-in'
     | '/tablet'
     | '/terms'
     | '/when'
@@ -585,6 +596,7 @@ export interface FileRouteTypes {
     | '/robots.txt'
     | '/signup'
     | '/sitemap.xml'
+    | '/sms-opt-in'
     | '/tablet'
     | '/terms'
     | '/when'
@@ -637,6 +649,7 @@ export interface RootRouteChildren {
   RobotsDottxtRoute: typeof RobotsDottxtRoute
   SignupRoute: typeof SignupRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
+  SmsOptInRoute: typeof SmsOptInRoute
   TabletRoute: typeof TabletRoute
   TermsRoute: typeof TermsRoute
   WhenRoute: typeof WhenRoute
@@ -676,6 +689,13 @@ declare module '@tanstack/react-router' {
       path: '/tablet'
       fullPath: '/tablet'
       preLoaderRoute: typeof TabletRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/sms-opt-in': {
+      id: '/sms-opt-in'
+      path: '/sms-opt-in'
+      fullPath: '/sms-opt-in'
+      preLoaderRoute: typeof SmsOptInRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/sitemap.xml': {
@@ -1062,6 +1082,7 @@ const rootRouteChildren: RootRouteChildren = {
   RobotsDottxtRoute: RobotsDottxtRoute,
   SignupRoute: SignupRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
+  SmsOptInRoute: SmsOptInRoute,
   TabletRoute: TabletRoute,
   TermsRoute: TermsRoute,
   WhenRoute: WhenRoute,

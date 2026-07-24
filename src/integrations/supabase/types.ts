@@ -1089,6 +1089,33 @@ export type Database = {
         }
         Relationships: []
       }
+      sms_subscribers: {
+        Row: {
+          confirmation_sent_at: string | null
+          created_at: string
+          phone: string
+          sms_consent: boolean
+          source: string | null
+          updated_at: string
+        }
+        Insert: {
+          confirmation_sent_at?: string | null
+          created_at?: string
+          phone: string
+          sms_consent?: boolean
+          source?: string | null
+          updated_at?: string
+        }
+        Update: {
+          confirmation_sent_at?: string | null
+          created_at?: string
+          phone?: string
+          sms_consent?: boolean
+          source?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       system_alerts: {
         Row: {
           acknowledged_at: string | null
