@@ -1005,6 +1005,33 @@ export type Database = {
           },
         ]
       }
+      sms_subscribers: {
+        Row: {
+          confirmation_sent_at: string | null
+          created_at: string
+          phone: string
+          sms_consent: boolean
+          source: string | null
+          updated_at: string
+        }
+        Insert: {
+          confirmation_sent_at?: string | null
+          created_at?: string
+          phone: string
+          sms_consent?: boolean
+          source?: string | null
+          updated_at?: string
+        }
+        Update: {
+          confirmation_sent_at?: string | null
+          created_at?: string
+          phone?: string
+          sms_consent?: boolean
+          source?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       staff_locations: {
         Row: {
           created_at: string
@@ -1085,33 +1112,6 @@ export type Database = {
           is_closed?: boolean
           location_id?: string
           open_time?: string | null
-          updated_at?: string
-        }
-        Relationships: []
-      }
-      sms_subscribers: {
-        Row: {
-          confirmation_sent_at: string | null
-          created_at: string
-          phone: string
-          sms_consent: boolean
-          source: string | null
-          updated_at: string
-        }
-        Insert: {
-          confirmation_sent_at?: string | null
-          created_at?: string
-          phone: string
-          sms_consent?: boolean
-          source?: string | null
-          updated_at?: string
-        }
-        Update: {
-          confirmation_sent_at?: string | null
-          created_at?: string
-          phone?: string
-          sms_consent?: boolean
-          source?: string | null
           updated_at?: string
         }
         Relationships: []

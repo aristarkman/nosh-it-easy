@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as WhenRouteImport } from './routes/when'
 import { Route as TermsRouteImport } from './routes/terms'
 import { Route as TabletRouteImport } from './routes/tablet'
+import { Route as SmsOptInPreviewRouteImport } from './routes/sms-opt-in-preview'
 import { Route as SmsOptInRouteImport } from './routes/sms-opt-in'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as SignupRouteImport } from './routes/signup'
@@ -73,6 +74,11 @@ const TermsRoute = TermsRouteImport.update({
 const TabletRoute = TabletRouteImport.update({
   id: '/tablet',
   path: '/tablet',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SmsOptInPreviewRoute = SmsOptInPreviewRouteImport.update({
+  id: '/sms-opt-in-preview',
+  path: '/sms-opt-in-preview',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SmsOptInRoute = SmsOptInRouteImport.update({
@@ -336,6 +342,7 @@ export interface FileRoutesByFullPath {
   '/signup': typeof SignupRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/sms-opt-in': typeof SmsOptInRoute
+  '/sms-opt-in-preview': typeof SmsOptInPreviewRoute
   '/tablet': typeof TabletRoute
   '/terms': typeof TermsRoute
   '/when': typeof WhenRoute
@@ -387,6 +394,7 @@ export interface FileRoutesByTo {
   '/signup': typeof SignupRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/sms-opt-in': typeof SmsOptInRoute
+  '/sms-opt-in-preview': typeof SmsOptInPreviewRoute
   '/tablet': typeof TabletRoute
   '/terms': typeof TermsRoute
   '/when': typeof WhenRoute
@@ -440,6 +448,7 @@ export interface FileRoutesById {
   '/signup': typeof SignupRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/sms-opt-in': typeof SmsOptInRoute
+  '/sms-opt-in-preview': typeof SmsOptInPreviewRoute
   '/tablet': typeof TabletRoute
   '/terms': typeof TermsRoute
   '/when': typeof WhenRoute
@@ -494,6 +503,7 @@ export interface FileRouteTypes {
     | '/signup'
     | '/sitemap.xml'
     | '/sms-opt-in'
+    | '/sms-opt-in-preview'
     | '/tablet'
     | '/terms'
     | '/when'
@@ -545,6 +555,7 @@ export interface FileRouteTypes {
     | '/signup'
     | '/sitemap.xml'
     | '/sms-opt-in'
+    | '/sms-opt-in-preview'
     | '/tablet'
     | '/terms'
     | '/when'
@@ -597,6 +608,7 @@ export interface FileRouteTypes {
     | '/signup'
     | '/sitemap.xml'
     | '/sms-opt-in'
+    | '/sms-opt-in-preview'
     | '/tablet'
     | '/terms'
     | '/when'
@@ -650,6 +662,7 @@ export interface RootRouteChildren {
   SignupRoute: typeof SignupRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   SmsOptInRoute: typeof SmsOptInRoute
+  SmsOptInPreviewRoute: typeof SmsOptInPreviewRoute
   TabletRoute: typeof TabletRoute
   TermsRoute: typeof TermsRoute
   WhenRoute: typeof WhenRoute
@@ -689,6 +702,13 @@ declare module '@tanstack/react-router' {
       path: '/tablet'
       fullPath: '/tablet'
       preLoaderRoute: typeof TabletRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/sms-opt-in-preview': {
+      id: '/sms-opt-in-preview'
+      path: '/sms-opt-in-preview'
+      fullPath: '/sms-opt-in-preview'
+      preLoaderRoute: typeof SmsOptInPreviewRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/sms-opt-in': {
@@ -1083,6 +1103,7 @@ const rootRouteChildren: RootRouteChildren = {
   SignupRoute: SignupRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
   SmsOptInRoute: SmsOptInRoute,
+  SmsOptInPreviewRoute: SmsOptInPreviewRoute,
   TabletRoute: TabletRoute,
   TermsRoute: TermsRoute,
   WhenRoute: WhenRoute,
