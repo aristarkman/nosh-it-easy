@@ -56,6 +56,7 @@ import { Route as ApiPublicHooksUnsubscribeEmailRouteImport } from './routes/api
 import { Route as ApiPublicHooksSyncBiyoRouteImport } from './routes/api/public/hooks/sync-biyo'
 import { Route as ApiPublicHooksShipdayRouteImport } from './routes/api/public/hooks/shipday'
 import { Route as ApiPublicHooksRequoteScheduledRouteImport } from './routes/api/public/hooks/requote-scheduled'
+import { Route as ApiPublicHooksDailySalesSummaryRouteImport } from './routes/api/public/hooks/daily-sales-summary'
 import { Route as ApiPublicHooksCartAbandonmentRouteImport } from './routes/api/public/hooks/cart-abandonment'
 
 const WhenRoute = WhenRouteImport.update({
@@ -298,6 +299,12 @@ const ApiPublicHooksRequoteScheduledRoute =
     path: '/api/public/hooks/requote-scheduled',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicHooksDailySalesSummaryRoute =
+  ApiPublicHooksDailySalesSummaryRouteImport.update({
+    id: '/api/public/hooks/daily-sales-summary',
+    path: '/api/public/hooks/daily-sales-summary',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicHooksCartAbandonmentRoute =
   ApiPublicHooksCartAbandonmentRouteImport.update({
     id: '/api/public/hooks/cart-abandonment',
@@ -350,6 +357,7 @@ export interface FileRoutesByFullPath {
   '/admin/': typeof AdminIndexRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/api/public/hooks/cart-abandonment': typeof ApiPublicHooksCartAbandonmentRoute
+  '/api/public/hooks/daily-sales-summary': typeof ApiPublicHooksDailySalesSummaryRoute
   '/api/public/hooks/requote-scheduled': typeof ApiPublicHooksRequoteScheduledRoute
   '/api/public/hooks/shipday': typeof ApiPublicHooksShipdayRoute
   '/api/public/hooks/sync-biyo': typeof ApiPublicHooksSyncBiyoRoute
@@ -399,6 +407,7 @@ export interface FileRoutesByTo {
   '/admin': typeof AdminIndexRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/api/public/hooks/cart-abandonment': typeof ApiPublicHooksCartAbandonmentRoute
+  '/api/public/hooks/daily-sales-summary': typeof ApiPublicHooksDailySalesSummaryRoute
   '/api/public/hooks/requote-scheduled': typeof ApiPublicHooksRequoteScheduledRoute
   '/api/public/hooks/shipday': typeof ApiPublicHooksShipdayRoute
   '/api/public/hooks/sync-biyo': typeof ApiPublicHooksSyncBiyoRoute
@@ -450,6 +459,7 @@ export interface FileRoutesById {
   '/admin/': typeof AdminIndexRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/api/public/hooks/cart-abandonment': typeof ApiPublicHooksCartAbandonmentRoute
+  '/api/public/hooks/daily-sales-summary': typeof ApiPublicHooksDailySalesSummaryRoute
   '/api/public/hooks/requote-scheduled': typeof ApiPublicHooksRequoteScheduledRoute
   '/api/public/hooks/shipday': typeof ApiPublicHooksShipdayRoute
   '/api/public/hooks/sync-biyo': typeof ApiPublicHooksSyncBiyoRoute
@@ -502,6 +512,7 @@ export interface FileRouteTypes {
     | '/admin/'
     | '/.mcp/invoke-tool/$tool'
     | '/api/public/hooks/cart-abandonment'
+    | '/api/public/hooks/daily-sales-summary'
     | '/api/public/hooks/requote-scheduled'
     | '/api/public/hooks/shipday'
     | '/api/public/hooks/sync-biyo'
@@ -551,6 +562,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/.mcp/invoke-tool/$tool'
     | '/api/public/hooks/cart-abandonment'
+    | '/api/public/hooks/daily-sales-summary'
     | '/api/public/hooks/requote-scheduled'
     | '/api/public/hooks/shipday'
     | '/api/public/hooks/sync-biyo'
@@ -601,6 +613,7 @@ export interface FileRouteTypes {
     | '/admin/'
     | '/.mcp/invoke-tool/$tool'
     | '/api/public/hooks/cart-abandonment'
+    | '/api/public/hooks/daily-sales-summary'
     | '/api/public/hooks/requote-scheduled'
     | '/api/public/hooks/shipday'
     | '/api/public/hooks/sync-biyo'
@@ -635,6 +648,7 @@ export interface RootRouteChildren {
   WelcomeAddressRoute: typeof WelcomeAddressRoute
   Char91DotmcpChar93InvokeToolToolRoute: typeof Char91DotmcpChar93InvokeToolToolRoute
   ApiPublicHooksCartAbandonmentRoute: typeof ApiPublicHooksCartAbandonmentRoute
+  ApiPublicHooksDailySalesSummaryRoute: typeof ApiPublicHooksDailySalesSummaryRoute
   ApiPublicHooksRequoteScheduledRoute: typeof ApiPublicHooksRequoteScheduledRoute
   ApiPublicHooksShipdayRoute: typeof ApiPublicHooksShipdayRoute
   ApiPublicHooksSyncBiyoRoute: typeof ApiPublicHooksSyncBiyoRoute
@@ -972,6 +986,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicHooksRequoteScheduledRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/hooks/daily-sales-summary': {
+      id: '/api/public/hooks/daily-sales-summary'
+      path: '/api/public/hooks/daily-sales-summary'
+      fullPath: '/api/public/hooks/daily-sales-summary'
+      preLoaderRoute: typeof ApiPublicHooksDailySalesSummaryRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/hooks/cart-abandonment': {
       id: '/api/public/hooks/cart-abandonment'
       path: '/api/public/hooks/cart-abandonment'
@@ -1053,6 +1074,7 @@ const rootRouteChildren: RootRouteChildren = {
   WelcomeAddressRoute: WelcomeAddressRoute,
   Char91DotmcpChar93InvokeToolToolRoute: Char91DotmcpChar93InvokeToolToolRoute,
   ApiPublicHooksCartAbandonmentRoute: ApiPublicHooksCartAbandonmentRoute,
+  ApiPublicHooksDailySalesSummaryRoute: ApiPublicHooksDailySalesSummaryRoute,
   ApiPublicHooksRequoteScheduledRoute: ApiPublicHooksRequoteScheduledRoute,
   ApiPublicHooksShipdayRoute: ApiPublicHooksShipdayRoute,
   ApiPublicHooksSyncBiyoRoute: ApiPublicHooksSyncBiyoRoute,
