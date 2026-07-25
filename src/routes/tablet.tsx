@@ -1118,6 +1118,11 @@ type SystemAlert = {
   acknowledged_at: string | null;
 };
 
+// Alert kinds that are customer-side noise (payment_failed — just a
+// declined/typo'd card, nothing for staff to act on) or purely internal
+// bookkeeping (daily_sales_summary_sent) don't belong on the tablet.
+const TABLET_HIDDEN_ALERT_KINDS = ["payment_failed", "daily_sales_summary_sent"];
+
 function SystemAlertsBanner({
   isAdmin,
   allowedLocations,
@@ -1136,6 +1141,7 @@ function SystemAlertsBanner({
         .from("system_alerts")
         .select("id,kind,severity,location_id,order_number,message,created_at,acknowledged_at")
         .is("acknowledged_at", null)
+        .not("kind", "in", `(${TABLET_HIDDEN_ALERT_KINDS.join(",")})`)
         .order("created_at", { ascending: false })
         .limit(50);
       if (!isAdmin && allowedLocations.length > 0) {
@@ -1154,6 +1160,7 @@ function SystemAlertsBanner({
           setAlerts((previous) => {
             if (payload.eventType === "INSERT") {
               const next = payload.new as SystemAlert;
+              if (TABLET_HIDDEN_ALERT_KINDS.includes(next.kind)) return previous;
               if (!isAdmin && next.location_id && !allowedLocations.includes(next.location_id))
                 return previous;
               if (next.acknowledged_at) return previous;
