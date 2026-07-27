@@ -1376,8 +1376,29 @@ function CheckoutPage() {
                       id="ccexpiry"
                       placeholder="MM / YY"
                       autoComplete="cc-exp"
+                      inputMode="numeric"
+                      maxLength={5}
+                      onInput={(e) => {
+                        // iPOSpays FTD rejects anything but MM/YY ("Card is
+                        // Expiry Month is Not Valid" / FTD_004). Browsers
+                        // autofill MM/YYYY and customers type 0728 or 7/28,
+                        // so normalize the field before the widget reads it.
+                        const el = e.currentTarget;
+                        let d = el.value.replace(/\D/g, "");
+                        if (d.length === 1 && Number(d) > 1) d = `0${d}`;
+                        if (d.length > 2) {
+                          const mm = d.slice(0, 2);
+                          let yy = d.slice(2);
+                          if (yy.length === 4) yy = yy.slice(2);
+                          yy = yy.slice(0, 2);
+                          el.value = `${mm}/${yy}`;
+                        } else {
+                          el.value = d;
+                        }
+                      }}
                       className="w-full rounded-xl border border-border bg-card px-3 py-2.5 text-sm outline-none focus:border-primary"
                     />
+
                     <input
                       id="cccvv"
                       placeholder="CVV"
