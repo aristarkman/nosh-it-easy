@@ -638,6 +638,15 @@ function CheckoutPage() {
           setSubmitting(false);
           return;
         }
+        // Autofill/paste can leave spaces, dashes or MM/YYYY in the fields,
+        // which iPOSpays rejects (FTD_001 / FTD_004). Clean them up and catch
+        // obvious mistakes before handing off to the widget.
+        const cardError = sanitizeAndValidateCardFields();
+        if (cardError) {
+          toast.error(cardError);
+          setSubmitting(false);
+          return;
+        }
         const tok = await window.postData();
         const paymentTokenId = tok?.payment_token_id ?? tok?.paymentTokenId;
         if (!paymentTokenId) {
