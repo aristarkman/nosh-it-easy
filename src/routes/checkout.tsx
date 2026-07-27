@@ -24,6 +24,12 @@ import { geocodeAddress } from "@/lib/geocoding.functions";
 import { recordPromoRedemption } from "@/lib/promo.functions";
 import { priceCart } from "@/lib/order-pricing.functions";
 import { pointInPolygon } from "@/lib/point-in-polygon";
+import {
+  normalizeCardNumber,
+  normalizeCvv,
+  normalizeExpiry,
+  sanitizeAndValidateCardFields,
+} from "@/lib/card-fields";
 
 type SavedAddress = {
   id: string;
@@ -629,6 +635,15 @@ function CheckoutPage() {
       if (pay === "card") {
         if (!ftdReady || typeof window.postData !== "function") {
           toast.error("Card form is still loading. Please wait a moment.");
+          setSubmitting(false);
+          return;
+        }
+        // Autofill/paste can leave spaces, dashes or MM/YYYY in the fields,
+        // which iPOSpays rejects (FTD_001 / FTD_004). Clean them up and catch
+        // obvious mistakes before handing off to the widget.
+        const cardError = sanitizeAndValidateCardFields();
+        if (cardError) {
+          toast.error(cardError);
           setSubmitting(false);
           return;
         }
@@ -1371,9 +1386,10 @@ function CheckoutPage() {
                     inputMode="numeric"
                     maxLength={19}
                     onInput={(e) => {
-                      // Autofill/paste often includes spaces or dashes, which
-                      // the FTD widget rejects as an invalid card number.
-                      e.currentTarget.value = e.currentTarget.value.replace(/\D/g, "").slice(0, 19);
+                      e.currentTarget.value = normalizeCardNumber(e.currentTarget.value);
+                    }}
+                    onBlur={(e) => {
+                      e.currentTarget.value = normalizeCardNumber(e.currentTarget.value);
                     }}
                     className="w-full rounded-xl border border-border bg-card px-3 py-2.5 text-sm outline-none focus:border-primary"
                   />
@@ -1386,22 +1402,10 @@ function CheckoutPage() {
                       inputMode="numeric"
                       maxLength={5}
                       onInput={(e) => {
-                        // iPOSpays FTD rejects anything but MM/YY ("Card is
-                        // Expiry Month is Not Valid" / FTD_004). Browsers
-                        // autofill MM/YYYY and customers type 0728 or 7/28,
-                        // so normalize the field before the widget reads it.
-                        const el = e.currentTarget;
-                        let d = el.value.replace(/\D/g, "");
-                        if (d.length === 1 && Number(d) > 1) d = `0${d}`;
-                        if (d.length > 2) {
-                          const mm = d.slice(0, 2);
-                          let yy = d.slice(2);
-                          if (yy.length === 4) yy = yy.slice(2);
-                          yy = yy.slice(0, 2);
-                          el.value = `${mm}/${yy}`;
-                        } else {
-                          el.value = d;
-                        }
+                        e.currentTarget.value = normalizeExpiry(e.currentTarget.value);
+                      }}
+                      onBlur={(e) => {
+                        e.currentTarget.value = normalizeExpiry(e.currentTarget.value);
                       }}
                       className="w-full rounded-xl border border-border bg-card px-3 py-2.5 text-sm outline-none focus:border-primary"
                     />
@@ -1411,9 +1415,14 @@ function CheckoutPage() {
                       placeholder="CVV"
                       autoComplete="cc-csc"
                       inputMode="numeric"
+                      maxLength={4}
+                      onInput={(e) => {
+                        e.currentTarget.value = normalizeCvv(e.currentTarget.value);
+                      }}
                       className="w-full rounded-xl border border-border bg-card px-3 py-2.5 text-sm outline-none focus:border-primary"
                     />
                   </div>
+
                 </div>
                 {!ftdReady && (
                   <p className="mt-2 text-[11px] text-muted-foreground">Loading secure form…</p>
