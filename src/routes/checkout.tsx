@@ -24,6 +24,12 @@ import { geocodeAddress } from "@/lib/geocoding.functions";
 import { recordPromoRedemption } from "@/lib/promo.functions";
 import { priceCart } from "@/lib/order-pricing.functions";
 import { pointInPolygon } from "@/lib/point-in-polygon";
+import {
+  normalizeCardNumber,
+  normalizeCvv,
+  normalizeExpiry,
+  sanitizeAndValidateCardFields,
+} from "@/lib/card-fields";
 
 type SavedAddress = {
   id: string;
