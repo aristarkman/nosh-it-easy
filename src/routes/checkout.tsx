@@ -1369,8 +1369,15 @@ function CheckoutPage() {
                     placeholder="Card number"
                     autoComplete="cc-number"
                     inputMode="numeric"
+                    maxLength={19}
+                    onInput={(e) => {
+                      // Autofill/paste often includes spaces or dashes, which
+                      // the FTD widget rejects as an invalid card number.
+                      e.currentTarget.value = e.currentTarget.value.replace(/\D/g, "").slice(0, 19);
+                    }}
                     className="w-full rounded-xl border border-border bg-card px-3 py-2.5 text-sm outline-none focus:border-primary"
                   />
+
                   <div className="grid grid-cols-2 gap-3">
                     <input
                       id="ccexpiry"
