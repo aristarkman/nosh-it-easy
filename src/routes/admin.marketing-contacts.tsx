@@ -472,8 +472,15 @@ function MarketingContactsPage() {
                 <div key={c.id} className="rounded-xl border border-border p-4">
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <div>
-                      <div className="font-bold">{c.name}</div>
-                      <div className="text-xs text-muted-foreground">{c.subject}</div>
+                      <div className="flex items-center gap-2 font-bold">
+                        {c.name}
+                        <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                          {c.channel === "sms" ? "SMS" : "Email"}
+                        </span>
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        {c.channel === "sms" ? c.message : c.subject}
+                      </div>
                     </div>
                     <span
                       className={`rounded-full px-3 py-1 text-xs font-bold ${
@@ -486,6 +493,7 @@ function MarketingContactsPage() {
                     >
                       {c.status}
                     </span>
+
                   </div>
                   <div className="mt-2 text-xs text-muted-foreground">
                     Day {c.day_index + 1} of ramp · today's cap {todayCap} · {c.sentCount} sent
