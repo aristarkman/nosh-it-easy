@@ -117,22 +117,28 @@ export const getMarketingOverview = createServerFn({ method: "POST" })
       }),
     );
 
+    const smsAudience = await counted((q: any) =>
+      q.eq("subscribed", true).eq("sms_subscribed", true).not("phone", "is", null),
+    );
+
     return {
       ok: true as const,
-      contacts: { total, sendable, unsubscribed, bounced },
+      contacts: { total, sendable, unsubscribed, bounced, smsAudience },
       campaigns: withStats,
     };
   });
 
 const CreateCampaignSchema = z.object({
   accessToken: z.string().min(1),
+  channel: z.enum(["email", "sms"]).default("email"),
   name: z.string().min(1).max(120),
-  subject: z.string().min(1).max(200),
+  subject: z.string().max(200).optional(),
   message: z.string().min(1).max(20000),
   contentType: z.enum(["text", "html"]).default("text"),
   ctaLabel: z.string().max(60).optional(),
   ctaUrl: z.string().url().max(500).optional(),
   ramp: z.array(z.number().int().min(1).max(5000)).min(1).max(60),
+
 });
 
 export const createMarketingCampaign = createServerFn({ method: "POST" })
