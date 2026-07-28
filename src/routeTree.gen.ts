@@ -45,6 +45,7 @@ import { Route as AdminModifiersRouteImport } from './routes/admin.modifiers'
 import { Route as AdminMenuOrderRouteImport } from './routes/admin.menu-order'
 import { Route as AdminMenuRouteImport } from './routes/admin.menu'
 import { Route as AdminMarketingEmailRouteImport } from './routes/admin.marketing-email'
+import { Route as AdminMarketingContactsRouteImport } from './routes/admin.marketing-contacts'
 import { Route as AdminMarketingRouteImport } from './routes/admin.marketing'
 import { Route as AdminHoursRouteImport } from './routes/admin.hours'
 import { Route as AdminDriversRouteImport } from './routes/admin.drivers'
@@ -58,6 +59,7 @@ import { Route as ApiPublicHooksUnsubscribeEmailRouteImport } from './routes/api
 import { Route as ApiPublicHooksSyncBiyoRouteImport } from './routes/api/public/hooks/sync-biyo'
 import { Route as ApiPublicHooksShipdayRouteImport } from './routes/api/public/hooks/shipday'
 import { Route as ApiPublicHooksRequoteScheduledRouteImport } from './routes/api/public/hooks/requote-scheduled'
+import { Route as ApiPublicHooksMarketingDripRouteImport } from './routes/api/public/hooks/marketing-drip'
 import { Route as ApiPublicHooksDailySalesSummaryRouteImport } from './routes/api/public/hooks/daily-sales-summary'
 import { Route as ApiPublicHooksCartAbandonmentRouteImport } from './routes/api/public/hooks/cart-abandonment'
 
@@ -241,6 +243,11 @@ const AdminMarketingEmailRoute = AdminMarketingEmailRouteImport.update({
   path: '/marketing-email',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminMarketingContactsRoute = AdminMarketingContactsRouteImport.update({
+  id: '/marketing-contacts',
+  path: '/marketing-contacts',
+  getParentRoute: () => AdminRoute,
+} as any)
 const AdminMarketingRoute = AdminMarketingRouteImport.update({
   id: '/marketing',
   path: '/marketing',
@@ -311,6 +318,12 @@ const ApiPublicHooksRequoteScheduledRoute =
     path: '/api/public/hooks/requote-scheduled',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicHooksMarketingDripRoute =
+  ApiPublicHooksMarketingDripRouteImport.update({
+    id: '/api/public/hooks/marketing-drip',
+    path: '/api/public/hooks/marketing-drip',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicHooksDailySalesSummaryRoute =
   ApiPublicHooksDailySalesSummaryRouteImport.update({
     id: '/api/public/hooks/daily-sales-summary',
@@ -354,6 +367,7 @@ export interface FileRoutesByFullPath {
   '/admin/drivers': typeof AdminDriversRoute
   '/admin/hours': typeof AdminHoursRoute
   '/admin/marketing': typeof AdminMarketingRoute
+  '/admin/marketing-contacts': typeof AdminMarketingContactsRoute
   '/admin/marketing-email': typeof AdminMarketingEmailRoute
   '/admin/menu': typeof AdminMenuRoute
   '/admin/menu-order': typeof AdminMenuOrderRoute
@@ -372,6 +386,7 @@ export interface FileRoutesByFullPath {
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/api/public/hooks/cart-abandonment': typeof ApiPublicHooksCartAbandonmentRoute
   '/api/public/hooks/daily-sales-summary': typeof ApiPublicHooksDailySalesSummaryRoute
+  '/api/public/hooks/marketing-drip': typeof ApiPublicHooksMarketingDripRoute
   '/api/public/hooks/requote-scheduled': typeof ApiPublicHooksRequoteScheduledRoute
   '/api/public/hooks/shipday': typeof ApiPublicHooksShipdayRoute
   '/api/public/hooks/sync-biyo': typeof ApiPublicHooksSyncBiyoRoute
@@ -406,6 +421,7 @@ export interface FileRoutesByTo {
   '/admin/drivers': typeof AdminDriversRoute
   '/admin/hours': typeof AdminHoursRoute
   '/admin/marketing': typeof AdminMarketingRoute
+  '/admin/marketing-contacts': typeof AdminMarketingContactsRoute
   '/admin/marketing-email': typeof AdminMarketingEmailRoute
   '/admin/menu': typeof AdminMenuRoute
   '/admin/menu-order': typeof AdminMenuOrderRoute
@@ -424,6 +440,7 @@ export interface FileRoutesByTo {
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/api/public/hooks/cart-abandonment': typeof ApiPublicHooksCartAbandonmentRoute
   '/api/public/hooks/daily-sales-summary': typeof ApiPublicHooksDailySalesSummaryRoute
+  '/api/public/hooks/marketing-drip': typeof ApiPublicHooksMarketingDripRoute
   '/api/public/hooks/requote-scheduled': typeof ApiPublicHooksRequoteScheduledRoute
   '/api/public/hooks/shipday': typeof ApiPublicHooksShipdayRoute
   '/api/public/hooks/sync-biyo': typeof ApiPublicHooksSyncBiyoRoute
@@ -460,6 +477,7 @@ export interface FileRoutesById {
   '/admin/drivers': typeof AdminDriversRoute
   '/admin/hours': typeof AdminHoursRoute
   '/admin/marketing': typeof AdminMarketingRoute
+  '/admin/marketing-contacts': typeof AdminMarketingContactsRoute
   '/admin/marketing-email': typeof AdminMarketingEmailRoute
   '/admin/menu': typeof AdminMenuRoute
   '/admin/menu-order': typeof AdminMenuOrderRoute
@@ -478,6 +496,7 @@ export interface FileRoutesById {
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/api/public/hooks/cart-abandonment': typeof ApiPublicHooksCartAbandonmentRoute
   '/api/public/hooks/daily-sales-summary': typeof ApiPublicHooksDailySalesSummaryRoute
+  '/api/public/hooks/marketing-drip': typeof ApiPublicHooksMarketingDripRoute
   '/api/public/hooks/requote-scheduled': typeof ApiPublicHooksRequoteScheduledRoute
   '/api/public/hooks/shipday': typeof ApiPublicHooksShipdayRoute
   '/api/public/hooks/sync-biyo': typeof ApiPublicHooksSyncBiyoRoute
@@ -515,6 +534,7 @@ export interface FileRouteTypes {
     | '/admin/drivers'
     | '/admin/hours'
     | '/admin/marketing'
+    | '/admin/marketing-contacts'
     | '/admin/marketing-email'
     | '/admin/menu'
     | '/admin/menu-order'
@@ -533,6 +553,7 @@ export interface FileRouteTypes {
     | '/.mcp/invoke-tool/$tool'
     | '/api/public/hooks/cart-abandonment'
     | '/api/public/hooks/daily-sales-summary'
+    | '/api/public/hooks/marketing-drip'
     | '/api/public/hooks/requote-scheduled'
     | '/api/public/hooks/shipday'
     | '/api/public/hooks/sync-biyo'
@@ -567,6 +588,7 @@ export interface FileRouteTypes {
     | '/admin/drivers'
     | '/admin/hours'
     | '/admin/marketing'
+    | '/admin/marketing-contacts'
     | '/admin/marketing-email'
     | '/admin/menu'
     | '/admin/menu-order'
@@ -585,6 +607,7 @@ export interface FileRouteTypes {
     | '/.mcp/invoke-tool/$tool'
     | '/api/public/hooks/cart-abandonment'
     | '/api/public/hooks/daily-sales-summary'
+    | '/api/public/hooks/marketing-drip'
     | '/api/public/hooks/requote-scheduled'
     | '/api/public/hooks/shipday'
     | '/api/public/hooks/sync-biyo'
@@ -620,6 +643,7 @@ export interface FileRouteTypes {
     | '/admin/drivers'
     | '/admin/hours'
     | '/admin/marketing'
+    | '/admin/marketing-contacts'
     | '/admin/marketing-email'
     | '/admin/menu'
     | '/admin/menu-order'
@@ -638,6 +662,7 @@ export interface FileRouteTypes {
     | '/.mcp/invoke-tool/$tool'
     | '/api/public/hooks/cart-abandonment'
     | '/api/public/hooks/daily-sales-summary'
+    | '/api/public/hooks/marketing-drip'
     | '/api/public/hooks/requote-scheduled'
     | '/api/public/hooks/shipday'
     | '/api/public/hooks/sync-biyo'
@@ -675,6 +700,7 @@ export interface RootRouteChildren {
   Char91DotmcpChar93InvokeToolToolRoute: typeof Char91DotmcpChar93InvokeToolToolRoute
   ApiPublicHooksCartAbandonmentRoute: typeof ApiPublicHooksCartAbandonmentRoute
   ApiPublicHooksDailySalesSummaryRoute: typeof ApiPublicHooksDailySalesSummaryRoute
+  ApiPublicHooksMarketingDripRoute: typeof ApiPublicHooksMarketingDripRoute
   ApiPublicHooksRequoteScheduledRoute: typeof ApiPublicHooksRequoteScheduledRoute
   ApiPublicHooksShipdayRoute: typeof ApiPublicHooksShipdayRoute
   ApiPublicHooksSyncBiyoRoute: typeof ApiPublicHooksSyncBiyoRoute
@@ -935,6 +961,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminMarketingEmailRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/admin/marketing-contacts': {
+      id: '/admin/marketing-contacts'
+      path: '/marketing-contacts'
+      fullPath: '/admin/marketing-contacts'
+      preLoaderRoute: typeof AdminMarketingContactsRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/admin/marketing': {
       id: '/admin/marketing'
       path: '/marketing'
@@ -1026,6 +1059,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicHooksRequoteScheduledRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/hooks/marketing-drip': {
+      id: '/api/public/hooks/marketing-drip'
+      path: '/api/public/hooks/marketing-drip'
+      fullPath: '/api/public/hooks/marketing-drip'
+      preLoaderRoute: typeof ApiPublicHooksMarketingDripRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/hooks/daily-sales-summary': {
       id: '/api/public/hooks/daily-sales-summary'
       path: '/api/public/hooks/daily-sales-summary'
@@ -1050,6 +1090,7 @@ interface AdminRouteChildren {
   AdminDriversRoute: typeof AdminDriversRoute
   AdminHoursRoute: typeof AdminHoursRoute
   AdminMarketingRoute: typeof AdminMarketingRoute
+  AdminMarketingContactsRoute: typeof AdminMarketingContactsRoute
   AdminMarketingEmailRoute: typeof AdminMarketingEmailRoute
   AdminMenuRoute: typeof AdminMenuRoute
   AdminMenuOrderRoute: typeof AdminMenuOrderRoute
@@ -1070,6 +1111,7 @@ const AdminRouteChildren: AdminRouteChildren = {
   AdminDriversRoute: AdminDriversRoute,
   AdminHoursRoute: AdminHoursRoute,
   AdminMarketingRoute: AdminMarketingRoute,
+  AdminMarketingContactsRoute: AdminMarketingContactsRoute,
   AdminMarketingEmailRoute: AdminMarketingEmailRoute,
   AdminMenuRoute: AdminMenuRoute,
   AdminMenuOrderRoute: AdminMenuOrderRoute,
@@ -1117,6 +1159,7 @@ const rootRouteChildren: RootRouteChildren = {
   Char91DotmcpChar93InvokeToolToolRoute: Char91DotmcpChar93InvokeToolToolRoute,
   ApiPublicHooksCartAbandonmentRoute: ApiPublicHooksCartAbandonmentRoute,
   ApiPublicHooksDailySalesSummaryRoute: ApiPublicHooksDailySalesSummaryRoute,
+  ApiPublicHooksMarketingDripRoute: ApiPublicHooksMarketingDripRoute,
   ApiPublicHooksRequoteScheduledRoute: ApiPublicHooksRequoteScheduledRoute,
   ApiPublicHooksShipdayRoute: ApiPublicHooksShipdayRoute,
   ApiPublicHooksSyncBiyoRoute: ApiPublicHooksSyncBiyoRoute,

@@ -46,10 +46,20 @@ export const Route = createFileRoute("/api/public/hooks/unsubscribe-email")({
         if (token !== expected)
           return page("Invalid link", "This unsubscribe link is not valid.", 400);
 
-        const { error } = await supabaseAdmin
-          .from("customer_profiles")
-          .update({ marketing_email: false })
-          .eq("email", email.toLowerCase());
+        const lower = email.toLowerCase();
+        const [profileRes, contactRes] = await Promise.all([
+          supabaseAdmin
+            .from("customer_profiles")
+            .update({ marketing_email: false })
+            .eq("email", lower),
+          // Imported marketing contacts (e.g. GloriaFood) live in their own
+          // table and get the same real one-click unsubscribe link.
+          supabaseAdmin
+            .from("marketing_contacts")
+            .update({ subscribed: false, unsubscribed_at: new Date().toISOString() })
+            .eq("email", lower),
+        ]);
+        const error = profileRes.error ?? contactRes.error;
         if (error) {
           console.error("unsubscribe-email failed:", error);
           return page("Something went wrong", "Please contact us directly to unsubscribe.", 500);
