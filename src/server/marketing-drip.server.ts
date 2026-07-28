@@ -1,19 +1,21 @@
-// Drip sender for stored marketing contacts.
+// Drip sender for stored marketing contacts (email and SMS).
 //
-// Deliverability rationale: sending 3,000 marketing emails at once from a
-// domain that has only ever sent order confirmations is the fastest way to
-// get spam-foldered or blacklisted. Each campaign therefore carries a
-// per-day "ramp" (e.g. 50, 100, 200, 400 ...) and this runner sends at most
-// one batch per calendar day, best customers first (most recent order date),
-// skipping anyone unsubscribed, bounced, or already sent this campaign.
+// Deliverability rationale: sending 3,000 marketing messages at once from a
+// domain/number that has only ever sent order notifications is the fastest way
+// to get spam-foldered, blacklisted, or flagged as SMS pumping. Each campaign
+// carries a per-day "ramp" (e.g. 50, 100, 200, 400 ...) and this runner sends
+// at most one batch per calendar day, best customers first (most recent order
+// date), skipping anyone unsubscribed, bounced, or already sent this campaign.
 
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
+import { buildMarketingSmsBody, normalizePhone, sendSms } from "@/server/sms-send.server";
 
 const BATCH_CONCURRENCY = 4;
 const BATCH_PAUSE_MS = 1200;
 
 type Campaign = {
   id: string;
+  channel: string;
   subject: string;
   message: string;
   content_type: string;
@@ -25,7 +27,7 @@ type Campaign = {
   last_run_on: string | null;
 };
 
-type Contact = { id: string; email: string };
+type Recipient = { id: string; email: string | null; phone: string | null };
 
 function todayIso(): string {
   return new Date().toISOString().slice(0, 10);
@@ -36,11 +38,11 @@ export function dailyCap(campaign: Pick<Campaign, "ramp" | "day_index">): number
   return ramp[Math.min(campaign.day_index, ramp.length - 1)] ?? ramp[ramp.length - 1];
 }
 
-async function sendOne(campaign: Campaign, to: string) {
+export async function sendCampaignEmail(campaign: Campaign, to: string, testPrefix = false) {
   const { data, error } = await supabaseAdmin.functions.invoke("send-marketing-email", {
     body: {
       to,
-      subject: campaign.subject,
+      subject: testPrefix ? `[TEST] ${campaign.subject}` : campaign.subject,
       message: campaign.message,
       contentType: campaign.content_type === "html" ? "html" : "text",
       ctaLabel: campaign.cta_label,
@@ -54,29 +56,61 @@ async function sendOne(campaign: Campaign, to: string) {
   }
 }
 
-async function pickRecipients(campaign: Campaign, cap: number): Promise<Contact[]> {
+export async function sendCampaignSms(campaign: Campaign, rawPhone: string, testPrefix = false) {
+  const to = normalizePhone(rawPhone);
+  if (!to) throw new Error(`Invalid phone number: ${rawPhone}`);
+  const body = buildMarketingSmsBody(
+    testPrefix ? `[TEST] ${campaign.message}` : campaign.message,
+  );
+  await sendSms(to, body);
+}
+
+async function sendOne(campaign: Campaign, r: Recipient) {
+  if (campaign.channel === "sms") {
+    if (!r.phone) throw new Error("Contact has no phone number");
+    await sendCampaignSms(campaign, r.phone);
+  } else {
+    if (!r.email) throw new Error("Contact has no email address");
+    await sendCampaignEmail(campaign, r.email);
+  }
+}
+
+async function pickRecipients(campaign: Campaign, cap: number): Promise<Recipient[]> {
+  const isSms = campaign.channel === "sms";
+
   const { data: alreadySent } = await supabaseAdmin
     .from("marketing_sends")
-    .select("email")
+    .select("email,phone")
     .eq("campaign_id", campaign.id);
-  const sentSet = new Set((alreadySent ?? []).map((r) => r.email.toLowerCase()));
+  const sentSet = new Set(
+    (alreadySent ?? [])
+      .map((r) => (isSms ? normalizePhone(r.phone ?? "") : (r.email ?? "").toLowerCase()))
+      .filter(Boolean) as string[],
+  );
 
-  const picked: Contact[] = [];
+  const picked: Recipient[] = [];
   const pageSize = 500;
   for (let from = 0; picked.length < cap; from += pageSize) {
-    const { data, error } = await supabaseAdmin
+    let q = supabaseAdmin
       .from("marketing_contacts")
-      .select("id,email")
-      .eq("subscribed", true)
-      .eq("bounced", false)
+      .select("id,email,phone")
+      .eq("subscribed", true);
+    q = isSms
+      ? q.eq("sms_subscribed", true).not("phone", "is", null)
+      : q.eq("bounced", false);
+
+    const { data, error } = await q
       .order("last_order_at", { ascending: false, nullsFirst: false })
       .order("created_at", { ascending: true })
       .range(from, from + pageSize - 1);
     if (error) throw error;
     if (!data || data.length === 0) break;
+
     for (const c of data) {
-      if (sentSet.has(c.email.toLowerCase())) continue;
-      picked.push(c);
+      const key = isSms ? normalizePhone(c.phone ?? "") : (c.email ?? "").toLowerCase();
+      if (!key || sentSet.has(key)) continue;
+      sentSet.add(key);
+      picked.push({ id: c.id, email: c.email, phone: c.phone });
       if (picked.length >= cap) break;
     }
     if (data.length < pageSize) break;
@@ -100,6 +134,7 @@ export async function runCampaignBatch(campaignId: string, force = false) {
     return { ok: false as const, reason: "already_ran_today" };
   }
 
+  const isSms = c.channel === "sms";
   const cap = dailyCap(c);
   const recipients = await pickRecipients(c, cap);
 
@@ -118,10 +153,10 @@ export async function runCampaignBatch(campaignId: string, force = false) {
     const results = await Promise.all(
       slice.map(async (r) => {
         try {
-          await sendOne(c, r.email);
+          await sendOne(c, r);
           return { r, ok: true as const, error: null };
         } catch (e) {
-          console.error("marketing drip send failed:", r.email, e);
+          console.error("marketing drip send failed:", r.email ?? r.phone, e);
           return { r, ok: false as const, error: e instanceof Error ? e.message : String(e) };
         }
       }),
@@ -130,7 +165,8 @@ export async function runCampaignBatch(campaignId: string, force = false) {
     const rows = results.map((x) => ({
       campaign_id: c.id,
       contact_id: x.r.id,
-      email: x.r.email,
+      email: isSms ? null : x.r.email,
+      phone: isSms ? normalizePhone(x.r.phone ?? "") : null,
       status: x.ok ? "sent" : "failed",
       error: x.error,
     }));
@@ -140,7 +176,11 @@ export async function runCampaignBatch(campaignId: string, force = false) {
     if (okIds.length) {
       await supabaseAdmin
         .from("marketing_contacts")
-        .update({ last_emailed_at: new Date().toISOString() })
+        .update(
+          isSms
+            ? { last_texted_at: new Date().toISOString() }
+            : { last_emailed_at: new Date().toISOString() },
+        )
         .in("id", okIds);
     }
 
