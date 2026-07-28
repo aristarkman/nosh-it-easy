@@ -520,7 +520,7 @@ function MarketingContactsPage() {
                         </button>
                       ))}
                     <button
-                      onClick={() => testSend(c.id)}
+                      onClick={() => testSend(c)}
                       disabled={busy}
                       className="rounded-full border border-border px-4 py-1.5 text-xs font-bold disabled:opacity-40"
                     >
