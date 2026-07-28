@@ -138,10 +138,46 @@ function MarketingEmailPage() {
     truncated: boolean;
   } | null>(null);
   const [err, setErr] = useState<string | null>(null);
+  const [testEmail, setTestEmail] = useState("");
+  const [testing, setTesting] = useState(false);
+  const [testNotice, setTestNotice] = useState<string | null>(null);
 
   const getCount = useServerFn(getMarketingEmailAudienceCount);
   const sendOptedIn = useServerFn(sendMarketingEmailBlastToOptedIn);
   const sendList = useServerFn(sendMarketingEmailBlastToList);
+  const sendTest = useServerFn(sendMarketingEmailTest);
+
+  async function runTestSend() {
+    setTesting(true);
+    setTestNotice(null);
+    setErr(null);
+    try {
+      const { data: sess } = await supabase.auth.getSession();
+      const token = sess.session?.access_token;
+      if (!token) {
+        setErr("Please sign in again.");
+        return;
+      }
+      const res = await sendTest({
+        data: {
+          accessToken: token,
+          to: testEmail.trim(),
+          subject: subject.trim(),
+          message,
+          contentType,
+          ctaLabel: ctaLabel.trim() || undefined,
+          ctaUrl: ctaUrl.trim() || undefined,
+        },
+      });
+      if (res.ok) setTestNotice(`Test email sent to ${testEmail.trim()}.`);
+      else setErr(res.error ?? "Test send failed");
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : String(e));
+    } finally {
+      setTesting(false);
+    }
+  }
+
 
   async function loadCount() {
     setLoadingCount(true);
