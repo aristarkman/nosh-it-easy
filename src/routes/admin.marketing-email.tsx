@@ -399,6 +399,47 @@ function MarketingEmailPage() {
             </div>
           </div>
 
+          <div className="mt-5 rounded-xl border border-dashed border-border p-3">
+            <div className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+              Send a test first
+            </div>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Sends one copy of this exact email (subject prefixed with [TEST]) so you can check how
+              it looks in a real inbox. Nobody on your list is emailed.
+            </p>
+            <div className="mt-2 flex flex-wrap gap-2">
+              <input
+                type="email"
+                value={testEmail}
+                onChange={(e) => setTestEmail(e.target.value)}
+                placeholder="you@koshernosh.com"
+                aria-label="Test email address"
+                className="min-w-[220px] flex-1 rounded-lg border border-border bg-background px-3 py-1.5 text-sm outline-none focus:border-primary"
+              />
+              <button
+                onClick={runTestSend}
+                disabled={
+                  testing ||
+                  !subject.trim() ||
+                  !message.trim() ||
+                  !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(testEmail.trim())
+                }
+                className="inline-flex items-center gap-2 rounded-full border border-border px-4 py-1.5 text-sm font-semibold disabled:opacity-40"
+              >
+                {testing ? <Loader2 className="size-4 animate-spin" /> : <Mail className="size-4" />}
+                {testing ? "Sending…" : "Send test"}
+              </button>
+            </div>
+            {testNotice && (
+              <div className="mt-2 flex items-start gap-2 text-sm text-green-700 dark:text-green-300">
+                <CheckCircle2 className="mt-0.5 size-4 shrink-0" />
+                <span>{testNotice}</span>
+              </div>
+            )}
+          </div>
+
+
+
           <button
             onClick={() => setConfirmOpen(true)}
             disabled={!canSend}
