@@ -134,7 +134,7 @@ export async function runCampaignBatch(campaignId: string, force = false) {
       status: x.ok ? "sent" : "failed",
       error: x.error,
     }));
-    await supabaseAdmin.from("marketing_sends").upsert(rows, { onConflict: "campaign_id,email" });
+    await supabaseAdmin.from("marketing_sends").insert(rows as never);
 
     const okIds = results.filter((x) => x.ok).map((x) => x.r.id);
     if (okIds.length) {
