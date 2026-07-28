@@ -404,6 +404,159 @@ export type Database = {
         }
         Relationships: []
       }
+      marketing_campaigns: {
+        Row: {
+          completed_at: string | null
+          content_type: string
+          created_at: string
+          cta_label: string | null
+          cta_url: string | null
+          day_index: number
+          id: string
+          last_run_on: string | null
+          message: string
+          name: string
+          ramp: number[]
+          started_at: string | null
+          status: string
+          subject: string
+          updated_at: string
+        }
+        Insert: {
+          completed_at?: string | null
+          content_type?: string
+          created_at?: string
+          cta_label?: string | null
+          cta_url?: string | null
+          day_index?: number
+          id?: string
+          last_run_on?: string | null
+          message: string
+          name: string
+          ramp?: number[]
+          started_at?: string | null
+          status?: string
+          subject: string
+          updated_at?: string
+        }
+        Update: {
+          completed_at?: string | null
+          content_type?: string
+          created_at?: string
+          cta_label?: string | null
+          cta_url?: string | null
+          day_index?: number
+          id?: string
+          last_run_on?: string | null
+          message?: string
+          name?: string
+          ramp?: number[]
+          started_at?: string | null
+          status?: string
+          subject?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      marketing_contacts: {
+        Row: {
+          bounce_reason: string | null
+          bounced: boolean
+          created_at: string
+          email: string
+          first_name: string | null
+          id: string
+          last_emailed_at: string | null
+          last_name: string | null
+          last_order_at: string | null
+          phone: string | null
+          source: string
+          subscribed: boolean
+          unsubscribe_token: string
+          unsubscribed_at: string | null
+          updated_at: string
+        }
+        Insert: {
+          bounce_reason?: string | null
+          bounced?: boolean
+          created_at?: string
+          email: string
+          first_name?: string | null
+          id?: string
+          last_emailed_at?: string | null
+          last_name?: string | null
+          last_order_at?: string | null
+          phone?: string | null
+          source?: string
+          subscribed?: boolean
+          unsubscribe_token?: string
+          unsubscribed_at?: string | null
+          updated_at?: string
+        }
+        Update: {
+          bounce_reason?: string | null
+          bounced?: boolean
+          created_at?: string
+          email?: string
+          first_name?: string | null
+          id?: string
+          last_emailed_at?: string | null
+          last_name?: string | null
+          last_order_at?: string | null
+          phone?: string | null
+          source?: string
+          subscribed?: boolean
+          unsubscribe_token?: string
+          unsubscribed_at?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      marketing_sends: {
+        Row: {
+          campaign_id: string
+          contact_id: string | null
+          created_at: string
+          email: string
+          error: string | null
+          id: string
+          status: string
+        }
+        Insert: {
+          campaign_id: string
+          contact_id?: string | null
+          created_at?: string
+          email: string
+          error?: string | null
+          id?: string
+          status?: string
+        }
+        Update: {
+          campaign_id?: string
+          contact_id?: string | null
+          created_at?: string
+          email?: string
+          error?: string | null
+          id?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "marketing_sends_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "marketing_campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "marketing_sends_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "marketing_contacts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       menu_categories: {
         Row: {
           active: boolean
