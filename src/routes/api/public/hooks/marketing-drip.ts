@@ -7,7 +7,8 @@ export const Route = createFileRoute("/api/public/hooks/marketing-drip")({
     handlers: {
       POST: async ({ request }) => {
         const apikey = request.headers.get("apikey");
-        if (!apikey || apikey !== process.env.SUPABASE_PUBLISHABLE_KEY) {
+        const allowed = [process.env.SUPABASE_PUBLISHABLE_KEY, process.env.SUPABASE_ANON_KEY].filter(Boolean);
+        if (!apikey || !allowed.includes(apikey)) {
           return new Response("Unauthorized", { status: 401 });
         }
         const { runAllDueCampaigns } = await import("@/server/marketing-drip.server");
