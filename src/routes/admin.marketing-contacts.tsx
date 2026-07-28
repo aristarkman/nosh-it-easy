@@ -167,15 +167,17 @@ function MarketingContactsPage() {
         const res = await doCreate({
           data: {
             accessToken: t,
+            channel,
             name: name.trim(),
-            subject: subject.trim(),
+            subject: channel === "sms" ? undefined : subject.trim(),
             message: message.trim(),
-            contentType,
-            ctaLabel: ctaLabel.trim() || undefined,
-            ctaUrl: ctaUrl.trim() || undefined,
-            ramp: RAMP_PRESETS[rampKey],
+            contentType: channel === "sms" ? "text" : contentType,
+            ctaLabel: channel === "sms" ? undefined : ctaLabel.trim() || undefined,
+            ctaUrl: channel === "sms" ? undefined : ctaUrl.trim() || undefined,
+            ramp: RAMP_PRESETS[channel === "sms" ? "sms" : rampKey],
           },
         });
+
         if (!res.ok) {
           setErr(res.error ?? "Could not create campaign");
           return;
