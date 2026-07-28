@@ -45,6 +45,7 @@ const NAV = [
   { to: "/admin/promos", label: "Promo codes", icon: Tag, adminOnly: true },
   { to: "/admin/marketing", label: "Marketing SMS", icon: MessageSquare, adminOnly: true },
   { to: "/admin/marketing-email", label: "Marketing Email", icon: Mail, adminOnly: true },
+  { to: "/admin/marketing-contacts", label: "Contacts & Drip", icon: Users, adminOnly: true },
 ];
 
 function AdminLayout() {
