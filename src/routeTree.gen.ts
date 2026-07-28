@@ -45,6 +45,7 @@ import { Route as AdminModifiersRouteImport } from './routes/admin.modifiers'
 import { Route as AdminMenuOrderRouteImport } from './routes/admin.menu-order'
 import { Route as AdminMenuRouteImport } from './routes/admin.menu'
 import { Route as AdminMarketingEmailRouteImport } from './routes/admin.marketing-email'
+import { Route as AdminMarketingContactsRouteImport } from './routes/admin.marketing-contacts'
 import { Route as AdminMarketingRouteImport } from './routes/admin.marketing'
 import { Route as AdminHoursRouteImport } from './routes/admin.hours'
 import { Route as AdminDriversRouteImport } from './routes/admin.drivers'
@@ -242,6 +243,11 @@ const AdminMarketingEmailRoute = AdminMarketingEmailRouteImport.update({
   path: '/marketing-email',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminMarketingContactsRoute = AdminMarketingContactsRouteImport.update({
+  id: '/marketing-contacts',
+  path: '/marketing-contacts',
+  getParentRoute: () => AdminRoute,
+} as any)
 const AdminMarketingRoute = AdminMarketingRouteImport.update({
   id: '/marketing',
   path: '/marketing',
@@ -361,6 +367,7 @@ export interface FileRoutesByFullPath {
   '/admin/drivers': typeof AdminDriversRoute
   '/admin/hours': typeof AdminHoursRoute
   '/admin/marketing': typeof AdminMarketingRoute
+  '/admin/marketing-contacts': typeof AdminMarketingContactsRoute
   '/admin/marketing-email': typeof AdminMarketingEmailRoute
   '/admin/menu': typeof AdminMenuRoute
   '/admin/menu-order': typeof AdminMenuOrderRoute
@@ -414,6 +421,7 @@ export interface FileRoutesByTo {
   '/admin/drivers': typeof AdminDriversRoute
   '/admin/hours': typeof AdminHoursRoute
   '/admin/marketing': typeof AdminMarketingRoute
+  '/admin/marketing-contacts': typeof AdminMarketingContactsRoute
   '/admin/marketing-email': typeof AdminMarketingEmailRoute
   '/admin/menu': typeof AdminMenuRoute
   '/admin/menu-order': typeof AdminMenuOrderRoute
@@ -469,6 +477,7 @@ export interface FileRoutesById {
   '/admin/drivers': typeof AdminDriversRoute
   '/admin/hours': typeof AdminHoursRoute
   '/admin/marketing': typeof AdminMarketingRoute
+  '/admin/marketing-contacts': typeof AdminMarketingContactsRoute
   '/admin/marketing-email': typeof AdminMarketingEmailRoute
   '/admin/menu': typeof AdminMenuRoute
   '/admin/menu-order': typeof AdminMenuOrderRoute
@@ -525,6 +534,7 @@ export interface FileRouteTypes {
     | '/admin/drivers'
     | '/admin/hours'
     | '/admin/marketing'
+    | '/admin/marketing-contacts'
     | '/admin/marketing-email'
     | '/admin/menu'
     | '/admin/menu-order'
@@ -578,6 +588,7 @@ export interface FileRouteTypes {
     | '/admin/drivers'
     | '/admin/hours'
     | '/admin/marketing'
+    | '/admin/marketing-contacts'
     | '/admin/marketing-email'
     | '/admin/menu'
     | '/admin/menu-order'
@@ -632,6 +643,7 @@ export interface FileRouteTypes {
     | '/admin/drivers'
     | '/admin/hours'
     | '/admin/marketing'
+    | '/admin/marketing-contacts'
     | '/admin/marketing-email'
     | '/admin/menu'
     | '/admin/menu-order'
@@ -949,6 +961,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminMarketingEmailRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/admin/marketing-contacts': {
+      id: '/admin/marketing-contacts'
+      path: '/marketing-contacts'
+      fullPath: '/admin/marketing-contacts'
+      preLoaderRoute: typeof AdminMarketingContactsRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/admin/marketing': {
       id: '/admin/marketing'
       path: '/marketing'
@@ -1071,6 +1090,7 @@ interface AdminRouteChildren {
   AdminDriversRoute: typeof AdminDriversRoute
   AdminHoursRoute: typeof AdminHoursRoute
   AdminMarketingRoute: typeof AdminMarketingRoute
+  AdminMarketingContactsRoute: typeof AdminMarketingContactsRoute
   AdminMarketingEmailRoute: typeof AdminMarketingEmailRoute
   AdminMenuRoute: typeof AdminMenuRoute
   AdminMenuOrderRoute: typeof AdminMenuOrderRoute
@@ -1091,6 +1111,7 @@ const AdminRouteChildren: AdminRouteChildren = {
   AdminDriversRoute: AdminDriversRoute,
   AdminHoursRoute: AdminHoursRoute,
   AdminMarketingRoute: AdminMarketingRoute,
+  AdminMarketingContactsRoute: AdminMarketingContactsRoute,
   AdminMarketingEmailRoute: AdminMarketingEmailRoute,
   AdminMenuRoute: AdminMenuRoute,
   AdminMenuOrderRoute: AdminMenuOrderRoute,
