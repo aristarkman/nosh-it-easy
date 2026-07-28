@@ -89,13 +89,15 @@ function MarketingContactsPage() {
 
   const [overview, setOverview] = useState<any | null>(null);
 
+  const [channel, setChannel] = useState<"email" | "sms">("email");
   const [name, setName] = useState("");
   const [subject, setSubject] = useState("");
   const [message, setMessage] = useState("");
   const [contentType, setContentType] = useState<"text" | "html">("text");
   const [ctaLabel, setCtaLabel] = useState("Order Now");
   const [ctaUrl, setCtaUrl] = useState("https://takeout.koshernosh.com");
-  const [rampKey, setRampKey] = useState<"conservative" | "standard">("conservative");
+  const [rampKey, setRampKey] = useState<"conservative" | "standard" | "sms">("conservative");
+
 
   const doImport = useServerFn(importMarketingContacts);
   const doOverview = useServerFn(getMarketingOverview);
