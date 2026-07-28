@@ -20,6 +20,8 @@ import {
   Pause,
   Send,
   Mail,
+  MessageSquare,
+
 } from "lucide-react";
 
 export const Route = createFileRoute("/admin/marketing-contacts")({
@@ -76,7 +78,10 @@ function parseContacts(text: string): ParsedContact[] {
 const RAMP_PRESETS: Record<string, number[]> = {
   conservative: [50, 100, 200, 400, 600, 800, 1000, 1000, 1000, 1000],
   standard: [100, 200, 400, 800, 1500, 3000],
+  // Carriers flag sudden SMS volume much faster than mailbox providers.
+  sms: [25, 50, 100, 200, 300, 400, 500, 500, 500, 500],
 };
+
 
 function MarketingContactsPage() {
   const [token, setToken] = useState<string | null>(null);
@@ -89,13 +94,15 @@ function MarketingContactsPage() {
 
   const [overview, setOverview] = useState<any | null>(null);
 
+  const [channel, setChannel] = useState<"email" | "sms">("email");
   const [name, setName] = useState("");
   const [subject, setSubject] = useState("");
   const [message, setMessage] = useState("");
   const [contentType, setContentType] = useState<"text" | "html">("text");
   const [ctaLabel, setCtaLabel] = useState("Order Now");
   const [ctaUrl, setCtaUrl] = useState("https://takeout.koshernosh.com");
-  const [rampKey, setRampKey] = useState<"conservative" | "standard">("conservative");
+  const [rampKey, setRampKey] = useState<"conservative" | "standard" | "sms">("conservative");
+
 
   const doImport = useServerFn(importMarketingContacts);
   const doOverview = useServerFn(getMarketingOverview);
@@ -162,15 +169,17 @@ function MarketingContactsPage() {
         const res = await doCreate({
           data: {
             accessToken: t,
+            channel,
             name: name.trim(),
-            subject: subject.trim(),
+            subject: channel === "sms" ? undefined : subject.trim(),
             message: message.trim(),
-            contentType,
-            ctaLabel: ctaLabel.trim() || undefined,
-            ctaUrl: ctaUrl.trim() || undefined,
-            ramp: RAMP_PRESETS[rampKey],
+            contentType: channel === "sms" ? "text" : contentType,
+            ctaLabel: channel === "sms" ? undefined : ctaLabel.trim() || undefined,
+            ctaUrl: channel === "sms" ? undefined : ctaUrl.trim() || undefined,
+            ramp: RAMP_PRESETS[channel === "sms" ? "sms" : rampKey],
           },
         });
+
         if (!res.ok) {
           setErr(res.error ?? "Could not create campaign");
           return;
@@ -214,15 +223,22 @@ function MarketingContactsPage() {
     }
   }
 
-  async function testSend(id: string) {
-    const email = window.prompt("Send a test copy to which address?");
-    if (!email) return;
+  async function testSend(c: any) {
+    const isSms = c.channel === "sms";
+    const to = window.prompt(
+      isSms
+        ? "Send a test text to which phone number? (e.g. 2015550100)"
+        : "Send a test copy to which email address?",
+    );
+    if (!to) return;
     setBusy(true);
+    setErr(null);
+    setNotice(null);
     try {
       await withToken(async (t) => {
-        const res = await doTest({ data: { accessToken: t, campaignId: id, email } });
+        const res = await doTest({ data: { accessToken: t, campaignId: c.id, to: to.trim() } });
         if (!res.ok) setErr(res.error ?? "Test send failed");
-        else setNotice(`Test sent to ${email}.`);
+        else setNotice(`Test ${isSms ? "text" : "email"} sent to ${to.trim()}.`);
       });
     } finally {
       setBusy(false);
@@ -231,7 +247,10 @@ function MarketingContactsPage() {
 
   const stats = overview?.contacts;
   const campaigns: any[] = overview?.campaigns ?? [];
-  const canCreate = name.trim() && subject.trim() && message.trim() && !busy;
+  const isSmsDraft = channel === "sms";
+  const canCreate =
+    name.trim() && message.trim() && (isSmsDraft || subject.trim()) && !busy;
+
 
   return (
     <div className="space-y-6">
@@ -256,13 +275,15 @@ function MarketingContactsPage() {
         </div>
       )}
 
-      <section className="grid gap-3 sm:grid-cols-4">
+      <section className="grid gap-3 sm:grid-cols-5">
         {[
           ["Total contacts", stats?.total],
-          ["Sendable", stats?.sendable],
+          ["Emailable", stats?.sendable],
+          ["Textable", stats?.smsAudience],
           ["Unsubscribed", stats?.unsubscribed],
           ["Bounced", stats?.bounced],
         ].map(([label, value]) => (
+
           <div key={String(label)} className="rounded-2xl border border-border bg-card p-4">
             <div className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
               {label}
@@ -306,12 +327,27 @@ function MarketingContactsPage() {
       </section>
 
       <section className="rounded-2xl border border-border bg-card p-5">
-        <h2 className="flex items-center gap-2 font-display text-lg">
-          <Mail className="size-4" /> New drip campaign
-        </h2>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h2 className="flex items-center gap-2 font-display text-lg">
+            {isSmsDraft ? <MessageSquare className="size-4" /> : <Mail className="size-4" />} New
+            drip campaign
+          </h2>
+          <div className="flex gap-1 rounded-full bg-muted p-0.5 text-xs font-bold">
+            {(["email", "sms"] as const).map((ch) => (
+              <button
+                key={ch}
+                onClick={() => setChannel(ch)}
+                className={`rounded-full px-4 py-1.5 ${channel === ch ? "bg-background shadow-sm" : "text-muted-foreground"}`}
+              >
+                {ch === "email" ? "Email" : "SMS"}
+              </button>
+            ))}
+          </div>
+        </div>
         <p className="mt-1 text-xs text-muted-foreground">
-          The campaign sends one capped batch per day, most recent customers first. Start with a
-          re-engagement message ("You ordered from us before — here's our new site"), not a promo.
+          {isSmsDraft
+            ? `Texts go out one capped batch per day (25 → 50 → 100 → 200…) to contacts with a phone number who haven't opted out. "The Kosher Nosh:" and "Reply STOP to opt out." are added automatically. ${stats?.smsAudience ?? 0} textable contacts.`
+            : "The campaign sends one capped batch per day, most recent customers first. Start with a re-engagement message (\"You ordered from us before — here's our new site\"), not a promo."}
         </p>
 
         <div className="mt-4 grid gap-3 sm:grid-cols-2">
@@ -326,68 +362,92 @@ function MarketingContactsPage() {
               className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary"
             />
           </div>
-          <div>
-            <label className="block text-xs font-semibold text-muted-foreground">Subject</label>
-            <input
-              value={subject}
-              onChange={(e) => setSubject(e.target.value)}
-              placeholder="Our new online ordering site is live"
-              className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary"
-            />
-          </div>
+          {!isSmsDraft && (
+            <div>
+              <label className="block text-xs font-semibold text-muted-foreground">Subject</label>
+              <input
+                value={subject}
+                onChange={(e) => setSubject(e.target.value)}
+                placeholder="Our new online ordering site is live"
+                className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary"
+              />
+            </div>
+          )}
         </div>
 
         <div className="mt-4 flex items-center justify-between">
           <label className="block text-sm font-semibold">Message</label>
-          <div className="flex gap-1 rounded-full bg-muted p-0.5 text-xs font-bold">
-            {(["text", "html"] as const).map((t) => (
-              <button
-                key={t}
-                onClick={() => setContentType(t)}
-                className={`rounded-full px-3 py-1 ${contentType === t ? "bg-background shadow-sm" : "text-muted-foreground"}`}
-              >
-                {t === "text" ? "Plain text" : "Custom HTML"}
-              </button>
-            ))}
-          </div>
+          {!isSmsDraft && (
+            <div className="flex gap-1 rounded-full bg-muted p-0.5 text-xs font-bold">
+              {(["text", "html"] as const).map((t) => (
+                <button
+                  key={t}
+                  onClick={() => setContentType(t)}
+                  className={`rounded-full px-3 py-1 ${contentType === t ? "bg-background shadow-sm" : "text-muted-foreground"}`}
+                >
+                  {t === "text" ? "Plain text" : "Custom HTML"}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
         <textarea
           value={message}
           onChange={(e) => setMessage(e.target.value)}
-          rows={7}
-          aria-label="Email message"
+          rows={isSmsDraft ? 4 : 7}
+          maxLength={isSmsDraft ? 300 : undefined}
+          aria-label={isSmsDraft ? "Text message" : "Email message"}
+          placeholder={
+            isSmsDraft
+              ? "This week only: 15% off catering orders over $150. Order at takeout.koshernosh.com"
+              : undefined
+          }
           className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2.5 font-mono text-xs outline-none focus:border-primary"
         />
+        {isSmsDraft && (
+          <div className="mt-1 text-xs text-muted-foreground">
+            {message.trim().length} chars — keep it under ~160 to stay one segment.
+          </div>
+        )}
 
-        <div className="mt-4 grid gap-3 sm:grid-cols-3">
-          <div>
-            <label className="block text-xs font-semibold text-muted-foreground">Button text</label>
-            <input
-              value={ctaLabel}
-              onChange={(e) => setCtaLabel(e.target.value)}
-              className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary"
-            />
+        {!isSmsDraft && (
+          <div className="mt-4 grid gap-3 sm:grid-cols-3">
+            <div>
+              <label className="block text-xs font-semibold text-muted-foreground">
+                Button text
+              </label>
+              <input
+                value={ctaLabel}
+                onChange={(e) => setCtaLabel(e.target.value)}
+                className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-muted-foreground">
+                Button link
+              </label>
+              <input
+                value={ctaUrl}
+                onChange={(e) => setCtaUrl(e.target.value)}
+                className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-muted-foreground">
+                Warm-up ramp
+              </label>
+              <select
+                value={rampKey}
+                onChange={(e) => setRampKey(e.target.value as "conservative" | "standard")}
+                className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary"
+              >
+                <option value="conservative">Conservative — 50/100/200/400/600/800/1000…</option>
+                <option value="standard">Standard — 100/200/400/800/1500/3000</option>
+              </select>
+            </div>
           </div>
-          <div>
-            <label className="block text-xs font-semibold text-muted-foreground">Button link</label>
-            <input
-              value={ctaUrl}
-              onChange={(e) => setCtaUrl(e.target.value)}
-              className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary"
-            />
-          </div>
-          <div>
-            <label className="block text-xs font-semibold text-muted-foreground">Warm-up ramp</label>
-            <select
-              value={rampKey}
-              onChange={(e) => setRampKey(e.target.value as "conservative" | "standard")}
-              className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary"
-            >
-              <option value="conservative">Conservative — 50/100/200/400/600/800/1000…</option>
-              <option value="standard">Standard — 100/200/400/800/1500/3000</option>
-            </select>
-          </div>
-        </div>
+        )}
+
 
         <button
           onClick={handleCreate}
@@ -412,8 +472,15 @@ function MarketingContactsPage() {
                 <div key={c.id} className="rounded-xl border border-border p-4">
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <div>
-                      <div className="font-bold">{c.name}</div>
-                      <div className="text-xs text-muted-foreground">{c.subject}</div>
+                      <div className="flex items-center gap-2 font-bold">
+                        {c.name}
+                        <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                          {c.channel === "sms" ? "SMS" : "Email"}
+                        </span>
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        {c.channel === "sms" ? c.message : c.subject}
+                      </div>
                     </div>
                     <span
                       className={`rounded-full px-3 py-1 text-xs font-bold ${
@@ -426,6 +493,7 @@ function MarketingContactsPage() {
                     >
                       {c.status}
                     </span>
+
                   </div>
                   <div className="mt-2 text-xs text-muted-foreground">
                     Day {c.day_index + 1} of ramp · today's cap {todayCap} · {c.sentCount} sent
@@ -452,7 +520,7 @@ function MarketingContactsPage() {
                         </button>
                       ))}
                     <button
-                      onClick={() => testSend(c.id)}
+                      onClick={() => testSend(c)}
                       disabled={busy}
                       className="rounded-full border border-border px-4 py-1.5 text-xs font-bold disabled:opacity-40"
                     >

@@ -117,22 +117,28 @@ export const getMarketingOverview = createServerFn({ method: "POST" })
       }),
     );
 
+    const smsAudience = await counted((q: any) =>
+      q.eq("subscribed", true).eq("sms_subscribed", true).not("phone", "is", null),
+    );
+
     return {
       ok: true as const,
-      contacts: { total, sendable, unsubscribed, bounced },
+      contacts: { total, sendable, unsubscribed, bounced, smsAudience },
       campaigns: withStats,
     };
   });
 
 const CreateCampaignSchema = z.object({
   accessToken: z.string().min(1),
+  channel: z.enum(["email", "sms"]).default("email"),
   name: z.string().min(1).max(120),
-  subject: z.string().min(1).max(200),
+  subject: z.string().max(200).optional(),
   message: z.string().min(1).max(20000),
   contentType: z.enum(["text", "html"]).default("text"),
   ctaLabel: z.string().max(60).optional(),
   ctaUrl: z.string().url().max(500).optional(),
   ramp: z.array(z.number().int().min(1).max(5000)).min(1).max(60),
+
 });
 
 export const createMarketingCampaign = createServerFn({ method: "POST" })
@@ -145,14 +151,17 @@ export const createMarketingCampaign = createServerFn({ method: "POST" })
     const { data: row, error } = await admin.supabaseAdmin
       .from("marketing_campaigns")
       .insert({
+        channel: data.channel,
         name: data.name.trim(),
-        subject: data.subject.trim(),
+        // SMS campaigns have no subject line; keep the internal name there.
+        subject: (data.subject?.trim() || data.name).slice(0, 200),
         message: data.message.trim(),
-        content_type: data.contentType,
-        cta_label: data.ctaLabel?.trim() || null,
-        cta_url: data.ctaUrl?.trim() || null,
+        content_type: data.channel === "sms" ? "text" : data.contentType,
+        cta_label: data.channel === "sms" ? null : data.ctaLabel?.trim() || null,
+        cta_url: data.channel === "sms" ? null : data.ctaUrl?.trim() || null,
         ramp: data.ramp,
       })
+
       .select("id")
       .single();
     if (error) return { ok: false as const, error: error.message };
@@ -208,7 +217,8 @@ export const runMarketingCampaignBatchNow = createServerFn({ method: "POST" })
 const TestSendSchema = z.object({
   accessToken: z.string().min(1),
   campaignId: z.string().uuid(),
-  email: z.string().email(),
+  // Email address for email campaigns, phone number for SMS campaigns.
+  to: z.string().min(3).max(200),
 });
 
 export const sendMarketingCampaignTest = createServerFn({ method: "POST" })
@@ -220,28 +230,21 @@ export const sendMarketingCampaignTest = createServerFn({ method: "POST" })
 
     const { data: c, error } = await admin.supabaseAdmin
       .from("marketing_campaigns")
-      .select("subject,message,content_type,cta_label,cta_url")
+      .select("*")
       .eq("id", data.campaignId)
       .maybeSingle();
     if (error || !c) return { ok: false as const, error: error?.message ?? "Campaign not found" };
 
-    const { data: res, error: sendErr } = await admin.supabaseAdmin.functions.invoke(
-      "send-marketing-email",
-      {
-        body: {
-          to: data.email,
-          subject: `[TEST] ${c.subject}`,
-          message: c.message,
-          contentType: c.content_type === "html" ? "html" : "text",
-          ctaLabel: c.cta_label,
-          ctaUrl: c.cta_url,
-          includeOneClickUnsubscribe: true,
-        },
-      },
-    );
-    if (sendErr) return { ok: false as const, error: sendErr.message };
-    if (res && (res as { ok?: boolean }).ok === false) {
-      return { ok: false as const, error: (res as { error?: string }).error ?? "Send failed" };
+    const drip = await import("@/server/marketing-drip.server");
+    try {
+      if ((c as { channel?: string }).channel === "sms") {
+        await drip.sendCampaignSms(c as never, data.to, true);
+      } else {
+        await drip.sendCampaignEmail(c as never, data.to, true);
+      }
+    } catch (e) {
+      return { ok: false as const, error: e instanceof Error ? e.message : String(e) };
     }
     return { ok: true as const };
+
   });

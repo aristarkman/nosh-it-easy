@@ -44,7 +44,6 @@ import { Route as AdminOrdersRouteImport } from './routes/admin.orders'
 import { Route as AdminModifiersRouteImport } from './routes/admin.modifiers'
 import { Route as AdminMenuOrderRouteImport } from './routes/admin.menu-order'
 import { Route as AdminMenuRouteImport } from './routes/admin.menu'
-import { Route as AdminMarketingEmailRouteImport } from './routes/admin.marketing-email'
 import { Route as AdminMarketingContactsRouteImport } from './routes/admin.marketing-contacts'
 import { Route as AdminMarketingRouteImport } from './routes/admin.marketing'
 import { Route as AdminHoursRouteImport } from './routes/admin.hours'
@@ -238,11 +237,6 @@ const AdminMenuRoute = AdminMenuRouteImport.update({
   path: '/menu',
   getParentRoute: () => AdminRoute,
 } as any)
-const AdminMarketingEmailRoute = AdminMarketingEmailRouteImport.update({
-  id: '/marketing-email',
-  path: '/marketing-email',
-  getParentRoute: () => AdminRoute,
-} as any)
 const AdminMarketingContactsRoute = AdminMarketingContactsRouteImport.update({
   id: '/marketing-contacts',
   path: '/marketing-contacts',
@@ -368,7 +362,6 @@ export interface FileRoutesByFullPath {
   '/admin/hours': typeof AdminHoursRoute
   '/admin/marketing': typeof AdminMarketingRoute
   '/admin/marketing-contacts': typeof AdminMarketingContactsRoute
-  '/admin/marketing-email': typeof AdminMarketingEmailRoute
   '/admin/menu': typeof AdminMenuRoute
   '/admin/menu-order': typeof AdminMenuOrderRoute
   '/admin/modifiers': typeof AdminModifiersRoute
@@ -422,7 +415,6 @@ export interface FileRoutesByTo {
   '/admin/hours': typeof AdminHoursRoute
   '/admin/marketing': typeof AdminMarketingRoute
   '/admin/marketing-contacts': typeof AdminMarketingContactsRoute
-  '/admin/marketing-email': typeof AdminMarketingEmailRoute
   '/admin/menu': typeof AdminMenuRoute
   '/admin/menu-order': typeof AdminMenuOrderRoute
   '/admin/modifiers': typeof AdminModifiersRoute
@@ -478,7 +470,6 @@ export interface FileRoutesById {
   '/admin/hours': typeof AdminHoursRoute
   '/admin/marketing': typeof AdminMarketingRoute
   '/admin/marketing-contacts': typeof AdminMarketingContactsRoute
-  '/admin/marketing-email': typeof AdminMarketingEmailRoute
   '/admin/menu': typeof AdminMenuRoute
   '/admin/menu-order': typeof AdminMenuOrderRoute
   '/admin/modifiers': typeof AdminModifiersRoute
@@ -535,7 +526,6 @@ export interface FileRouteTypes {
     | '/admin/hours'
     | '/admin/marketing'
     | '/admin/marketing-contacts'
-    | '/admin/marketing-email'
     | '/admin/menu'
     | '/admin/menu-order'
     | '/admin/modifiers'
@@ -589,7 +579,6 @@ export interface FileRouteTypes {
     | '/admin/hours'
     | '/admin/marketing'
     | '/admin/marketing-contacts'
-    | '/admin/marketing-email'
     | '/admin/menu'
     | '/admin/menu-order'
     | '/admin/modifiers'
@@ -644,7 +633,6 @@ export interface FileRouteTypes {
     | '/admin/hours'
     | '/admin/marketing'
     | '/admin/marketing-contacts'
-    | '/admin/marketing-email'
     | '/admin/menu'
     | '/admin/menu-order'
     | '/admin/modifiers'
@@ -954,13 +942,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminMenuRouteImport
       parentRoute: typeof AdminRoute
     }
-    '/admin/marketing-email': {
-      id: '/admin/marketing-email'
-      path: '/marketing-email'
-      fullPath: '/admin/marketing-email'
-      preLoaderRoute: typeof AdminMarketingEmailRouteImport
-      parentRoute: typeof AdminRoute
-    }
     '/admin/marketing-contacts': {
       id: '/admin/marketing-contacts'
       path: '/marketing-contacts'
@@ -1091,7 +1072,6 @@ interface AdminRouteChildren {
   AdminHoursRoute: typeof AdminHoursRoute
   AdminMarketingRoute: typeof AdminMarketingRoute
   AdminMarketingContactsRoute: typeof AdminMarketingContactsRoute
-  AdminMarketingEmailRoute: typeof AdminMarketingEmailRoute
   AdminMenuRoute: typeof AdminMenuRoute
   AdminMenuOrderRoute: typeof AdminMenuOrderRoute
   AdminModifiersRoute: typeof AdminModifiersRoute
@@ -1112,7 +1092,6 @@ const AdminRouteChildren: AdminRouteChildren = {
   AdminHoursRoute: AdminHoursRoute,
   AdminMarketingRoute: AdminMarketingRoute,
   AdminMarketingContactsRoute: AdminMarketingContactsRoute,
-  AdminMarketingEmailRoute: AdminMarketingEmailRoute,
   AdminMenuRoute: AdminMenuRoute,
   AdminMenuOrderRoute: AdminMenuOrderRoute,
   AdminModifiersRoute: AdminModifiersRoute,
