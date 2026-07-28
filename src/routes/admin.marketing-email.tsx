@@ -6,8 +6,9 @@ import {
   getMarketingEmailAudienceCount,
   sendMarketingEmailBlastToOptedIn,
   sendMarketingEmailBlastToList,
+  sendMarketingEmailTest,
 } from "@/lib/marketing-email.functions";
-import { Loader2, Send, Users, AlertCircle, CheckCircle2, Upload } from "lucide-react";
+import { Loader2, Send, Users, AlertCircle, CheckCircle2, Upload, Mail } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
