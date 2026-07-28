@@ -273,13 +273,15 @@ function MarketingContactsPage() {
         </div>
       )}
 
-      <section className="grid gap-3 sm:grid-cols-4">
+      <section className="grid gap-3 sm:grid-cols-5">
         {[
           ["Total contacts", stats?.total],
-          ["Sendable", stats?.sendable],
+          ["Emailable", stats?.sendable],
+          ["Textable", stats?.smsAudience],
           ["Unsubscribed", stats?.unsubscribed],
           ["Bounced", stats?.bounced],
         ].map(([label, value]) => (
+
           <div key={String(label)} className="rounded-2xl border border-border bg-card p-4">
             <div className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
               {label}
