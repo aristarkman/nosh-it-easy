@@ -325,12 +325,27 @@ function MarketingContactsPage() {
       </section>
 
       <section className="rounded-2xl border border-border bg-card p-5">
-        <h2 className="flex items-center gap-2 font-display text-lg">
-          <Mail className="size-4" /> New drip campaign
-        </h2>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h2 className="flex items-center gap-2 font-display text-lg">
+            {isSmsDraft ? <MessageSquare className="size-4" /> : <Mail className="size-4" />} New
+            drip campaign
+          </h2>
+          <div className="flex gap-1 rounded-full bg-muted p-0.5 text-xs font-bold">
+            {(["email", "sms"] as const).map((ch) => (
+              <button
+                key={ch}
+                onClick={() => setChannel(ch)}
+                className={`rounded-full px-4 py-1.5 ${channel === ch ? "bg-background shadow-sm" : "text-muted-foreground"}`}
+              >
+                {ch === "email" ? "Email" : "SMS"}
+              </button>
+            ))}
+          </div>
+        </div>
         <p className="mt-1 text-xs text-muted-foreground">
-          The campaign sends one capped batch per day, most recent customers first. Start with a
-          re-engagement message ("You ordered from us before — here's our new site"), not a promo.
+          {isSmsDraft
+            ? `Texts go out one capped batch per day (25 → 50 → 100 → 200…) to contacts with a phone number who haven't opted out. "The Kosher Nosh:" and "Reply STOP to opt out." are added automatically. ${stats?.smsAudience ?? 0} textable contacts.`
+            : "The campaign sends one capped batch per day, most recent customers first. Start with a re-engagement message (\"You ordered from us before — here's our new site\"), not a promo."}
         </p>
 
         <div className="mt-4 grid gap-3 sm:grid-cols-2">
@@ -345,68 +360,92 @@ function MarketingContactsPage() {
               className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary"
             />
           </div>
-          <div>
-            <label className="block text-xs font-semibold text-muted-foreground">Subject</label>
-            <input
-              value={subject}
-              onChange={(e) => setSubject(e.target.value)}
-              placeholder="Our new online ordering site is live"
-              className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary"
-            />
-          </div>
+          {!isSmsDraft && (
+            <div>
+              <label className="block text-xs font-semibold text-muted-foreground">Subject</label>
+              <input
+                value={subject}
+                onChange={(e) => setSubject(e.target.value)}
+                placeholder="Our new online ordering site is live"
+                className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary"
+              />
+            </div>
+          )}
         </div>
 
         <div className="mt-4 flex items-center justify-between">
           <label className="block text-sm font-semibold">Message</label>
-          <div className="flex gap-1 rounded-full bg-muted p-0.5 text-xs font-bold">
-            {(["text", "html"] as const).map((t) => (
-              <button
-                key={t}
-                onClick={() => setContentType(t)}
-                className={`rounded-full px-3 py-1 ${contentType === t ? "bg-background shadow-sm" : "text-muted-foreground"}`}
-              >
-                {t === "text" ? "Plain text" : "Custom HTML"}
-              </button>
-            ))}
-          </div>
+          {!isSmsDraft && (
+            <div className="flex gap-1 rounded-full bg-muted p-0.5 text-xs font-bold">
+              {(["text", "html"] as const).map((t) => (
+                <button
+                  key={t}
+                  onClick={() => setContentType(t)}
+                  className={`rounded-full px-3 py-1 ${contentType === t ? "bg-background shadow-sm" : "text-muted-foreground"}`}
+                >
+                  {t === "text" ? "Plain text" : "Custom HTML"}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
         <textarea
           value={message}
           onChange={(e) => setMessage(e.target.value)}
-          rows={7}
-          aria-label="Email message"
+          rows={isSmsDraft ? 4 : 7}
+          maxLength={isSmsDraft ? 300 : undefined}
+          aria-label={isSmsDraft ? "Text message" : "Email message"}
+          placeholder={
+            isSmsDraft
+              ? "This week only: 15% off catering orders over $150. Order at takeout.koshernosh.com"
+              : undefined
+          }
           className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2.5 font-mono text-xs outline-none focus:border-primary"
         />
+        {isSmsDraft && (
+          <div className="mt-1 text-xs text-muted-foreground">
+            {message.trim().length} chars — keep it under ~160 to stay one segment.
+          </div>
+        )}
 
-        <div className="mt-4 grid gap-3 sm:grid-cols-3">
-          <div>
-            <label className="block text-xs font-semibold text-muted-foreground">Button text</label>
-            <input
-              value={ctaLabel}
-              onChange={(e) => setCtaLabel(e.target.value)}
-              className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary"
-            />
+        {!isSmsDraft && (
+          <div className="mt-4 grid gap-3 sm:grid-cols-3">
+            <div>
+              <label className="block text-xs font-semibold text-muted-foreground">
+                Button text
+              </label>
+              <input
+                value={ctaLabel}
+                onChange={(e) => setCtaLabel(e.target.value)}
+                className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-muted-foreground">
+                Button link
+              </label>
+              <input
+                value={ctaUrl}
+                onChange={(e) => setCtaUrl(e.target.value)}
+                className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-muted-foreground">
+                Warm-up ramp
+              </label>
+              <select
+                value={rampKey}
+                onChange={(e) => setRampKey(e.target.value as "conservative" | "standard")}
+                className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary"
+              >
+                <option value="conservative">Conservative — 50/100/200/400/600/800/1000…</option>
+                <option value="standard">Standard — 100/200/400/800/1500/3000</option>
+              </select>
+            </div>
           </div>
-          <div>
-            <label className="block text-xs font-semibold text-muted-foreground">Button link</label>
-            <input
-              value={ctaUrl}
-              onChange={(e) => setCtaUrl(e.target.value)}
-              className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary"
-            />
-          </div>
-          <div>
-            <label className="block text-xs font-semibold text-muted-foreground">Warm-up ramp</label>
-            <select
-              value={rampKey}
-              onChange={(e) => setRampKey(e.target.value as "conservative" | "standard")}
-              className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary"
-            >
-              <option value="conservative">Conservative — 50/100/200/400/600/800/1000…</option>
-              <option value="standard">Standard — 100/200/400/800/1500/3000</option>
-            </select>
-          </div>
-        </div>
+        )}
+
 
         <button
           onClick={handleCreate}
