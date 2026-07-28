@@ -18,7 +18,7 @@ import {
   FolderTree,
   ReceiptText,
   MessageSquare,
-  Mail,
+  
 } from "lucide-react";
 import { useAdminAuth } from "@/lib/admin-auth";
 
