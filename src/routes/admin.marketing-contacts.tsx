@@ -221,15 +221,22 @@ function MarketingContactsPage() {
     }
   }
 
-  async function testSend(id: string) {
-    const email = window.prompt("Send a test copy to which address?");
-    if (!email) return;
+  async function testSend(c: any) {
+    const isSms = c.channel === "sms";
+    const to = window.prompt(
+      isSms
+        ? "Send a test text to which phone number? (e.g. 2015550100)"
+        : "Send a test copy to which email address?",
+    );
+    if (!to) return;
     setBusy(true);
+    setErr(null);
+    setNotice(null);
     try {
       await withToken(async (t) => {
-        const res = await doTest({ data: { accessToken: t, campaignId: id, email } });
+        const res = await doTest({ data: { accessToken: t, campaignId: c.id, to: to.trim() } });
         if (!res.ok) setErr(res.error ?? "Test send failed");
-        else setNotice(`Test sent to ${email}.`);
+        else setNotice(`Test ${isSms ? "text" : "email"} sent to ${to.trim()}.`);
       });
     } finally {
       setBusy(false);
@@ -238,7 +245,10 @@ function MarketingContactsPage() {
 
   const stats = overview?.contacts;
   const campaigns: any[] = overview?.campaigns ?? [];
-  const canCreate = name.trim() && subject.trim() && message.trim() && !busy;
+  const isSmsDraft = channel === "sms";
+  const canCreate =
+    name.trim() && message.trim() && (isSmsDraft || subject.trim()) && !busy;
+
 
   return (
     <div className="space-y-6">
