@@ -10,7 +10,6 @@ import {
   Gauge,
   Truck,
   Users,
-  Utensils,
   BookOpen,
   SlidersHorizontal,
   Tag,
@@ -18,8 +17,18 @@ import {
   FolderTree,
   ReceiptText,
   MessageSquare,
-  
+  Mail,
+  ChevronDown,
+  Settings,
+  Megaphone,
+  Monitor,
 } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { useAdminAuth } from "@/lib/admin-auth";
 
 export const Route = createFileRoute("/admin")({
@@ -27,26 +36,57 @@ export const Route = createFileRoute("/admin")({
   component: AdminLayout,
 });
 
-const NAV = [
+type NavItem = { to: string; label: string; icon: any; exact?: boolean; adminOnly?: boolean };
+type NavGroup = { label: string; icon: any; items: NavItem[] };
+
+const PRIMARY: NavItem[] = [
   { to: "/admin", label: "Overview", icon: LayoutDashboard, exact: true },
   { to: "/admin/orders", label: "Orders", icon: ReceiptText },
   { to: "/admin/reports", label: "Reports", icon: BarChart3 },
-  { to: "/admin/hours", label: "Hours", icon: Clock },
-  { to: "/admin/closures", label: "Closures", icon: CalendarX },
-  { to: "/admin/zones", label: "Delivery zones", icon: Map },
-  { to: "/admin/throttle", label: "Pacing", icon: Gauge },
-  { to: "/admin/drivers", label: "Drivers", icon: Truck },
-  { to: "/admin/staff", label: "Staff", icon: Users, adminOnly: true },
-  { to: "/admin/menu", label: "Menu items", icon: BookOpen, adminOnly: true },
-  { to: "/admin/menu-order", label: "Menu order", icon: ArrowUpDown, adminOnly: true },
-  { to: "/admin/categories", label: "Categories", icon: FolderTree, adminOnly: true },
-  { to: "/admin/modifiers", label: "Modifications", icon: SlidersHorizontal, adminOnly: true },
-  { to: "/admin/biyo", label: "Biyo sync", icon: Utensils, adminOnly: true },
-  { to: "/admin/promos", label: "Promo codes", icon: Tag, adminOnly: true },
-  { to: "/admin/marketing", label: "Marketing SMS", icon: MessageSquare, adminOnly: true },
-  
-  { to: "/admin/marketing-contacts", label: "Marketing Emails", icon: MessageSquare, adminOnly: true },
 ];
+
+const GROUPS: NavGroup[] = [
+  {
+    label: "Menu",
+    icon: BookOpen,
+    items: [
+      { to: "/admin/menu", label: "Menu items", icon: BookOpen, adminOnly: true },
+      { to: "/admin/menu-order", label: "Menu order", icon: ArrowUpDown, adminOnly: true },
+      { to: "/admin/categories", label: "Categories", icon: FolderTree, adminOnly: true },
+      { to: "/admin/modifiers", label: "Modifications", icon: SlidersHorizontal, adminOnly: true },
+    ],
+  },
+  {
+    label: "Operations",
+    icon: Settings,
+    items: [
+      { to: "/admin/hours", label: "Hours", icon: Clock },
+      { to: "/admin/closures", label: "Closures", icon: CalendarX },
+      { to: "/admin/zones", label: "Delivery zones", icon: Map },
+      { to: "/admin/throttle", label: "Pacing", icon: Gauge },
+      { to: "/admin/drivers", label: "Drivers", icon: Truck },
+      { to: "/admin/staff", label: "Staff", icon: Users, adminOnly: true },
+    ],
+  },
+  {
+    label: "Marketing",
+    icon: Megaphone,
+    items: [
+      { to: "/admin/marketing-contacts", label: "Marketing Emails", icon: Mail, adminOnly: true },
+      { to: "/admin/marketing", label: "Marketing SMS", icon: MessageSquare, adminOnly: true },
+      { to: "/admin/promos", label: "Promo codes", icon: Tag, adminOnly: true },
+    ],
+  },
+  {
+    label: "Screens",
+    icon: Monitor,
+    items: [
+      { to: "/dispatch", label: "Dispatch", icon: Truck },
+      { to: "/tablet", label: "Tablet", icon: Monitor },
+    ],
+  },
+];
+
 
 function AdminLayout() {
   const auth = useAdminAuth();
@@ -116,8 +156,8 @@ function AdminLayout() {
             </button>
           </div>
         </div>
-        <div className="mx-auto flex max-w-[1400px] flex-wrap gap-1 px-4">
-          {NAV.map((n) => {
+        <div className="mx-auto flex max-w-[1400px] flex-wrap items-center gap-1 px-4">
+          {PRIMARY.map((n) => {
             const active = n.exact ? path === n.to : path.startsWith(n.to);
             const Icon = n.icon;
             return (
@@ -132,19 +172,36 @@ function AdminLayout() {
               </Link>
             );
           })}
-          <Link
-            to="/dispatch"
-            className="-mb-px inline-flex items-center gap-1.5 border-b-2 border-transparent px-3 py-3 text-sm font-bold uppercase tracking-wider text-muted-foreground hover:text-foreground"
-          >
-            <Truck className="size-3.5" /> Dispatch
-          </Link>
-          <Link
-            to="/tablet"
-            className="-mb-px inline-flex items-center gap-1.5 border-b-2 border-transparent px-3 py-3 text-sm font-bold uppercase tracking-wider text-muted-foreground hover:text-foreground"
-          >
-            Tablet
-          </Link>
+          {GROUPS.map((g) => {
+            const GIcon = g.icon;
+            const active = g.items.some((i) => path.startsWith(i.to));
+            return (
+              <DropdownMenu key={g.label}>
+                <DropdownMenuTrigger
+                  className={`-mb-px inline-flex items-center gap-1.5 border-b-2 px-3 py-3 text-sm font-bold uppercase tracking-wider transition outline-none ${
+                    active ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  <GIcon className="size-3.5" /> {g.label}
+                  <ChevronDown className="size-3" />
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start" className="min-w-52">
+                  {g.items.map((i) => {
+                    const Icon = i.icon;
+                    return (
+                      <DropdownMenuItem key={i.to} asChild>
+                        <Link to={i.to} className="flex cursor-pointer items-center gap-2 text-sm">
+                          <Icon className="size-4" /> {i.label}
+                        </Link>
+                      </DropdownMenuItem>
+                    );
+                  })}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            );
+          })}
         </div>
+
       </div>
 
       <div className="mx-auto max-w-[1400px] p-4 lg:p-6">
