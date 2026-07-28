@@ -156,8 +156,8 @@ function AdminLayout() {
             </button>
           </div>
         </div>
-        <div className="mx-auto flex max-w-[1400px] flex-wrap gap-1 px-4">
-          {NAV.map((n) => {
+        <div className="mx-auto flex max-w-[1400px] flex-wrap items-center gap-1 px-4">
+          {PRIMARY.map((n) => {
             const active = n.exact ? path === n.to : path.startsWith(n.to);
             const Icon = n.icon;
             return (
@@ -172,19 +172,36 @@ function AdminLayout() {
               </Link>
             );
           })}
-          <Link
-            to="/dispatch"
-            className="-mb-px inline-flex items-center gap-1.5 border-b-2 border-transparent px-3 py-3 text-sm font-bold uppercase tracking-wider text-muted-foreground hover:text-foreground"
-          >
-            <Truck className="size-3.5" /> Dispatch
-          </Link>
-          <Link
-            to="/tablet"
-            className="-mb-px inline-flex items-center gap-1.5 border-b-2 border-transparent px-3 py-3 text-sm font-bold uppercase tracking-wider text-muted-foreground hover:text-foreground"
-          >
-            Tablet
-          </Link>
+          {GROUPS.map((g) => {
+            const GIcon = g.icon;
+            const active = g.items.some((i) => path.startsWith(i.to));
+            return (
+              <DropdownMenu key={g.label}>
+                <DropdownMenuTrigger
+                  className={`-mb-px inline-flex items-center gap-1.5 border-b-2 px-3 py-3 text-sm font-bold uppercase tracking-wider transition outline-none ${
+                    active ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  <GIcon className="size-3.5" /> {g.label}
+                  <ChevronDown className="size-3" />
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start" className="min-w-52">
+                  {g.items.map((i) => {
+                    const Icon = i.icon;
+                    return (
+                      <DropdownMenuItem key={i.to} asChild>
+                        <Link to={i.to} className="flex cursor-pointer items-center gap-2 text-sm">
+                          <Icon className="size-4" /> {i.label}
+                        </Link>
+                      </DropdownMenuItem>
+                    );
+                  })}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            );
+          })}
         </div>
+
       </div>
 
       <div className="mx-auto max-w-[1400px] p-4 lg:p-6">
