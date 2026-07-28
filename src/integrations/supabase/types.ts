@@ -406,6 +406,7 @@ export type Database = {
       }
       marketing_campaigns: {
         Row: {
+          channel: string
           completed_at: string | null
           content_type: string
           created_at: string
@@ -423,6 +424,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          channel?: string
           completed_at?: string | null
           content_type?: string
           created_at?: string
@@ -440,6 +442,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          channel?: string
           completed_at?: string | null
           content_type?: string
           created_at?: string
@@ -469,7 +472,9 @@ export type Database = {
           last_emailed_at: string | null
           last_name: string | null
           last_order_at: string | null
+          last_texted_at: string | null
           phone: string | null
+          sms_subscribed: boolean
           source: string
           subscribed: boolean
           unsubscribe_token: string
@@ -486,7 +491,9 @@ export type Database = {
           last_emailed_at?: string | null
           last_name?: string | null
           last_order_at?: string | null
+          last_texted_at?: string | null
           phone?: string | null
+          sms_subscribed?: boolean
           source?: string
           subscribed?: boolean
           unsubscribe_token?: string
@@ -503,7 +510,9 @@ export type Database = {
           last_emailed_at?: string | null
           last_name?: string | null
           last_order_at?: string | null
+          last_texted_at?: string | null
           phone?: string | null
+          sms_subscribed?: boolean
           source?: string
           subscribed?: boolean
           unsubscribe_token?: string
@@ -517,27 +526,30 @@ export type Database = {
           campaign_id: string
           contact_id: string | null
           created_at: string
-          email: string
+          email: string | null
           error: string | null
           id: string
+          phone: string | null
           status: string
         }
         Insert: {
           campaign_id: string
           contact_id?: string | null
           created_at?: string
-          email: string
+          email?: string | null
           error?: string | null
           id?: string
+          phone?: string | null
           status?: string
         }
         Update: {
           campaign_id?: string
           contact_id?: string | null
           created_at?: string
-          email?: string
+          email?: string | null
           error?: string | null
           id?: string
+          phone?: string | null
           status?: string
         }
         Relationships: [
