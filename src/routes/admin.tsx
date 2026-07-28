@@ -10,7 +10,6 @@ import {
   Gauge,
   Truck,
   Users,
-  Utensils,
   BookOpen,
   SlidersHorizontal,
   Tag,
@@ -18,8 +17,18 @@ import {
   FolderTree,
   ReceiptText,
   MessageSquare,
-  
+  Mail,
+  ChevronDown,
+  Settings,
+  Megaphone,
+  Monitor,
 } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { useAdminAuth } from "@/lib/admin-auth";
 
 export const Route = createFileRoute("/admin")({
@@ -27,26 +36,57 @@ export const Route = createFileRoute("/admin")({
   component: AdminLayout,
 });
 
-const NAV = [
+type NavItem = { to: string; label: string; icon: any; exact?: boolean; adminOnly?: boolean };
+type NavGroup = { label: string; icon: any; items: NavItem[] };
+
+const PRIMARY: NavItem[] = [
   { to: "/admin", label: "Overview", icon: LayoutDashboard, exact: true },
   { to: "/admin/orders", label: "Orders", icon: ReceiptText },
   { to: "/admin/reports", label: "Reports", icon: BarChart3 },
-  { to: "/admin/hours", label: "Hours", icon: Clock },
-  { to: "/admin/closures", label: "Closures", icon: CalendarX },
-  { to: "/admin/zones", label: "Delivery zones", icon: Map },
-  { to: "/admin/throttle", label: "Pacing", icon: Gauge },
-  { to: "/admin/drivers", label: "Drivers", icon: Truck },
-  { to: "/admin/staff", label: "Staff", icon: Users, adminOnly: true },
-  { to: "/admin/menu", label: "Menu items", icon: BookOpen, adminOnly: true },
-  { to: "/admin/menu-order", label: "Menu order", icon: ArrowUpDown, adminOnly: true },
-  { to: "/admin/categories", label: "Categories", icon: FolderTree, adminOnly: true },
-  { to: "/admin/modifiers", label: "Modifications", icon: SlidersHorizontal, adminOnly: true },
-  { to: "/admin/biyo", label: "Biyo sync", icon: Utensils, adminOnly: true },
-  { to: "/admin/promos", label: "Promo codes", icon: Tag, adminOnly: true },
-  { to: "/admin/marketing", label: "Marketing SMS", icon: MessageSquare, adminOnly: true },
-  
-  { to: "/admin/marketing-contacts", label: "Marketing Emails", icon: MessageSquare, adminOnly: true },
 ];
+
+const GROUPS: NavGroup[] = [
+  {
+    label: "Menu",
+    icon: BookOpen,
+    items: [
+      { to: "/admin/menu", label: "Menu items", icon: BookOpen, adminOnly: true },
+      { to: "/admin/menu-order", label: "Menu order", icon: ArrowUpDown, adminOnly: true },
+      { to: "/admin/categories", label: "Categories", icon: FolderTree, adminOnly: true },
+      { to: "/admin/modifiers", label: "Modifications", icon: SlidersHorizontal, adminOnly: true },
+    ],
+  },
+  {
+    label: "Operations",
+    icon: Settings,
+    items: [
+      { to: "/admin/hours", label: "Hours", icon: Clock },
+      { to: "/admin/closures", label: "Closures", icon: CalendarX },
+      { to: "/admin/zones", label: "Delivery zones", icon: Map },
+      { to: "/admin/throttle", label: "Pacing", icon: Gauge },
+      { to: "/admin/drivers", label: "Drivers", icon: Truck },
+      { to: "/admin/staff", label: "Staff", icon: Users, adminOnly: true },
+    ],
+  },
+  {
+    label: "Marketing",
+    icon: Megaphone,
+    items: [
+      { to: "/admin/marketing-contacts", label: "Marketing Emails", icon: Mail, adminOnly: true },
+      { to: "/admin/marketing", label: "Marketing SMS", icon: MessageSquare, adminOnly: true },
+      { to: "/admin/promos", label: "Promo codes", icon: Tag, adminOnly: true },
+    ],
+  },
+  {
+    label: "Screens",
+    icon: Monitor,
+    items: [
+      { to: "/dispatch", label: "Dispatch", icon: Truck },
+      { to: "/tablet", label: "Tablet", icon: Monitor },
+    ],
+  },
+];
+
 
 function AdminLayout() {
   const auth = useAdminAuth();
