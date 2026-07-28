@@ -172,9 +172,11 @@ export const setMarketingCampaignStatus = createServerFn({ method: "POST" })
     const admin = await requireAdminByToken(data.accessToken);
     if (!admin.ok) return { ok: false as const, error: admin.error };
 
-    const patch: Record<string, unknown> = { status: data.status };
-    if (data.status === "running") patch.started_at = new Date().toISOString();
-    if (data.status === "completed") patch.completed_at = new Date().toISOString();
+    const patch = {
+      status: data.status,
+      ...(data.status === "running" ? { started_at: new Date().toISOString() } : {}),
+      ...(data.status === "completed" ? { completed_at: new Date().toISOString() } : {}),
+    };
 
     const { error } = await admin.supabaseAdmin
       .from("marketing_campaigns")
