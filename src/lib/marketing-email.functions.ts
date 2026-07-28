@@ -166,3 +166,27 @@ export const sendMarketingEmailBlastToList = createServerFn({ method: "POST" })
     const { sent, failed } = await runBlast(admin.supabaseAdmin, recipients, data, false);
     return { ok: true as const, audience: recipients.length, sent, failed, truncated: false };
   });
+
+const TestSchema = z
+  .object({ accessToken: z.string().min(1), to: z.string().email() })
+  .merge(ContentSchema);
+
+// Sends a single [TEST] copy of the composed content to one address so an
+// admin can check rendering in a real inbox before blasting anyone.
+export const sendMarketingEmailTest = createServerFn({ method: "POST" })
+  .inputValidator((input: unknown) => TestSchema.parse(input))
+  .handler(async ({ data }) => {
+    const admin = await requireAdmin(data.accessToken);
+    if (!admin.ok) return { ok: false as const, error: admin.error };
+    try {
+      await sendOneEmail(admin.supabaseAdmin, {
+        ...data,
+        subject: `[TEST] ${data.subject}`,
+        to: data.to,
+        oneClickUnsubscribe: true,
+      });
+      return { ok: true as const };
+    } catch (e) {
+      return { ok: false as const, error: e instanceof Error ? e.message : String(e) };
+    }
+  });
