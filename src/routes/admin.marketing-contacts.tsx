@@ -76,7 +76,10 @@ function parseContacts(text: string): ParsedContact[] {
 const RAMP_PRESETS: Record<string, number[]> = {
   conservative: [50, 100, 200, 400, 600, 800, 1000, 1000, 1000, 1000],
   standard: [100, 200, 400, 800, 1500, 3000],
+  // Carriers flag sudden SMS volume much faster than mailbox providers.
+  sms: [25, 50, 100, 200, 300, 400, 500, 500, 500, 500],
 };
+
 
 function MarketingContactsPage() {
   const [token, setToken] = useState<string | null>(null);
