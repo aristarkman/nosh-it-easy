@@ -151,14 +151,17 @@ export const createMarketingCampaign = createServerFn({ method: "POST" })
     const { data: row, error } = await admin.supabaseAdmin
       .from("marketing_campaigns")
       .insert({
+        channel: data.channel,
         name: data.name.trim(),
-        subject: data.subject.trim(),
+        // SMS campaigns have no subject line; keep the internal name there.
+        subject: (data.subject?.trim() || data.name).slice(0, 200),
         message: data.message.trim(),
-        content_type: data.contentType,
-        cta_label: data.ctaLabel?.trim() || null,
-        cta_url: data.ctaUrl?.trim() || null,
+        content_type: data.channel === "sms" ? "text" : data.contentType,
+        cta_label: data.channel === "sms" ? null : data.ctaLabel?.trim() || null,
+        cta_url: data.channel === "sms" ? null : data.ctaUrl?.trim() || null,
         ramp: data.ramp,
       })
+
       .select("id")
       .single();
     if (error) return { ok: false as const, error: error.message };
