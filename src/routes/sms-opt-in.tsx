@@ -68,11 +68,14 @@ function SmsOptInPage() {
         </p>
       </header>
 
-      {done ? (
+      {result ? (
         <div className="rounded-2xl border border-border bg-card p-6 text-sm">
-          Thanks — you're signed up for order status texts.
+          {result === "subscribed"
+            ? "Thanks — you're signed up for order status texts."
+            : "Submitted — you have not opted in to text messages and will not receive any."}
         </div>
       ) : (
+
         <div className="space-y-4 rounded-2xl border border-border bg-card p-6">
           <div className="space-y-1.5">
             <label htmlFor="smsOptInPhone" className="text-sm font-semibold">
