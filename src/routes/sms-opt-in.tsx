@@ -24,33 +24,34 @@ function SmsOptInPage() {
   const [consent, setConsent] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [done, setDone] = useState(false);
-
-  const canSubmit = phone.trim().length > 0 && !submitting;
+  const [result, setResult] = useState<"subscribed" | "not_opted_in" | null>(null);
 
   const handleSignUp = async () => {
-    if (!phone.trim()) return;
-    setSubmitting(true);
     setError(null);
+
+    // Consent is entirely optional. Without it we record nothing and send nothing.
+    if (!consent || !phone.trim()) {
+      setResult("not_opted_in");
+      return;
+    }
+
+    setSubmitting(true);
     try {
-      const result = await subscribeToSmsUpdates({
+      const response = await subscribeToSmsUpdates({
         data: { phone: phone.trim(), consent },
       });
-      if (!result.ok) {
-        setError(
-          result.error === "Consent required"
-            ? "Please check the consent box to sign up."
-            : "Something went wrong. Please try again.",
-        );
+      if (!response.ok) {
+        setError("Something went wrong. Please try again.");
         return;
       }
-      setDone(true);
+      setResult("subscribed");
     } catch {
       setError("Something went wrong. Please try again.");
     } finally {
       setSubmitting(false);
     }
   };
+
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-12">
