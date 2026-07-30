@@ -119,7 +119,7 @@ function SmsOptInPage() {
 
           {error && <p className="text-sm text-destructive">{error}</p>}
 
-          <Button onClick={handleSignUp} disabled={!canSubmit} className="w-full sm:w-auto">
+          <Button onClick={handleSignUp} className="w-full sm:w-auto">
             {submitting ? "Signing up…" : "Sign Up"}
           </Button>
         </div>
