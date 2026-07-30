@@ -24,33 +24,34 @@ function SmsOptInPage() {
   const [consent, setConsent] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [done, setDone] = useState(false);
-
-  const canSubmit = phone.trim().length > 0 && !submitting;
+  const [result, setResult] = useState<"subscribed" | "not_opted_in" | null>(null);
 
   const handleSignUp = async () => {
-    if (!phone.trim()) return;
-    setSubmitting(true);
     setError(null);
+
+    // Consent is entirely optional. Without it we record nothing and send nothing.
+    if (!consent || !phone.trim()) {
+      setResult("not_opted_in");
+      return;
+    }
+
+    setSubmitting(true);
     try {
-      const result = await subscribeToSmsUpdates({
+      const response = await subscribeToSmsUpdates({
         data: { phone: phone.trim(), consent },
       });
-      if (!result.ok) {
-        setError(
-          result.error === "Consent required"
-            ? "Please check the consent box to sign up."
-            : "Something went wrong. Please try again.",
-        );
+      if (!response.ok) {
+        setError("Something went wrong. Please try again.");
         return;
       }
-      setDone(true);
+      setResult("subscribed");
     } catch {
       setError("Something went wrong. Please try again.");
     } finally {
       setSubmitting(false);
     }
   };
+
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-12">
@@ -67,11 +68,14 @@ function SmsOptInPage() {
         </p>
       </header>
 
-      {done ? (
+      {result ? (
         <div className="rounded-2xl border border-border bg-card p-6 text-sm">
-          Thanks — you're signed up for order status texts.
+          {result === "subscribed"
+            ? "Thanks — you're signed up for order status texts."
+            : "Submitted — you have not opted in to text messages and will not receive any."}
         </div>
       ) : (
+
         <div className="space-y-4 rounded-2xl border border-border bg-card p-6">
           <div className="space-y-1.5">
             <label htmlFor="smsOptInPhone" className="text-sm font-semibold">
@@ -115,7 +119,7 @@ function SmsOptInPage() {
 
           {error && <p className="text-sm text-destructive">{error}</p>}
 
-          <Button onClick={handleSignUp} disabled={!canSubmit} className="w-full sm:w-auto">
+          <Button onClick={handleSignUp} className="w-full sm:w-auto">
             {submitting ? "Signing up…" : "Sign Up"}
           </Button>
         </div>
