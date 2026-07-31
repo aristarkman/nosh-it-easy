@@ -134,7 +134,7 @@ function CheckoutPage() {
       is_closed: boolean;
     }[]
   >([]);
-  const [closures, setClosures] = useState<{ start_date: string; end_date: string }[]>([]);
+  const [closures, setClosures] = useState<{ start_date: string; end_date: string; reopen_time: string | null }[]>([]);
 
   const [savedAddresses, setSavedAddresses] = useState<SavedAddress[]>([]);
   const [selectedAddrId, setSelectedAddrId] = useState<string>("");
@@ -231,7 +231,7 @@ function CheckoutPage() {
           : Promise.resolve({ data: [] as unknown[] }),
         supabase
           .from("store_closures")
-          .select("reason,location_id,start_date,end_date")
+          .select("reason,location_id,start_date,end_date,reopen_time")
           .gte("end_date", today),
         supabase
           .from("store_hours")
@@ -261,9 +261,18 @@ function CheckoutPage() {
       const allClosures = (c ?? []).filter(
         (x) => x.location_id === null || x.location_id === location,
       );
-      setClosures(allClosures.map((x) => ({ start_date: x.start_date, end_date: x.end_date })));
+      setClosures(allClosures.map((x) => ({ start_date: x.start_date, end_date: x.end_date, reopen_time: x.reopen_time })));
       const hitToday = allClosures.find((x) => x.start_date <= today && x.end_date >= today);
-      setClosedToday(hitToday ? (hitToday.reason ?? "Closed today") : null);
+      const stillClosedNow =
+        hitToday &&
+        (hitToday.end_date !== today ||
+          !hitToday.reopen_time ||
+          (() => {
+            const [rh, rm] = hitToday.reopen_time!.split(":").map(Number);
+            const now = new Date();
+            return now.getHours() * 60 + now.getMinutes() < rh * 60 + rm;
+          })());
+      setClosedToday(stillClosedNow ? (hitToday.reason ?? "Closed today") : null);
       setOnlineHours((h ?? []) as typeof onlineHours);
     })();
   }, [location]);
@@ -479,7 +488,16 @@ function CheckoutPage() {
   const checkTime = (d: Date): { ok: boolean; reason?: string } => {
     const ymd = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
     const closure = closures.find((c) => c.start_date <= ymd && c.end_date >= ymd);
-    if (closure) return { ok: false, reason: "We're closed on that date." };
+    if (closure) {
+      const isReopenDay = closure.end_date === ymd && closure.reopen_time;
+      if (!isReopenDay) return { ok: false, reason: "We're closed on that date." };
+      const [rh, rm] = closure.reopen_time!.split(":").map(Number);
+      const mins = d.getHours() * 60 + d.getMinutes();
+      if (mins < rh * 60 + rm) {
+        return { ok: false, reason: `We reopen at ${closure.reopen_time!.slice(0, 5)} that day.` };
+      }
+      // At/after reopen time — fall through to the normal hours check below.
+    }
     const row = onlineHours.find((r) => r.day_of_week === d.getDay());
     if (!row || row.is_closed || !row.open_time || !row.close_time) {
       return { ok: false, reason: "We're not accepting online orders that day." };

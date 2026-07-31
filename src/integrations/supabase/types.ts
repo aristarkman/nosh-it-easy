@@ -1237,6 +1237,7 @@ export type Database = {
           id: string
           location_id: string | null
           reason: string | null
+          reopen_time: string | null
           start_date: string
         }
         Insert: {
@@ -1245,6 +1246,7 @@ export type Database = {
           id?: string
           location_id?: string | null
           reason?: string | null
+          reopen_time?: string | null
           start_date: string
         }
         Update: {
@@ -1253,6 +1255,7 @@ export type Database = {
           id?: string
           location_id?: string | null
           reason?: string | null
+          reopen_time?: string | null
           start_date?: string
         }
         Relationships: []

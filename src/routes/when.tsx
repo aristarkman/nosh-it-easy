@@ -28,7 +28,7 @@ export const Route = createFileRoute("/when")({
 });
 
 type HoursRow = { day_of_week: number; open_time: string | null; close_time: string | null; is_closed: boolean };
-type Closure = { start_date: string; end_date: string };
+type Closure = { start_date: string; end_date: string; reopen_time: string | null };
 
 function ymd(d: Date) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
@@ -57,14 +57,14 @@ function WhenPage() {
           .eq("hours_kind", "online"),
         supabase
           .from("store_closures")
-          .select("location_id,start_date,end_date")
+          .select("location_id,start_date,end_date,reopen_time")
           .gte("end_date", today),
       ]);
       setHours((h ?? []) as HoursRow[]);
       setClosures(
-        ((c ?? []) as { location_id: string | null; start_date: string; end_date: string }[])
+        ((c ?? []) as { location_id: string | null; start_date: string; end_date: string; reopen_time: string | null }[])
           .filter((x) => x.location_id === null || x.location_id === location)
-          .map((x) => ({ start_date: x.start_date, end_date: x.end_date }))
+          .map((x) => ({ start_date: x.start_date, end_date: x.end_date, reopen_time: x.reopen_time }))
       );
       setLoaded(true);
     })();
@@ -73,7 +73,16 @@ function WhenPage() {
   const checkTime = (d: Date): { ok: boolean; reason?: string } => {
     const k = ymd(d);
     const closure = closures.find((c) => c.start_date <= k && c.end_date >= k);
-    if (closure) return { ok: false, reason: "We're closed on that date." };
+    if (closure) {
+      const isReopenDay = closure.end_date === k && closure.reopen_time;
+      if (!isReopenDay) return { ok: false, reason: "We're closed on that date." };
+      const [rh, rm] = closure.reopen_time!.split(":").map(Number);
+      const mins = d.getHours() * 60 + d.getMinutes();
+      if (mins < rh * 60 + rm) {
+        return { ok: false, reason: `We reopen at ${closure.reopen_time!.slice(0, 5)} that day.` };
+      }
+      // At/after reopen time — fall through to the normal hours check below.
+    }
     const row = hours.find((r) => r.day_of_week === d.getDay());
     if (!row || row.is_closed || !row.open_time || !row.close_time) {
       return { ok: false, reason: "We're not accepting online orders that day." };
@@ -120,8 +129,9 @@ function WhenPage() {
       day.setDate(day.getDate() + dayOffset);
       const key = ymd(day);
 
-      const closed = closures.some((c) => c.start_date <= key && c.end_date >= key);
-      if (closed) continue;
+      const closure = closures.find((c) => c.start_date <= key && c.end_date >= key);
+      const isReopenDay = closure && closure.end_date === key && closure.reopen_time;
+      if (closure && !isReopenDay) continue;
 
       const row = hours.find((r) => r.day_of_week === day.getDay());
       if (!row || row.is_closed || !row.open_time || !row.close_time) continue;
@@ -130,9 +140,18 @@ function WhenPage() {
       const [ch, cm] = row.close_time.split(":").map(Number);
       const openMins = oh * 60 + om;
       const closeMins = ch * 60 + cm;
+      const reopenMins = isReopenDay
+        ? (() => {
+            const [rh, rm] = closure!.reopen_time!.split(":").map(Number);
+            return rh * 60 + rm;
+          })()
+        : openMins;
+      const effectiveOpenMins = Math.max(openMins, reopenMins);
 
       const candidateMins =
-        dayOffset === 0 ? Math.max(bufferStart.getHours() * 60 + bufferStart.getMinutes(), openMins) : openMins;
+        dayOffset === 0
+          ? Math.max(bufferStart.getHours() * 60 + bufferStart.getMinutes(), effectiveOpenMins)
+          : effectiveOpenMins;
       if (candidateMins > closeMins) continue;
 
       const result = new Date(day);

@@ -15,6 +15,7 @@ type Closure = {
   start_date: string;
   end_date: string;
   reason: string | null;
+  reopen_time: string | null;
 };
 
 function ClosuresPage() {
@@ -23,6 +24,7 @@ function ClosuresPage() {
   const [start, setStart] = useState("");
   const [end, setEnd] = useState("");
   const [reason, setReason] = useState("");
+  const [reopenTime, setReopenTime] = useState("");
 
   const load = async () => {
     const { data } = await supabase
@@ -40,9 +42,10 @@ function ClosuresPage() {
       start_date: start,
       end_date: end,
       reason: reason || null,
+      reopen_time: reopenTime || null,
     });
     if (error) return toast.error(error.message);
-    setStart(""); setEnd(""); setReason(""); setLoc("all");
+    setStart(""); setEnd(""); setReason(""); setLoc("all"); setReopenTime("");
     load();
   };
   const del = async (id: string) => {
@@ -56,32 +59,52 @@ function ClosuresPage() {
 
       <div className="rounded-2xl border border-border bg-card p-5">
         <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Add closure</h3>
-        <div className="mt-3 grid gap-3 sm:grid-cols-5">
+        <div className="mt-3 grid gap-3 sm:grid-cols-6">
           <select value={loc} onChange={(e) => setLoc(e.target.value)} className="rounded border border-border bg-background px-2 py-2 text-sm">
             <option value="all">All locations</option>
             {LOCATIONS.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
           </select>
           <input type="date" value={start} onChange={(e) => setStart(e.target.value)} className="rounded border border-border bg-background px-2 py-2 text-sm" />
           <input type="date" value={end} onChange={(e) => setEnd(e.target.value)} className="rounded border border-border bg-background px-2 py-2 text-sm" />
+          <input
+            type="time"
+            value={reopenTime}
+            onChange={(e) => setReopenTime(e.target.value)}
+            title="Reopens at (optional) — on the last day, hold off online ordering until this time so there's a buffer to get set up. Leave blank to reopen at normal opening time the next day."
+            className="rounded border border-border bg-background px-2 py-2 text-sm"
+          />
           <input placeholder="Reason (e.g. Passover)" value={reason} onChange={(e) => setReason(e.target.value)} className="rounded border border-border bg-background px-2 py-2 text-sm sm:col-span-1" />
           <button onClick={add} className="rounded-full bg-primary px-4 py-2 text-xs font-black uppercase tracking-wider text-primary-foreground hover:opacity-90">Add</button>
         </div>
+        <p className="mt-2 text-xs text-muted-foreground">
+          "Reopens at" is optional — it only matters on the last day of the closure. If set, online
+          ordering stays blocked that day until that time, then resumes for the rest of the day's normal
+          hours. Leave blank to reopen at the usual opening time the day after the closure ends.
+        </p>
       </div>
 
       <div className="rounded-2xl border border-border bg-card">
         <table className="w-full text-sm">
           <thead className="text-left text-xs uppercase tracking-wider text-muted-foreground">
-            <tr><th className="px-4 py-2">Location</th><th className="px-4 py-2">Start</th><th className="px-4 py-2">End</th><th className="px-4 py-2">Reason</th><th /></tr>
+            <tr>
+              <th className="px-4 py-2">Location</th>
+              <th className="px-4 py-2">Start</th>
+              <th className="px-4 py-2">End</th>
+              <th className="px-4 py-2">Reopens at</th>
+              <th className="px-4 py-2">Reason</th>
+              <th />
+            </tr>
           </thead>
           <tbody>
             {list.length === 0 && (
-              <tr><td colSpan={5} className="px-4 py-8 text-center text-muted-foreground">No closures scheduled.</td></tr>
+              <tr><td colSpan={6} className="px-4 py-8 text-center text-muted-foreground">No closures scheduled.</td></tr>
             )}
             {list.map((c) => (
               <tr key={c.id} className="border-t border-border">
                 <td className="px-4 py-2">{c.location_id ? LOCATIONS.find((l) => l.id === c.location_id)?.name : "All"}</td>
                 <td className="px-4 py-2">{c.start_date}</td>
                 <td className="px-4 py-2">{c.end_date}</td>
+                <td className="px-4 py-2">{c.reopen_time ? c.reopen_time.slice(0, 5) : "—"}</td>
                 <td className="px-4 py-2">{c.reason ?? "—"}</td>
                 <td className="px-4 py-2 text-right">
                   <button onClick={() => del(c.id)} className="text-muted-foreground hover:text-destructive">
