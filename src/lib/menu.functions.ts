@@ -9,7 +9,9 @@ async function buildMenu(locationId: string): Promise<{ items: MenuItem[]; categ
   const [itemsRes, pricesRes, availRes, migRes, mgRes, moRes, catsRes, photosRes] = await Promise.all([
     supabaseAdmin
       .from("menu_items")
-      .select("id,name,slug,description,category,popular,photo_url,sort_order,gluten_free_possible,taxable,available_locations")
+      .select(
+        "id,name,slug,description,category,popular,photo_url,sort_order,gluten_free_possible,taxable,available_locations,sold_by_pound,minimum_quantity,price_label,is_package",
+      )
       .eq("active", true)
       .contains("available_locations", [locationId])
       .order("sort_order")
@@ -95,9 +97,10 @@ async function buildMenu(locationId: string): Promise<{ items: MenuItem[]; categ
     if (price == null || price < 0) continue;
 
     const itemGroups = groupsByItem.get(it.id) ?? [];
+    const priceLabel = (it as { price_label?: string | null }).price_label ?? null;
     if (price === 0) {
       const hasPricedModifier = itemGroups.some((g) => g.options.some((o) => (o.price ?? 0) > 0));
-      if (!hasPricedModifier) continue;
+      if (!hasPricedModifier && !priceLabel) continue;
     }
     const raw = (it.category ?? "").trim();
     if (!validCatNames.has(raw)) continue;
@@ -120,6 +123,10 @@ async function buildMenu(locationId: string): Promise<{ items: MenuItem[]; categ
       glutenFreePossible: !!(it as { gluten_free_possible?: boolean }).gluten_free_possible,
       taxable: (it as { taxable?: boolean }).taxable !== false,
       modifierGroups: itemGroups,
+      soldByPound: !!(it as { sold_by_pound?: boolean }).sold_by_pound,
+      minimumQuantity: (it as { minimum_quantity?: number | null }).minimum_quantity ?? null,
+      priceLabel,
+      isPackage: !!(it as { is_package?: boolean }).is_package,
     });
   }
   return { items, categories };

@@ -23,5 +23,9 @@ export type MenuItem = {
   glutenFreePossible?: boolean;
   taxable: boolean;
   modifierGroups?: ModifierGroup[];
+  soldByPound: boolean;
+  minimumQuantity: number | null;
+  priceLabel: string | null;
+  isPackage: boolean;
 };
 export type Category = { id: string; name: string; blurb?: string };

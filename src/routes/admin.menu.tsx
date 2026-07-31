@@ -26,6 +26,10 @@ type Item = {
   gluten_free_possible: boolean;
   taxable: boolean;
   available_locations: string[];
+  sold_by_pound: boolean;
+  minimum_quantity: number | null;
+  price_label: string | null;
+  is_package: boolean;
 };
 
 type Price = { menu_item_id: string; location_id: string; price: number };
@@ -82,7 +86,7 @@ function MenuAdmin() {
   async function load() {
     setLoading(true);
     const [i, p, l, g, a, c, ph, av] = await Promise.all([
-      supabase.from("menu_items").select("id,name,category,active,sort_order,photo_url,description,gluten_free_possible,taxable,available_locations").order("category").order("sort_order").order("name"),
+      supabase.from("menu_items").select("id,name,category,active,sort_order,photo_url,description,gluten_free_possible,taxable,available_locations,sold_by_pound,minimum_quantity,price_label,is_package").order("category").order("sort_order").order("name"),
       supabase.from("menu_item_prices").select("menu_item_id,location_id,price"),
       supabase.from("biyo_locations").select("location_id,display_name").order("location_id"),
       supabase.from("modifier_groups").select("id,name").order("name"),
@@ -296,6 +300,64 @@ function MenuAdmin() {
     const { error } = await supabase.from("menu_items").update({ taxable: next }).eq("id", it.id);
     if (error) {
       setItems((prev) => prev.map((x) => x.id === it.id ? { ...x, taxable: it.taxable } : x));
+      alert(error.message);
+    }
+  }
+
+  async function toggleSoldByPound(it: Item) {
+    const next = !it.sold_by_pound;
+    const prevMin = it.minimum_quantity;
+    // Turning it on with no minimum set yet defaults to 0.5 lb.
+    const nextMin = next && prevMin == null ? 0.5 : it.minimum_quantity;
+    setItems((prev) =>
+      prev.map((x) => (x.id === it.id ? { ...x, sold_by_pound: next, minimum_quantity: nextMin } : x)),
+    );
+    const { error } = await supabase
+      .from("menu_items")
+      .update({ sold_by_pound: next, minimum_quantity: nextMin })
+      .eq("id", it.id);
+    if (error) {
+      setItems((prev) =>
+        prev.map((x) => (x.id === it.id ? { ...x, sold_by_pound: it.sold_by_pound, minimum_quantity: prevMin } : x)),
+      );
+      alert(error.message);
+    }
+  }
+
+  async function saveMinimumQuantity(it: Item, raw: string) {
+    const trimmed = raw.trim();
+    const next = trimmed === "" ? 0.5 : Number(trimmed);
+    if (!Number.isFinite(next) || next <= 0) { alert("Enter a valid minimum (e.g. 0.5)"); return; }
+    const rounded = Math.round(next * 100) / 100;
+    if (it.minimum_quantity != null && Math.abs(it.minimum_quantity - rounded) < 0.005) return;
+    const prev = it.minimum_quantity;
+    setItems((p) => p.map((x) => x.id === it.id ? { ...x, minimum_quantity: rounded } : x));
+    const { error } = await supabase.from("menu_items").update({ minimum_quantity: rounded }).eq("id", it.id);
+    if (error) {
+      setItems((p) => p.map((x) => x.id === it.id ? { ...x, minimum_quantity: prev } : x));
+      alert(error.message);
+    }
+  }
+
+  async function savePriceLabel(it: Item, raw: string) {
+    const trimmed = raw.trim();
+    const next = trimmed === "" ? null : trimmed;
+    if (next === it.price_label) return;
+    const prev = it.price_label;
+    setItems((p) => p.map((x) => x.id === it.id ? { ...x, price_label: next } : x));
+    const { error } = await supabase.from("menu_items").update({ price_label: next }).eq("id", it.id);
+    if (error) {
+      setItems((p) => p.map((x) => x.id === it.id ? { ...x, price_label: prev } : x));
+      alert(error.message);
+    }
+  }
+
+  async function toggleIsPackage(it: Item) {
+    const next = !it.is_package;
+    setItems((prev) => prev.map((x) => x.id === it.id ? { ...x, is_package: next } : x));
+    const { error } = await supabase.from("menu_items").update({ is_package: next }).eq("id", it.id);
+    if (error) {
+      setItems((prev) => prev.map((x) => x.id === it.id ? { ...x, is_package: it.is_package } : x));
       alert(error.message);
     }
   }
@@ -711,6 +773,8 @@ function MenuAdmin() {
                 <th className="px-4 py-3">Stock</th>
 
                 <th className="px-4 py-3">Modifications</th>
+                <th className="px-4 py-3">By the lb</th>
+                <th className="px-4 py-3">Package</th>
                 <th className="px-4 py-3">GF Possible</th>
                 <th className="px-4 py-3">Taxable</th>
                 <th className="px-4 py-3">Active</th>
@@ -806,6 +870,14 @@ function MenuAdmin() {
                             className="w-24 rounded border border-border bg-background px-2 py-1 text-right hover:border-primary focus:border-primary focus:ring-2 focus:ring-primary/30 focus:outline-none"
                           />
                         </div>
+                        <input
+                          key={`price-label-${it.id}-${it.price_label ?? ""}`}
+                          defaultValue={it.price_label ?? ""}
+                          onBlur={(e) => savePriceLabel(it, e.target.value)}
+                          placeholder="Price label (e.g. Market price)"
+                          title="Shown instead of the number on the customer tile. Doesn't change checkout math."
+                          className="mt-1 w-32 rounded border border-transparent bg-transparent px-1 py-0.5 text-[11px] text-muted-foreground hover:border-border focus:border-primary focus:bg-background focus:outline-none"
+                        />
                       </td>
                     );
                   })()}
@@ -959,6 +1031,40 @@ function MenuAdmin() {
                         )}
                       </div>
                     )}
+                  </td>
+                  <td className="px-4 py-3">
+                    <button
+                      onClick={() => toggleSoldByPound(it)}
+                      className={`rounded-full px-3 py-1 text-xs font-bold uppercase tracking-wider ${
+                        it.sold_by_pound ? "bg-amber-500/15 text-amber-700 dark:text-amber-300" : "bg-muted text-muted-foreground"
+                      }`}
+                    >
+                      {it.sold_by_pound ? "Yes" : "No"}
+                    </button>
+                    {it.sold_by_pound && (
+                      <div className="mt-1.5 flex items-center gap-1 text-[11px] text-muted-foreground">
+                        <span>Min</span>
+                        <input
+                          key={`min-qty-${it.id}-${it.minimum_quantity ?? ""}`}
+                          defaultValue={(it.minimum_quantity ?? 0.5).toString()}
+                          inputMode="decimal"
+                          onBlur={(e) => saveMinimumQuantity(it, e.target.value)}
+                          onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }}
+                          className="w-14 rounded border border-border bg-background px-1.5 py-0.5 text-right"
+                        />
+                        <span>lb</span>
+                      </div>
+                    )}
+                  </td>
+                  <td className="px-4 py-3">
+                    <button
+                      onClick={() => toggleIsPackage(it)}
+                      className={`rounded-full px-3 py-1 text-xs font-bold uppercase tracking-wider ${
+                        it.is_package ? "bg-violet-500/15 text-violet-700 dark:text-violet-300" : "bg-muted text-muted-foreground"
+                      }`}
+                    >
+                      {it.is_package ? "Yes" : "No"}
+                    </button>
                   </td>
                   <td className="px-4 py-3">
                     <button

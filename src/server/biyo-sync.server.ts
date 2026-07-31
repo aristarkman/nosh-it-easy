@@ -113,7 +113,6 @@ export async function runBiyoSync(): Promise<{
   const logId = logRow?.id;
 
   let itemsUpserted = 0;
-  let pricesUpserted = 0;
   let modifierGroupsUpserted = 0;
   let modifierOptionsUpserted = 0;
   let skipped = 0;
@@ -247,32 +246,16 @@ export async function runBiyoSync(): Promise<{
       if (!upErr) itemsUpserted += 1;
     }
 
-    // 3. Prices per (item, location). Single price model: every location uses
-    //    the Cresskill price. Skip items disabled at that store entirely.
-    const cresskillStoreId = locs.find((l) => l.location_id === "cresskill")?.biyo_store_id;
-    if (!cresskillStoreId) throw new Error("Cresskill biyo_store_id not configured in biyo_locations");
-    const pricesPayload: { menu_item_id: string; location_id: string; price: number; synced_at: string }[] = [];
-    for (const p of products) {
-      const ex = existingMap.get(String(p.id));
-      if (!ex) continue;
-      const unifiedPrice = priceForStore(p, cresskillStoreId);
-      for (const loc of locs) {
-        if (!storeEnabled(p, loc.biyo_store_id)) continue;
-        pricesPayload.push({
-          menu_item_id: ex.id,
-          location_id: loc.location_id,
-          price: unifiedPrice,
-          synced_at: new Date().toISOString(),
-        });
-      }
-    }
-    if (pricesPayload.length) {
-      const { error: pErr, count } = await supabaseAdmin
-        .from("menu_item_prices")
-        .upsert(pricesPayload, { onConflict: "menu_item_id,location_id", count: "exact" });
-      if (pErr) throw new Error(`upsert prices: ${pErr.message}`);
-      pricesUpserted = count ?? pricesPayload.length;
-    }
+    // 3. Prices are no longer synced from Biyo — fully admin-managed now
+    //    (Ari's call, 2026-07-30: Biyo's product-level pricing doesn't model
+    //    per-pound items correctly, and kept clobbering manually-set prices
+    //    on an hourly cycle). New items still insert inactive with no price
+    //    row above; an admin sets the price before activating, same as
+    //    before. Note: this also means an item Biyo disables at a specific
+    //    store will no longer be auto-removed from that location's menu —
+    //    that per-location enable/disable signal rode along with the price
+    //    upsert and is gone now too.
+    const pricesUpserted = 0;
 
     if (logId) {
       await supabaseAdmin

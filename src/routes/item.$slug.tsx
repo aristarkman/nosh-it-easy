@@ -7,6 +7,7 @@ import { menuItemAlt } from "@/lib/alt-text";
 import { getMenuItem } from "@/lib/menu.functions";
 import { thumb } from "@/lib/image-url";
 import { soldOutLabel } from "@/lib/sold-out";
+import { priceDisplay, formatQuantity, clampPounds, POUND_STEP, DEFAULT_MIN_POUNDS } from "@/lib/price-display";
 import { z } from "zod";
 
 function readLocationFromStorage(): string {
@@ -133,7 +134,9 @@ function ItemPage() {
     });
     return init;
   });
-  const [qty, setQty] = useState(isEditing ? editingLine!.quantity : 1);
+  const [qty, setQty] = useState(
+    isEditing ? editingLine!.quantity : item.soldByPound ? (item.minimumQuantity ?? DEFAULT_MIN_POUNDS) : 1,
+  );
   const [notes, setNotes] = useState(isEditing ? editingLine!.notes ?? "" : "");
   const photos = item.images && item.images.length > 0 ? item.images : (item.image ? [item.image] : []);
   const [activePhoto, setActivePhoto] = useState(0);
@@ -209,7 +212,7 @@ function ItemPage() {
         <div className={photos.length > 0 ? "" : "md:col-span-2"}>
           <h1 className="font-display text-4xl font-black sm:text-5xl">{item.name}</h1>
           <p className="mt-2 text-muted-foreground">{item.description}</p>
-          <div className="mt-3 text-lg font-semibold">{fmt(item.price)}</div>
+          <div className="mt-3 text-lg font-semibold">{priceDisplay(item, fmt)}</div>
           {item.soldOut && (
             <div className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-muted px-3 py-1 text-xs font-bold uppercase tracking-wider text-muted-foreground">
               {soldOutLabel(item.soldOutUntil)}
@@ -249,15 +252,25 @@ function ItemPage() {
         <div className="mx-auto flex max-w-2xl items-center gap-3">
           <div className="flex items-center rounded-full border border-border bg-card">
             <button
-              onClick={() => setQty((q) => Math.max(1, q - 1))}
+              onClick={() =>
+                setQty((q) =>
+                  item.soldByPound
+                    ? clampPounds(q - POUND_STEP, item.minimumQuantity)
+                    : Math.max(1, q - 1),
+                )
+              }
               className="grid size-10 place-items-center text-foreground"
               aria-label="Decrease quantity"
             >
               <Minus className="size-4" />
             </button>
-            <span className="w-8 text-center font-semibold">{qty}</span>
+            <span className="w-14 text-center font-semibold">
+              {item.soldByPound ? formatQuantity(qty, true) : qty}
+            </span>
             <button
-              onClick={() => setQty((q) => q + 1)}
+              onClick={() =>
+                setQty((q) => (item.soldByPound ? clampPounds(q + POUND_STEP, item.minimumQuantity) : q + 1))
+              }
               className="grid size-10 place-items-center text-foreground"
               aria-label="Increase quantity"
             >
@@ -269,7 +282,13 @@ function ItemPage() {
             onClick={add}
             className="flex flex-1 items-center justify-between rounded-full bg-primary px-5 py-3 text-sm font-semibold text-primary-foreground transition hover:opacity-90 disabled:opacity-40"
           >
-            <span>{item.soldOut ? soldOutLabel(item.soldOutUntil) : isEditing ? `Update ${qty} in cart` : `Add ${qty} to cart`}</span>
+            <span>
+              {item.soldOut
+                ? soldOutLabel(item.soldOutUntil)
+                : isEditing
+                  ? `Update ${item.soldByPound ? formatQuantity(qty, true) : qty} in cart`
+                  : `Add ${item.soldByPound ? formatQuantity(qty, true) : qty} to cart`}
+            </span>
             <span>{fmt(unit * qty)}</span>
           </button>
         </div>

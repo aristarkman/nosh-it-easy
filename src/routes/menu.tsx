@@ -8,6 +8,7 @@ import { thumb } from "@/lib/image-url";
 import type { Category } from "@/lib/menu-types";
 import { useStoreHours } from "@/lib/use-store-hours";
 import { soldOutLabel } from "@/lib/sold-out";
+import { priceDisplay } from "@/lib/price-display";
 
 function readLocationFromStorage(): string {
   if (typeof window === "undefined") return "cresskill";
@@ -239,7 +240,7 @@ function MenuPage() {
                       </p>
                       <div className="mt-3 flex items-center gap-3">
                         <span className="font-semibold text-foreground">
-                          {fmt(i.price)}
+                          {priceDisplay(i, fmt)}
                         </span>
                         <span className="text-xs font-medium text-primary opacity-0 transition group-hover:opacity-100">
                           Customize →

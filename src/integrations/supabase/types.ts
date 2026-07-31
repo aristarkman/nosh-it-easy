@@ -771,11 +771,15 @@ export type Database = {
           description: string | null
           gluten_free_possible: boolean
           id: string
+          is_package: boolean
           last_synced_at: string | null
+          minimum_quantity: number | null
           name: string
           photo_url: string | null
           popular: boolean
+          price_label: string | null
           slug: string
+          sold_by_pound: boolean
           sort_order: number
           taxable: boolean
           updated_at: string
@@ -789,11 +793,15 @@ export type Database = {
           description?: string | null
           gluten_free_possible?: boolean
           id?: string
+          is_package?: boolean
           last_synced_at?: string | null
+          minimum_quantity?: number | null
           name: string
           photo_url?: string | null
           popular?: boolean
+          price_label?: string | null
           slug: string
+          sold_by_pound?: boolean
           sort_order?: number
           taxable?: boolean
           updated_at?: string
@@ -807,11 +815,15 @@ export type Database = {
           description?: string | null
           gluten_free_possible?: boolean
           id?: string
+          is_package?: boolean
           last_synced_at?: string | null
+          minimum_quantity?: number | null
           name?: string
           photo_url?: string | null
           popular?: boolean
+          price_label?: string | null
           slug?: string
+          sold_by_pound?: boolean
           sort_order?: number
           taxable?: boolean
           updated_at?: string

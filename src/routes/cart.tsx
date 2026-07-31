@@ -10,6 +10,7 @@ import type { MenuItem } from "@/lib/menu-types";
 
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { priceDisplay, formatQuantity, clampPounds, POUND_STEP } from "@/lib/price-display";
 
 export const Route = createFileRoute("/cart")({
   head: () => ({
@@ -127,6 +128,11 @@ function CartPage() {
                 <h3 className="font-display text-lg font-bold">{l.name}</h3>
                 <span className="font-semibold">{fmt(l.unitPrice * l.quantity)}</span>
               </div>
+              {l.soldByPound && (
+                <p className="mt-0.5 text-xs text-muted-foreground">
+                  {priceDisplay({ price: l.unitPrice, soldByPound: true }, fmt)}
+                </p>
+              )}
               {l.modifiers.length > 0 && (
                 <ul className="mt-1 text-xs text-muted-foreground">
                   {l.modifiers.map((m) => (
@@ -143,15 +149,27 @@ function CartPage() {
               <div className="mt-3 flex flex-wrap items-center gap-3">
                 <div className="flex items-center rounded-full border border-border">
                   <button
-                    onClick={() => updateQty(l.lineId, l.quantity - 1)}
+                    onClick={() =>
+                      updateQty(
+                        l.lineId,
+                        l.soldByPound ? clampPounds(l.quantity - POUND_STEP, l.minimumQuantity) : l.quantity - 1,
+                      )
+                    }
                     className="grid size-8 place-items-center"
                     aria-label="Decrease"
                   >
                     <Minus className="size-3.5" />
                   </button>
-                  <span className="w-7 text-center text-sm font-semibold">{l.quantity}</span>
+                  <span className="min-w-7 px-1 text-center text-sm font-semibold">
+                    {l.soldByPound ? formatQuantity(l.quantity, true) : l.quantity}
+                  </span>
                   <button
-                    onClick={() => updateQty(l.lineId, l.quantity + 1)}
+                    onClick={() =>
+                      updateQty(
+                        l.lineId,
+                        l.soldByPound ? clampPounds(l.quantity + POUND_STEP, l.minimumQuantity) : l.quantity + 1,
+                      )
+                    }
                     className="grid size-8 place-items-center"
                     aria-label="Increase"
                   >
@@ -187,6 +205,7 @@ function CartPage() {
           <ul className="mt-3 grid gap-3 sm:grid-cols-2">
             {upsells.map((u) => {
               const hasModifiers = (u.modifierGroups ?? []).length > 0;
+              const needsDetailPage = hasModifiers || u.soldByPound;
               return (
                 <li
                   key={u.id}
@@ -203,9 +222,9 @@ function CartPage() {
                   )}
                   <div className="min-w-0 flex-1">
                     <div className="truncate font-display text-sm font-bold">{u.name}</div>
-                    <div className="text-xs text-muted-foreground">{fmt(u.price)}</div>
+                    <div className="text-xs text-muted-foreground">{priceDisplay(u, fmt)}</div>
                   </div>
-                  {hasModifiers ? (
+                  {needsDetailPage ? (
                     <Link
                       to="/item/$slug"
                       params={{ slug: u.slug }}
@@ -224,6 +243,8 @@ function CartPage() {
                           modifiers: [],
                           unitPrice: u.price,
                           taxable: u.taxable,
+                          priceLabel: u.priceLabel,
+                          isPackage: u.isPackage,
                         })
                       }
                       className="rounded-full bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground hover:opacity-90"

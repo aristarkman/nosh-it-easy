@@ -18,6 +18,10 @@ export type CartLine = {
   notes?: string;
   unitPrice: number; // base + modifiers
   taxable: boolean;
+  soldByPound?: boolean;
+  minimumQuantity?: number | null;
+  priceLabel?: string | null;
+  isPackage?: boolean;
 };
 
 type OrderState = {
@@ -227,5 +231,9 @@ export function buildLineFromItem(
     notes,
     unitPrice,
     taxable: item.taxable,
+    soldByPound: item.soldByPound,
+    minimumQuantity: item.minimumQuantity,
+    priceLabel: item.priceLabel,
+    isPackage: item.isPackage,
   };
 }

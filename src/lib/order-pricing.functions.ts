@@ -15,12 +15,13 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { maxRewardsRedeemable, discountForRewards } from "@/lib/loyalty";
+import { isValidPoundQuantity } from "@/lib/price-display";
 
 const round2 = (n: number) => Math.round((n + Number.EPSILON) * 100) / 100;
 
 const CartLineInput = z.object({
   itemId: z.string().uuid(),
-  quantity: z.number().int().min(1).max(50),
+  quantity: z.number().positive().max(500),
   modifierOptionIds: z.array(z.string().uuid()).max(50).default([]),
   notes: z.string().max(500).optional(),
 });
@@ -57,6 +58,7 @@ export type PricedLine = {
   taxable: boolean;
   notes?: string;
   modifiers: { groupId: string; groupName: string; options: { id: string; name: string; price?: number }[] }[];
+  soldByPound: boolean;
 };
 
 export type PricingResult = {
@@ -88,7 +90,7 @@ export async function computePricing(input: PricingInput, admin: any): Promise<P
   const optionIds = [...new Set(input.lines.flatMap((l) => l.modifierOptionIds))];
 
   const [itemsRes, pricesRes, assignRes, optionsRes] = await Promise.all([
-    admin.from("menu_items").select("id,name,active,available_locations,taxable").in("id", itemIds),
+    admin.from("menu_items").select("id,name,active,available_locations,taxable,sold_by_pound,minimum_quantity").in("id", itemIds),
     admin.from("menu_item_prices").select("menu_item_id,price").eq("location_id", "cresskill").in("menu_item_id", itemIds),
     admin.from("menu_item_modifier_groups").select("menu_item_id,modifier_group_id").in("menu_item_id", itemIds),
     optionIds.length
@@ -105,7 +107,15 @@ export async function computePricing(input: PricingInput, admin: any): Promise<P
     : { data: [] as { id: string; name: string }[] };
   const groupNameById = new Map<string, string>((groupsRes.data ?? []).map((g: { id: string; name: string }) => [g.id, g.name]));
 
-  type Item = { id: string; name: string; active: boolean; available_locations: string[]; taxable: boolean };
+  type Item = {
+    id: string;
+    name: string;
+    active: boolean;
+    available_locations: string[];
+    taxable: boolean;
+    sold_by_pound: boolean;
+    minimum_quantity: number | null;
+  };
   const itemById = new Map<string, Item>((itemsRes.data ?? []).map((i: Item) => [i.id, i]));
   const priceById = new Map<string, number>(
     (pricesRes.data ?? []).map((p: { menu_item_id: string; price: number }) => [p.menu_item_id, Number(p.price)])
@@ -132,6 +142,17 @@ export async function computePricing(input: PricingInput, admin: any): Promise<P
     }
     const basePrice = priceById.get(line.itemId);
     if (basePrice == null) throw new PricingError(`${item.name} doesn't have a price configured.`);
+
+    if (item.sold_by_pound) {
+      if (!isValidPoundQuantity(line.quantity, item.minimum_quantity)) {
+        const min = item.minimum_quantity ?? 0.5;
+        throw new PricingError(
+          `${item.name} is sold by the pound — quantity must be a quarter-pound multiple of at least ${min} lb.`,
+        );
+      }
+    } else if (!Number.isInteger(line.quantity)) {
+      throw new PricingError(`${item.name} quantity must be a whole number.`);
+    }
 
     const allowedGroups = allowedGroupsByItem.get(line.itemId) ?? new Set<string>();
     const byGroup = new Map<string, { id: string; name: string; price?: number }[]>();
@@ -164,6 +185,7 @@ export async function computePricing(input: PricingInput, admin: any): Promise<P
       taxable,
       notes: line.notes,
       modifiers,
+      soldByPound: item.sold_by_pound,
     });
     subtotal += unitPrice * line.quantity;
     if (taxable) taxableSubtotal += unitPrice * line.quantity;
