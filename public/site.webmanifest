@@ -1,0 +1,15 @@
+{
+  "name": "The Famous Kosher Nosh",
+  "short_name": "Kosher Nosh",
+  "description": "Order pickup or delivery from The Famous Kosher Nosh in Glen Rock & Cresskill, NJ.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "browser",
+  "background_color": "#ffffff",
+  "theme_color": "#b91c1c",
+  "icons": [
+    { "src": "/favicon-192x192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/favicon-512x512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/favicon-512x512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
