@@ -8,7 +8,7 @@ const Lottie = lazy(() =>
 export function HomeVanBanner() {
   const [visible, setVisible] = useState(true);
   const [mounted, setMounted] = useState(false);
-  const [animationData, setAnimationData] = useState<unknown | null>(null);
+  const [animationData, setAnimationData] = useState<object | null>(null);
 
   useEffect(() => setMounted(true), []);
   useEffect(() => {
