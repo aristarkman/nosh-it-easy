@@ -1,22 +1,37 @@
-import { useState } from "react";
-import Lottie from "lottie-react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import vanAnimation from "../assets/van.json";
+
+const Lottie = lazy(() =>
+  import("lottie-react").then((m) => ({ default: m.default })),
+);
 
 export function HomeVanBanner() {
   const [visible, setVisible] = useState(true);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => setMounted(true), []);
 
   if (!visible) return null;
 
   return (
     <div
-      className="pointer-events-none fixed inset-x-0 bottom-0 z-40 h-[120px] overflow-hidden"
+      className="pointer-events-none fixed inset-x-0 bottom-0 z-40 h-[200px] overflow-hidden"
       aria-hidden="true"
     >
       <div
         className="knb-banner-drive absolute bottom-2 left-0 w-[280px]"
         style={{ animation: "knb-drive-across 14s linear infinite" }}
       >
-        <Lottie animationData={vanAnimation} loop autoplay />
+        {mounted && (
+          <Suspense fallback={null}>
+            <Lottie
+              animationData={vanAnimation}
+              loop
+              autoplay
+              style={{ width: "100%", height: "auto", maxHeight: 180 }}
+            />
+          </Suspense>
+        )}
       </div>
 
       <button
