@@ -2,6 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { MapPin, Clock, Phone, ArrowRight } from "lucide-react";
 import { LOCATIONS, useOrder, type LocationId } from "@/lib/order-context";
 import { useStoreHours } from "@/lib/use-store-hours";
+import { HomeVanBanner } from "@/components/HomeVanBanner";
 
 
 export const Route = createFileRoute("/")({
@@ -35,6 +36,8 @@ function LocationPick() {
 
   return (
     <div>
+      <HomeVanBanner />
+
       {/* Location chooser */}
       <div className="mx-auto max-w-6xl px-4 pb-20 pt-14">
         <div className="mb-8 text-center">
