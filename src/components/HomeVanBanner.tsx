@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect, useState } from "react";
-import vanAnimation from "../assets/van.json";
+import vanAsset from "../assets/van.json.asset.json";
 
 const Lottie = lazy(() =>
   import("lottie-react").then((m) => ({ default: m.default })),
@@ -8,8 +8,15 @@ const Lottie = lazy(() =>
 export function HomeVanBanner() {
   const [visible, setVisible] = useState(true);
   const [mounted, setMounted] = useState(false);
+  const [animationData, setAnimationData] = useState<object | null>(null);
 
   useEffect(() => setMounted(true), []);
+  useEffect(() => {
+    fetch(vanAsset.url)
+      .then((res) => res.json())
+      .then(setAnimationData)
+      .catch((err) => console.error("Failed to load van animation:", err));
+  }, []);
 
   if (!visible) return null;
 
@@ -24,12 +31,14 @@ export function HomeVanBanner() {
       >
         {mounted && (
           <Suspense fallback={null}>
-            <Lottie
-              animationData={vanAnimation}
-              loop
-              autoplay
-              style={{ width: "100%", height: "auto", maxHeight: 180 }}
-            />
+            {animationData ? (
+              <Lottie
+                animationData={animationData}
+                loop
+                autoplay
+                style={{ width: "100%", height: "auto", maxHeight: 180 }}
+              />
+            ) : null}
           </Suspense>
         )}
       </div>
