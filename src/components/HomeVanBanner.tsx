@@ -31,12 +31,14 @@ export function HomeVanBanner() {
       >
         {mounted && (
           <Suspense fallback={null}>
-            <Lottie
-              animationData={vanAnimation}
-              loop
-              autoplay
-              style={{ width: "100%", height: "auto", maxHeight: 180 }}
-            />
+            {animationData && (
+              <Lottie
+                animationData={animationData}
+                loop
+                autoplay
+                style={{ width: "100%", height: "auto", maxHeight: 180 }}
+              />
+            )}
           </Suspense>
         )}
       </div>
