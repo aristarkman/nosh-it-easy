@@ -68,8 +68,10 @@ const DispatchInput = z.object({
   items: z
     .array(
       z.object({
+        // Weighed items (deli by the pound) come through as fractional
+        // quantities like 0.5 — must not be rejected here.
         name: z.string().max(200),
-        quantity: z.number().int().positive(),
+        quantity: z.number().positive(),
         unitPrice: z.number().nonnegative(),
       })
     )
