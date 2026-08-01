@@ -38,7 +38,7 @@ export function HomeVanBanner() {
         type="button"
         aria-label="Hide delivery van animation"
         onClick={() => setVisible(false)}
-        className="pointer-events-auto absolute bottom-3 right-3 rounded-full bg-background/80 px-3 py-1 text-xs font-medium text-muted-foreground shadow-sm backdrop-blur hover:text-foreground"
+        className="pointer-events-auto absolute top-3 right-3 rounded-full bg-background/80 px-3 py-1 text-xs font-medium text-muted-foreground shadow-sm backdrop-blur hover:text-foreground"
       >
         Hide
       </button>
