@@ -24,6 +24,7 @@ import { geocodeAddress } from "@/lib/geocoding.functions";
 import { recordPromoRedemption } from "@/lib/promo.functions";
 import { priceCart } from "@/lib/order-pricing.functions";
 import { pointInPolygon } from "@/lib/point-in-polygon";
+import { verifyDeliveryZone } from "@/lib/delivery-zone.functions";
 import {
   normalizeCardNumber,
   normalizeCvv,
