@@ -8,8 +8,15 @@ const Lottie = lazy(() =>
 export function HomeVanBanner() {
   const [visible, setVisible] = useState(true);
   const [mounted, setMounted] = useState(false);
+  const [animationData, setAnimationData] = useState<unknown | null>(null);
 
   useEffect(() => setMounted(true), []);
+  useEffect(() => {
+    fetch(vanAsset.url)
+      .then((res) => res.json())
+      .then(setAnimationData)
+      .catch((err) => console.error("Failed to load van animation:", err));
+  }, []);
 
   if (!visible) return null;
 
