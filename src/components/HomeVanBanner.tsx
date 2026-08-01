@@ -31,14 +31,14 @@ export function HomeVanBanner() {
       >
         {mounted && (
           <Suspense fallback={null}>
-            {animationData && (
+            {animationData ? (
               <Lottie
                 animationData={animationData}
                 loop
                 autoplay
                 style={{ width: "100%", height: "auto", maxHeight: 180 }}
               />
-            )}
+            ) : null}
           </Suspense>
         )}
       </div>
