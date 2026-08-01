@@ -68,8 +68,10 @@ const DispatchInput = z.object({
   items: z
     .array(
       z.object({
+        // Weighed items (deli by the pound) come through as fractional
+        // quantities like 0.5 — must not be rejected here.
         name: z.string().max(200),
-        quantity: z.number().int().positive(),
+        quantity: z.number().positive(),
         unitPrice: z.number().nonnegative(),
       })
     )
@@ -130,11 +132,16 @@ export const dispatchShipday = createServerFn({ method: "POST" })
       restaurantName: pickup.name,
       restaurantAddress: pickup.address,
       restaurantPhoneNumber: pickup.phone,
-      orderItems: data.items.map((item) => ({
-        name: item.name,
-        quantity: item.quantity,
-        unitPrice: item.unitPrice,
-      })),
+      orderItems: data.items.map((item) => {
+        // Shipday only accepts whole-number quantities; fold fractional
+        // (by-weight) quantities into the name and line price instead.
+        const whole = Number.isInteger(item.quantity);
+        return {
+          name: whole ? item.name : `${item.name} (${item.quantity} lb)`,
+          quantity: whole ? item.quantity : 1,
+          unitPrice: whole ? item.unitPrice : Number((item.unitPrice * item.quantity).toFixed(2)),
+        };
+      }),
       tips: data.tip,
       tax: data.tax,
       discountAmount: 0,
