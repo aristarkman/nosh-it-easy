@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect, useState } from "react";
-import vanAnimation from "../assets/van.json";
+import vanAsset from "../assets/van.json.asset.json";
 
 const Lottie = lazy(() =>
   import("lottie-react").then((m) => ({ default: m.default })),
