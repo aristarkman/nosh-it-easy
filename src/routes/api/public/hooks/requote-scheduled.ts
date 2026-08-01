@@ -81,11 +81,14 @@ async function dispatch(
     restaurantName: pickup.name,
     restaurantAddress: pickup.address,
     restaurantPhoneNumber: pickup.phone,
-    orderItems: items.map((item) => ({
-      name: item.name,
-      quantity: item.quantity,
-      unitPrice: item.unitPrice,
-    })),
+    orderItems: items.map((item) => {
+      const whole = Number.isInteger(item.quantity);
+      return {
+        name: whole ? item.name : `${item.name} (${item.quantity} lb)`,
+        quantity: whole ? item.quantity : 1,
+        unitPrice: whole ? item.unitPrice : Number((item.unitPrice * item.quantity).toFixed(2)),
+      };
+    }),
     tips: parseTip(order.notes),
     tax: Number(order.tax),
     discountAmount: 0,
