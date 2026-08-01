@@ -596,7 +596,26 @@ function CheckoutPage() {
       .replace(/\r?\n+/g, " / ")
       .slice(0, 300);
 
+    // Server-side delivery-area guard. The client zone check above is only a
+    // UI affordance — re-verify the address against the saved polygons before
+    // taking any payment so an out-of-area order can never be created.
+    if (orderType === "delivery") {
+      const zoneCheck = await verifyDeliveryZone({
+        data: {
+          address: `${address.trim()}, ${zip}`,
+          locationId: location,
+          subtotal,
+        },
+      }).catch(() => ({ ok: false as const, message: "Couldn't verify your delivery address." }));
+      if (!zoneCheck.ok) {
+        toast.error(zoneCheck.message);
+        setSubmitting(false);
+        return;
+      }
+    }
+
     // Re-price the order server-side. This is the source of truth for every
+
     // dollar amount from here on — the client-computed `subtotal`/`tax`/`total`
     // above exist only to render a responsive UI while shopping and must never
     // be used for the actual charge or the order row.
