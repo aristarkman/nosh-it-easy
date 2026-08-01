@@ -1,49 +1,34 @@
 import { useState } from "react";
 import Lottie from "lottie-react";
-import vanAnimation from "./van.json"; // exported from LottieFiles
+import vanAnimation from "../assets/van.json";
 
-/**
- * Kosher Nosh — homepage banner.
- * Plays the van animation once, sliding across the bottom of the
- * screen, then unmounts itself. Drop <HomeVanBanner /> anywhere in
- * your homepage route/layout.
- */
 export function HomeVanBanner() {
   const [visible, setVisible] = useState(true);
 
   if (!visible) return null;
 
   return (
-    <div className="knb-banner-track" aria-hidden="true">
+    <div
+      className="pointer-events-none fixed inset-x-0 bottom-0 z-40 h-[120px] overflow-hidden"
+      aria-hidden="true"
+    >
       <div
-        className="knb-banner-drive"
-        onAnimationEnd={() => setVisible(false)}
+        className="knb-banner-drive absolute bottom-2 left-0 w-[280px]"
+        style={{ animation: "knb-drive-across 14s linear infinite" }}
       >
-        <Lottie
-          animationData={vanAnimation}
-          loop={false}
-          autoplay
-          style={{ width: 320, height: 240 }}
-        />
+        <Lottie animationData={vanAnimation} loop autoplay />
       </div>
 
+      <button
+        type="button"
+        aria-label="Hide delivery van animation"
+        onClick={() => setVisible(false)}
+        className="pointer-events-auto absolute bottom-3 right-3 rounded-full bg-background/80 px-3 py-1 text-xs font-medium text-muted-foreground shadow-sm backdrop-blur hover:text-foreground"
+      >
+        Hide
+      </button>
+
       <style>{`
-        .knb-banner-track {
-          position: fixed;
-          left: 0;
-          bottom: 0;
-          width: 100%;
-          height: 240px;
-          overflow: hidden;
-          pointer-events: none;
-          z-index: 40;
-        }
-        .knb-banner-drive {
-          position: absolute;
-          bottom: 0;
-          left: 0;
-          animation: knb-drive-across 5.5s cubic-bezier(.4,0,.6,1) forwards;
-        }
         @keyframes knb-drive-across {
           from { transform: translateX(-360px); }
           to   { transform: translateX(calc(100vw + 40px)); }
