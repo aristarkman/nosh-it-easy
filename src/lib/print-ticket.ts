@@ -172,16 +172,22 @@ export function buildOrderTicket(order: TicketOrder, locationName: string | unde
 
 export function printOrderTicket(order: TicketOrder, locationName: string | undefined) {
   const bytes = buildOrderTicket(order, locationName).toBase64();
-  // Android intent-wrapped invocation (per RawBT's own integration docs at
-  // rawbt.ru/start.html) — this targets the RawBT package directly via
-  // Android's intent resolution, rather than a bare custom-scheme
-  // navigation. The bare `rawbt:` scheme is subject to RawBT's per-website
-  // whitelist ("takeout.koshernosh.com is not on the white list"); this
-  // intent form isn't, since it's not a website asking the OS to open a
-  // registered scheme — it's a direct app/package target.
-  // Must still be a direct top-level navigation: Chromium-based browsers
-  // (Silk included) block custom-scheme/intent navigation triggered from
-  // hidden iframes as an anti-abuse measure.
-  window.location.href =
-    `intent:base64,${bytes}#Intent;scheme=rawbt;package=ru.a402d.rawbtprinter;end;`;
+  if (order.location_id === "cresskill") {
+    // Android intent-wrapped invocation (per RawBT's own integration docs at
+    // rawbt.ru/start.html) — this targets the RawBT package directly via
+    // Android's intent resolution, rather than a bare custom-scheme
+    // navigation. The bare `rawbt:` scheme is subject to RawBT's per-website
+    // whitelist ("takeout.koshernosh.com is not on the white list"), hit at
+    // Cresskill specifically; this intent form isn't. Scoped to Cresskill
+    // only — Glen Rock's plain-scheme setup has no such issue and isn't
+    // worth risking on an unverified (no physical device to test on) change.
+    window.location.href =
+      `intent:base64,${bytes}#Intent;scheme=rawbt;package=ru.a402d.rawbtprinter;end;`;
+    return;
+  }
+  // Custom URL scheme — Android/Fire OS resolves this to RawBT. This must be
+  // a direct top-level navigation: Chromium-based browsers (Silk included)
+  // block custom-scheme navigation triggered from hidden iframes as an
+  // anti-abuse measure, so that approach silently does nothing.
+  window.location.href = `rawbt:base64,${bytes}`;
 }
