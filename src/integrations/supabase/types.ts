@@ -1006,6 +1006,7 @@ export type Database = {
           total: number
           updated_at: string
           user_id: string | null
+          utensils_requested: boolean
           when_type: string
         }
         Insert: {
@@ -1042,6 +1043,7 @@ export type Database = {
           total: number
           updated_at?: string
           user_id?: string | null
+          utensils_requested?: boolean
           when_type?: string
         }
         Update: {
@@ -1078,6 +1080,7 @@ export type Database = {
           total?: number
           updated_at?: string
           user_id?: string | null
+          utensils_requested?: boolean
           when_type?: string
         }
         Relationships: [

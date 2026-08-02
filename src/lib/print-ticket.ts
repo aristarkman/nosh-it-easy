@@ -26,6 +26,7 @@ export type TicketOrder = {
   delivery_fee: number;
   tax: number;
   total: number;
+  utensils_requested: boolean;
 };
 
 function isPaid(paymentMethod: string): boolean {
@@ -115,6 +116,9 @@ export function buildOrderTicket(order: TicketOrder, locationName: string | unde
   b.line(`Phone: ${order.customer_phone}`);
   if (order.order_type === "delivery" && order.delivery_address) {
     b.line(`Address: ${order.delivery_address}`);
+  }
+  if (order.utensils_requested) {
+    b.line("*** INCLUDE CUTLERY & NAPKINS ***");
   }
 
   // Order-level notes ("note:" segments in order.notes — see also

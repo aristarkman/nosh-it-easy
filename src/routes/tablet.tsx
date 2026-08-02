@@ -85,6 +85,7 @@ type Order = {
   refund_status: "none" | "partial" | "full" | "voided";
   shipday_order_id: string | null;
   shipday_tracking_url: string | null;
+  utensils_requested: boolean;
 };
 
 const STATUS_FLOW: Record<Status, { next?: Status; label?: string; color: string }> = {
@@ -963,6 +964,12 @@ function OrderCard({
           {o.scheduled_time && (
             <span className="ml-auto font-extrabold">{formatScheduledTime(o.scheduled_time)}</span>
           )}
+        </div>
+      )}
+
+      {o.utensils_requested && (
+        <div className="border-b border-border bg-muted/50 px-4 py-2 text-xs font-bold uppercase tracking-wider text-foreground">
+          🍴 Include cutlery &amp; napkins
         </div>
       )}
 

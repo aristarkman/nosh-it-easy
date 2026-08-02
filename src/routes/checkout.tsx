@@ -101,6 +101,7 @@ function CheckoutPage() {
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [smsConsent, setSmsConsent] = useState(false);
+  const [utensilsRequested, setUtensilsRequested] = useState(false);
   const [email, setEmail] = useState("");
   const [address, setAddress] = useState("");
   const [zip, setZip] = useState("");
@@ -820,6 +821,7 @@ function CheckoutPage() {
       card_fee: pricing.cardFee,
       total: pricing.total,
       items: pricing.lineItems,
+      utensils_requested: utensilsRequested,
       notes: [
         cleanOrderNote ? `note:${cleanOrderNote}` : null,
         `tip:${pricing.tipAmount.toFixed(2)}`,
@@ -1104,6 +1106,16 @@ function CheckoutPage() {
               {orderType === "delivery" ? " and goes to your driver" : ""}. For notes on a specific
               item (allergies, extra sauce), use "Special instructions" on that item's page instead.
             </p>
+            <div className="flex items-start gap-2 mt-2">
+              <Checkbox
+                id="utensilsRequested"
+                checked={utensilsRequested}
+                onCheckedChange={(checked) => setUtensilsRequested(checked === true)}
+              />
+              <label htmlFor="utensilsRequested" className="text-sm text-muted-foreground leading-snug">
+                Please include plastic cutlery and napkins
+              </label>
+            </div>
           </Section>
 
           {orderType === "delivery" ? (
