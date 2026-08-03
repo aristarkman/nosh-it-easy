@@ -27,25 +27,75 @@ export function HomeVanBanner() {
     >
       <div
         className="knb-banner-drive absolute bottom-2 left-0 w-[180px] sm:w-[280px]"
-        style={{ animation: "knb-drive-across 14s linear infinite" }}
+        style={{ animation: "knb-drive-across 14s linear infinite", position: "absolute" }}
       >
-        <div className="knb-bubble relative mx-auto mb-1 w-fit max-w-[160px] rounded-2xl border-2 border-foreground bg-card px-3 py-1.5 text-center text-[11px] font-bold uppercase leading-tight tracking-wide text-foreground shadow-[3px_3px_0_var(--foreground)] sm:max-w-none sm:text-[13px]">
-          We&apos;re on our way!!
-          <span className="absolute -bottom-[9px] left-6 size-0 border-x-8 border-t-[10px] border-x-transparent border-t-foreground" />
-          <span className="absolute -bottom-[6px] left-[26px] size-0 border-x-[6px] border-t-[8px] border-x-transparent border-t-card" />
+        <div style={{ position: "relative" }}>
+          <div
+            className="knb-bubble"
+            style={{
+              position: "absolute",
+              top: "38%",
+              right: "6%",
+              zIndex: 1,
+              maxWidth: 180,
+              minHeight: 30,
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              borderRadius: 14,
+              border: "2px solid #1a1a1a",
+              background: "#fff",
+              color: "#1a1a1a",
+              padding: "5px 12px",
+              fontSize: 11,
+              fontWeight: 800,
+              textTransform: "uppercase",
+              letterSpacing: "0.02em",
+              textAlign: "center",
+              lineHeight: 1.2,
+              whiteSpace: "nowrap",
+              boxShadow: "3px 3px 0 #1a1a1a",
+            }}
+          >
+            We&apos;re on our way!!
+            <span
+              style={{
+                position: "absolute",
+                bottom: -8,
+                left: 18,
+                width: 0,
+                height: 0,
+                borderLeft: "7px solid transparent",
+                borderRight: "7px solid transparent",
+                borderTop: "9px solid #1a1a1a",
+              }}
+            />
+            <span
+              style={{
+                position: "absolute",
+                bottom: -5,
+                left: 20,
+                width: 0,
+                height: 0,
+                borderLeft: "5px solid transparent",
+                borderRight: "5px solid transparent",
+                borderTop: "7px solid #fff",
+              }}
+            />
+          </div>
+          {mounted && (
+            <Suspense fallback={null}>
+              {animationData ? (
+                <Lottie
+                  animationData={animationData}
+                  loop
+                  autoplay
+                  style={{ width: "100%", height: "auto", maxHeight: 180 }}
+                />
+              ) : null}
+            </Suspense>
+          )}
         </div>
-        {mounted && (
-          <Suspense fallback={null}>
-            {animationData ? (
-              <Lottie
-                animationData={animationData}
-                loop
-                autoplay
-                style={{ width: "100%", height: "auto", maxHeight: 180 }}
-              />
-            ) : null}
-          </Suspense>
-        )}
       </div>
 
       <button
