@@ -22,13 +22,18 @@ export function HomeVanBanner() {
 
   return (
     <div
-      className="pointer-events-none fixed inset-x-0 bottom-0 z-40 h-[200px] overflow-hidden"
+      className="pointer-events-none fixed inset-x-0 bottom-0 z-40 h-[170px] overflow-hidden sm:h-[200px]"
       aria-hidden="true"
     >
       <div
-        className="knb-banner-drive absolute bottom-2 left-0 w-[280px]"
+        className="knb-banner-drive absolute bottom-2 left-0 w-[180px] sm:w-[280px]"
         style={{ animation: "knb-drive-across 14s linear infinite" }}
       >
+        <div className="knb-bubble relative mx-auto mb-1 w-fit max-w-[160px] rounded-2xl border-2 border-foreground bg-card px-3 py-1.5 text-center text-[11px] font-bold uppercase leading-tight tracking-wide text-foreground shadow-[3px_3px_0_var(--foreground)] sm:max-w-none sm:text-[13px]">
+          We&apos;re on our way!
+          <span className="absolute -bottom-[9px] left-6 size-0 border-x-8 border-t-[10px] border-x-transparent border-t-foreground" />
+          <span className="absolute -bottom-[6px] left-[26px] size-0 border-x-[6px] border-t-[8px] border-x-transparent border-t-card" />
+        </div>
         {mounted && (
           <Suspense fallback={null}>
             {animationData ? (
@@ -54,11 +59,17 @@ export function HomeVanBanner() {
 
       <style>{`
         @keyframes knb-drive-across {
-          from { transform: translateX(-360px); }
+          from { transform: translateX(-300px); }
           to   { transform: translateX(calc(100vw + 40px)); }
         }
+        @keyframes knb-bubble-bob {
+          0%, 100% { transform: translateY(0); }
+          50%      { transform: translateY(-4px); }
+        }
+        .knb-bubble { animation: knb-bubble-bob 1.6s ease-in-out infinite; }
         @media (prefers-reduced-motion: reduce) {
           .knb-banner-drive { animation: none; display: none; }
+          .knb-bubble { animation: none; }
         }
       `}</style>
     </div>
