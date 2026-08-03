@@ -29,11 +29,6 @@ export function HomeVanBanner() {
         className="knb-banner-drive absolute bottom-2 left-0 w-[180px] sm:w-[280px]"
         style={{ animation: "knb-drive-across 14s linear infinite" }}
       >
-        <div className="knb-bubble relative mx-auto mb-1 w-fit max-w-[160px] rounded-2xl border-2 border-foreground bg-card px-3 py-1.5 text-center text-[11px] font-bold uppercase leading-tight tracking-wide text-foreground shadow-[3px_3px_0_var(--foreground)] sm:max-w-none sm:text-[13px]">
-          We&apos;re on our way!
-          <span className="absolute -bottom-[9px] left-6 size-0 border-x-8 border-t-[10px] border-x-transparent border-t-foreground" />
-          <span className="absolute -bottom-[6px] left-[26px] size-0 border-x-[6px] border-t-[8px] border-x-transparent border-t-card" />
-        </div>
         {mounted && (
           <Suspense fallback={null}>
             {animationData ? (
