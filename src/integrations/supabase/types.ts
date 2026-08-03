@@ -1189,6 +1189,8 @@ export type Database = {
         Row: {
           confirmation_sent_at: string | null
           created_at: string
+          marketing_sms_consent: boolean
+          marketing_sms_consent_at: string | null
           phone: string
           sms_consent: boolean
           source: string | null
@@ -1197,6 +1199,8 @@ export type Database = {
         Insert: {
           confirmation_sent_at?: string | null
           created_at?: string
+          marketing_sms_consent?: boolean
+          marketing_sms_consent_at?: string | null
           phone: string
           sms_consent?: boolean
           source?: string | null
@@ -1205,6 +1209,8 @@ export type Database = {
         Update: {
           confirmation_sent_at?: string | null
           created_at?: string
+          marketing_sms_consent?: boolean
+          marketing_sms_consent_at?: string | null
           phone?: string
           sms_consent?: boolean
           source?: string | null

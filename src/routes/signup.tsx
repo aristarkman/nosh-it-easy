@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { lovable } from "@/integrations/lovable/index";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
+import { subscribeToSmsUpdates } from "@/lib/sms.functions";
 
 export const Route = createFileRoute("/signup")({
   head: () => ({
@@ -19,12 +20,13 @@ function SignupPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [smsConsent, setSmsConsent] = useState(false);
+  const [marketingSmsConsent, setMarketingSmsConsent] = useState(false);
   const [loading, setLoading] = useState(false);
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    const { error } = await supabase.auth.signUp({
+    const { data: signUpData, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
@@ -34,14 +36,43 @@ function SignupPage() {
           phone,
           sms_consent: smsConsent,
           sms_consent_at: smsConsent ? new Date().toISOString() : null,
+          marketing_sms_consent: marketingSmsConsent,
+          marketing_sms_consent_at: marketingSmsConsent ? new Date().toISOString() : null,
         },
       },
     });
-    setLoading(false);
     if (error) {
+      setLoading(false);
       toast.error(error.message);
       return;
     }
+    // Write marketing consent straight to customer_profiles now (rather than
+    // waiting for the user to first open /account, which would otherwise
+    // default marketing_sms to false and silently drop what they just
+    // checked here).
+    if (signUpData.user) {
+      await supabase.from("customer_profiles").upsert({
+        user_id: signUpData.user.id,
+        full_name: fullName,
+        phone,
+        email,
+        marketing_sms: marketingSmsConsent,
+      });
+    }
+    // Also record on sms_subscribers so phone-level tracking (the one-time
+    // transactional opt-in confirmation text, and guest-reachable marketing
+    // audience) matches checkout and the standalone /sms-opt-in page.
+    if (phone.trim() && (smsConsent || marketingSmsConsent)) {
+      void subscribeToSmsUpdates({
+        data: {
+          phone: phone.trim(),
+          transactionalConsent: smsConsent,
+          marketingConsent: marketingSmsConsent,
+          source: "signup",
+        },
+      }).catch(() => {});
+    }
+    setLoading(false);
     toast.success("Account created!");
     navigate({ to: "/welcome/address" });
   };
@@ -109,6 +140,26 @@ function SignupPage() {
             <a href="/terms" className="underline">
               Terms
             </a>
+          </label>
+        </div>
+        <div className="flex items-start gap-2">
+          <Checkbox
+            id="marketingSmsConsent"
+            checked={marketingSmsConsent}
+            onCheckedChange={(checked) => setMarketingSmsConsent(checked === true)}
+          />
+          <label htmlFor="marketingSmsConsent" className="text-sm text-muted-foreground leading-snug">
+            I agree to receive marketing text messages (deals, specials, and cart reminders) from
+            The Kosher Nosh at the number provided. Message frequency varies. Msg & data rates may
+            apply. Reply STOP to opt out, HELP for help. Consent is not a condition of purchase.{" "}
+            <a href="/privacy" className="underline">
+              Privacy Policy
+            </a>{" "}
+            ·{" "}
+            <a href="/terms" className="underline">
+              Terms
+            </a>
+            . Can also be managed anytime in account settings.
           </label>
         </div>
         <input

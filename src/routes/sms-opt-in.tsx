@@ -21,7 +21,8 @@ export const Route = createFileRoute("/sms-opt-in")({
 
 function SmsOptInPage() {
   const [phone, setPhone] = useState("");
-  const [consent, setConsent] = useState(false);
+  const [transactionalConsent, setTransactionalConsent] = useState(false);
+  const [marketingConsent, setMarketingConsent] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<"subscribed" | "not_opted_in" | null>(null);
@@ -29,8 +30,9 @@ function SmsOptInPage() {
   const handleSignUp = async () => {
     setError(null);
 
-    // Consent is entirely optional. Without it we record nothing and send nothing.
-    if (!consent || !phone.trim()) {
+    // Both checkboxes are entirely optional and independent. Without at
+    // least one, we record nothing and send nothing.
+    if ((!transactionalConsent && !marketingConsent) || !phone.trim()) {
       setResult("not_opted_in");
       return;
     }
@@ -38,7 +40,12 @@ function SmsOptInPage() {
     setSubmitting(true);
     try {
       const response = await subscribeToSmsUpdates({
-        data: { phone: phone.trim(), consent },
+        data: {
+          phone: phone.trim(),
+          transactionalConsent,
+          marketingConsent,
+          source: "sms_opt_in_page",
+        },
       });
       if (!response.ok) {
         setError("Something went wrong. Please try again.");
@@ -71,7 +78,7 @@ function SmsOptInPage() {
       {result ? (
         <div className="rounded-2xl border border-border bg-card p-6 text-sm">
           {result === "subscribed"
-            ? "Thanks — you're signed up for order status texts."
+            ? "Thanks — you're signed up for text updates."
             : "Submitted — you have not opted in to text messages and will not receive any."}
         </div>
       ) : (
@@ -94,12 +101,12 @@ function SmsOptInPage() {
 
           <div className="flex items-start gap-2">
             <Checkbox
-              id="smsOptInConsent"
-              checked={consent}
-              onCheckedChange={(checked) => setConsent(checked === true)}
+              id="smsOptInTransactional"
+              checked={transactionalConsent}
+              onCheckedChange={(checked) => setTransactionalConsent(checked === true)}
             />
             <label
-              htmlFor="smsOptInConsent"
+              htmlFor="smsOptInTransactional"
               className="text-sm text-muted-foreground leading-snug"
             >
               I agree to receive order status text messages (order received,
@@ -114,6 +121,36 @@ function SmsOptInPage() {
               <Link to="/terms" className="underline">
                 Terms
               </Link>
+            </label>
+          </div>
+
+          <div className="flex items-start gap-2">
+            <Checkbox
+              id="smsOptInMarketing"
+              checked={marketingConsent}
+              onCheckedChange={(checked) => setMarketingConsent(checked === true)}
+            />
+            <label
+              htmlFor="smsOptInMarketing"
+              className="text-sm text-muted-foreground leading-snug"
+            >
+              I agree to receive marketing text messages (deals, specials,
+              and cart reminders) from The Kosher Nosh at the number
+              provided. Message frequency varies. Msg &amp; data rates may
+              apply. Reply STOP to opt out, HELP for help. Consent is not a
+              condition of purchase.{" "}
+              <Link to="/privacy" className="underline">
+                Privacy Policy
+              </Link>{" "}
+              ·{" "}
+              <Link to="/terms" className="underline">
+                Terms
+              </Link>
+              . Marketing consent can also be managed anytime in{" "}
+              <Link to="/account" className="underline">
+                account settings
+              </Link>
+              .
             </label>
           </div>
 

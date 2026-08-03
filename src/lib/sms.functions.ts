@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
+import type { Database } from "@/integrations/supabase/types";
 
 const GATEWAY_URL = "https://connector-gateway.lovable.dev/twilio";
 const FROM_NUMBER = "+16097401249";
@@ -156,27 +157,51 @@ export const sendOrderStatusSms = createServerFn({ method: "POST" })
 
 const SubscribeSchema = z.object({
   phone: z.string().min(7).max(20),
-  consent: z.boolean(),
+  transactionalConsent: z.boolean().default(false),
+  marketingConsent: z.boolean().default(false),
+  source: z.string().max(40).default("sms_opt_in_page"),
 });
 
-// Called by the standalone /sms-opt-in page. Persists consent by phone
-// number only — no order, no account required. Sends no SMS itself; the
-// one-time confirmation text fires lazily off the first order-status SMS
-// (see ensureOptInConfirmation above).
+// Shared by all three consent surfaces (/sms-opt-in, checkout, signup) for
+// phone-only persistence. Each checkbox is independent — checking one
+// doesn't imply the other. Sends no SMS itself; the one-time transactional
+// confirmation text fires lazily off the first order-status SMS (see
+// ensureOptInConfirmation above). There's no marketing confirmation text —
+// Twilio only requires the one-time opt-in confirmation for the message
+// category actually being sent automatically (order status); marketing
+// blasts are manually triggered by an admin and carry their own STOP/HELP
+// language per message (see sendMarketingSmsBlast below).
 export const subscribeToSmsUpdates = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => SubscribeSchema.parse(input))
   .handler(async ({ data }) => {
     const to = normalizePhone(data.phone);
     if (!to) return { ok: false as const, error: "Invalid phone number" };
-    if (!data.consent) return { ok: false as const, error: "Consent required" };
+    if (!data.transactionalConsent && !data.marketingConsent) {
+      return { ok: false as const, error: "Check at least one consent box" };
+    }
 
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const now = new Date().toISOString();
+    const { data: existing } = await supabaseAdmin
+      .from("sms_subscribers")
+      .select("sms_consent, marketing_sms_consent")
+      .eq("phone", to)
+      .maybeSingle();
+
+    const patch: Database["public"]["Tables"]["sms_subscribers"]["Insert"] = {
+      phone: to,
+      source: data.source,
+      updated_at: now,
+    };
+    if (data.transactionalConsent) patch.sms_consent = true;
+    if (data.marketingConsent) {
+      patch.marketing_sms_consent = true;
+      if (!existing?.marketing_sms_consent) patch.marketing_sms_consent_at = now;
+    }
+
     const { error } = await supabaseAdmin
       .from("sms_subscribers")
-      .upsert(
-        { phone: to, sms_consent: true, source: "sms_opt_in_page", updated_at: new Date().toISOString() },
-        { onConflict: "phone" },
-      );
+      .upsert(patch, { onConflict: "phone" });
     if (error) {
       console.error("subscribeToSmsUpdates failed:", error);
       return { ok: false as const, error: "Could not save your opt-in. Please try again." };
@@ -281,13 +306,8 @@ export const getMarketingSmsAudienceCount = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const admin = await requireAdmin(data.accessToken);
     if (!admin.ok) return { ok: false as const, error: admin.error };
-    const { count, error } = await admin.supabaseAdmin
-      .from("customer_profiles")
-      .select("user_id", { count: "exact", head: true })
-      .eq("marketing_sms", true)
-      .not("phone", "is", null);
-    if (error) return { ok: false as const, error: error.message };
-    return { ok: true as const, count: count ?? 0 };
+    const phones = await marketingAudiencePhones(admin.supabaseAdmin);
+    return { ok: true as const, count: phones.size };
   });
 
 const MAX_BLAST_RECIPIENTS = 2000;
@@ -297,6 +317,37 @@ const BlastSchema = z.object({
   accessToken: z.string().min(1),
   message: z.string().min(1).max(300),
 });
+
+// Union of consented phone numbers from both consent surfaces: logged-in
+// accounts (customer_profiles.marketing_sms) and phone-only opt-ins from
+// checkout/signup/the standalone opt-in page (sms_subscribers
+// .marketing_sms_consent). Deduped by normalized phone so a customer who
+// opted in both ways only gets one text.
+async function marketingAudiencePhones(
+  admin: typeof import("@/integrations/supabase/client.server").supabaseAdmin,
+): Promise<Set<string>> {
+  const [{ data: accountRows }, { data: guestRows }] = await Promise.all([
+    admin
+      .from("customer_profiles")
+      .select("phone")
+      .eq("marketing_sms", true)
+      .not("phone", "is", null),
+    admin
+      .from("sms_subscribers")
+      .select("phone")
+      .eq("marketing_sms_consent", true),
+  ]);
+  const phones = new Set<string>();
+  for (const r of accountRows ?? []) {
+    const n = normalizePhone(r.phone ?? "");
+    if (n) phones.add(n);
+  }
+  for (const r of guestRows ?? []) {
+    const n = normalizePhone(r.phone);
+    if (n) phones.add(n);
+  }
+  return phones;
+}
 
 export const sendMarketingSmsBlast = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => BlastSchema.parse(input))
@@ -308,17 +359,8 @@ export const sendMarketingSmsBlast = createServerFn({ method: "POST" })
     if (!/reply stop/i.test(body)) body += " Reply STOP to opt out.";
     if (!/^the kosher nosh/i.test(body)) body = `The Kosher Nosh: ${body}`;
 
-    const { data: rows, error } = await admin.supabaseAdmin
-      .from("customer_profiles")
-      .select("user_id,phone,full_name")
-      .eq("marketing_sms", true)
-      .not("phone", "is", null)
-      .limit(MAX_BLAST_RECIPIENTS);
-    if (error) return { ok: false as const, error: error.message };
-
-    const recipients = (rows ?? []).filter(
-      (r): r is { user_id: string; phone: string; full_name: string | null } => !!r.phone,
-    );
+    const phones = await marketingAudiencePhones(admin.supabaseAdmin);
+    const recipients = Array.from(phones).slice(0, MAX_BLAST_RECIPIENTS);
     let sent = 0;
     let failed = 0;
     const failures: string[] = [];
@@ -326,15 +368,13 @@ export const sendMarketingSmsBlast = createServerFn({ method: "POST" })
     for (let i = 0; i < recipients.length; i += BLAST_CONCURRENCY) {
       const batch = recipients.slice(i, i + BLAST_CONCURRENCY);
       const results = await Promise.all(
-        batch.map(async (r) => {
-          const to = normalizePhone(r.phone);
-          if (!to) return { ok: false, phone: r.phone };
+        batch.map(async (to) => {
           try {
             await sendSms(to, body);
             return { ok: true };
           } catch (err) {
-            console.error("marketing blast SMS failed:", r.phone, err);
-            return { ok: false, phone: r.phone };
+            console.error("marketing blast SMS failed:", to, err);
+            return { ok: false, phone: to };
           }
         }),
       );
