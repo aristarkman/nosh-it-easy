@@ -59,11 +59,17 @@ export function HomeVanBanner() {
 
       <style>{`
         @keyframes knb-drive-across {
-          from { transform: translateX(-360px); }
+          from { transform: translateX(-300px); }
           to   { transform: translateX(calc(100vw + 40px)); }
         }
+        @keyframes knb-bubble-bob {
+          0%, 100% { transform: translateY(0); }
+          50%      { transform: translateY(-4px); }
+        }
+        .knb-bubble { animation: knb-bubble-bob 1.6s ease-in-out infinite; }
         @media (prefers-reduced-motion: reduce) {
           .knb-banner-drive { animation: none; display: none; }
+          .knb-bubble { animation: none; }
         }
       `}</style>
     </div>
