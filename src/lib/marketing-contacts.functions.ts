@@ -98,7 +98,13 @@ export const importMarketingContacts = createServerFn({ method: "POST" })
 
 
 
-    return { ok: true as const, inserted, alreadyStored, duplicates, roleAddresses };
+    return {
+      ok: true as const,
+      inserted,
+      alreadyStored: alreadyStored + skippedConflicts,
+      duplicates,
+      roleAddresses,
+    };
   });
 
 const TokenOnly = z.object({ accessToken: z.string().min(1) });
