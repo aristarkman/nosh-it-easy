@@ -104,6 +104,7 @@ function MarketingContactsPage() {
   const [contentType, setContentType] = useState<"text" | "html">("text");
   const [ctaLabel, setCtaLabel] = useState("Order Now");
   const [ctaUrl, setCtaUrl] = useState("https://takeout.koshernosh.com");
+  const [includeCta, setIncludeCta] = useState(true);
   const [rampKey, setRampKey] = useState<"conservative" | "standard" | "sms">("conservative");
   const [editingCampaignId, setEditingCampaignId] = useState<string | null>(null);
 
@@ -172,8 +173,9 @@ function MarketingContactsPage() {
     setSubject(c.subject ?? "");
     setMessage(c.message ?? "");
     setContentType(c.content_type === "html" ? "html" : "text");
-    setCtaLabel(c.cta_label ?? "");
-    setCtaUrl(c.cta_url ?? "");
+    setIncludeCta(!!(c.cta_label && c.cta_url));
+    setCtaLabel(c.cta_label ?? "Order Now");
+    setCtaUrl(c.cta_url ?? "https://takeout.koshernosh.com");
     setErr(null);
     setNotice(null);
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -184,6 +186,7 @@ function MarketingContactsPage() {
     setName("");
     setSubject("");
     setMessage("");
+    setIncludeCta(true);
     setCtaLabel("Order Now");
     setCtaUrl("https://takeout.koshernosh.com");
   }
@@ -192,6 +195,10 @@ function MarketingContactsPage() {
     setBusy(true);
     setErr(null);
     setNotice(null);
+    const effectiveCtaLabel =
+      channel === "sms" || !includeCta ? undefined : ctaLabel.trim() || undefined;
+    const effectiveCtaUrl =
+      channel === "sms" || !includeCta ? undefined : ctaUrl.trim() || undefined;
     try {
       await withToken(async (t) => {
         if (editingCampaignId) {
@@ -203,8 +210,8 @@ function MarketingContactsPage() {
               subject: channel === "sms" ? undefined : subject.trim(),
               message: message.trim(),
               contentType: channel === "sms" ? "text" : contentType,
-              ctaLabel: channel === "sms" ? undefined : ctaLabel.trim() || undefined,
-              ctaUrl: channel === "sms" ? undefined : ctaUrl.trim() || undefined,
+              ctaLabel: effectiveCtaLabel,
+              ctaUrl: effectiveCtaUrl,
             },
           });
           if (!res.ok) {
@@ -225,8 +232,8 @@ function MarketingContactsPage() {
             subject: channel === "sms" ? undefined : subject.trim(),
             message: message.trim(),
             contentType: channel === "sms" ? "text" : contentType,
-            ctaLabel: channel === "sms" ? undefined : ctaLabel.trim() || undefined,
-            ctaUrl: channel === "sms" ? undefined : ctaUrl.trim() || undefined,
+            ctaLabel: effectiveCtaLabel,
+            ctaUrl: effectiveCtaUrl,
             ramp: RAMP_PRESETS[channel === "sms" ? "sms" : rampKey],
           },
         });
@@ -475,7 +482,22 @@ function MarketingContactsPage() {
         )}
 
         {!isSmsDraft && (
-          <div className={`mt-4 grid gap-3 ${editingCampaignId ? "sm:grid-cols-2" : "sm:grid-cols-3"}`}>
+          <div className="mt-4 flex items-center gap-2">
+            <input
+              type="checkbox"
+              id="includeCta"
+              checked={includeCta}
+              onChange={(e) => setIncludeCta(e.target.checked)}
+              className="size-4 rounded border-border"
+            />
+            <label htmlFor="includeCta" className="text-sm font-semibold">
+              Include a button
+            </label>
+          </div>
+        )}
+
+        {!isSmsDraft && includeCta && (
+          <div className="mt-3 grid gap-3 sm:grid-cols-2">
             <div>
               <label className="block text-xs font-semibold text-muted-foreground">
                 Button text
@@ -496,21 +518,22 @@ function MarketingContactsPage() {
                 className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary"
               />
             </div>
-            {!editingCampaignId && (
-              <div>
-                <label className="block text-xs font-semibold text-muted-foreground">
-                  Warm-up ramp
-                </label>
-                <select
-                  value={rampKey}
-                  onChange={(e) => setRampKey(e.target.value as "conservative" | "standard")}
-                  className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary"
-                >
-                  <option value="conservative">Conservative — 50/100/200/400/600/800/1000…</option>
-                  <option value="standard">Standard — 100/200/400/800/1500/3000</option>
-                </select>
-              </div>
-            )}
+          </div>
+        )}
+
+        {!isSmsDraft && !editingCampaignId && (
+          <div className="mt-3 max-w-xs">
+            <label className="block text-xs font-semibold text-muted-foreground">
+              Warm-up ramp
+            </label>
+            <select
+              value={rampKey}
+              onChange={(e) => setRampKey(e.target.value as "conservative" | "standard")}
+              className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary"
+            >
+              <option value="conservative">Conservative — 50/100/200/400/600/800/1000…</option>
+              <option value="standard">Standard — 100/200/400/800/1500/3000</option>
+            </select>
           </div>
         )}
 
