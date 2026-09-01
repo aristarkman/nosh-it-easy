@@ -75,20 +75,36 @@ export const importMarketingContacts = createServerFn({ method: "POST" })
     const fresh = rows.filter((r) => !existingSet.has(String(r.email)));
     const alreadyStored = rows.length - fresh.length;
 
+    // The unique index is on lower(email), an expression index PostgREST can't
+    // target with ON CONFLICT -- so insert normally and, if a chunk trips the
+    // index, retry that chunk row by row and skip only the conflicting rows.
     let inserted = 0;
+    let skippedConflicts = 0;
     for (let i = 0; i < fresh.length; i += 500) {
       const chunk = fresh.slice(i, i + 500);
-      // ignoreDuplicates: a race or a case-variant row shouldn't abort the import.
-      const { data: ins, error } = await db
-        .from("marketing_contacts")
-        .upsert(chunk as never, { onConflict: "email", ignoreDuplicates: true })
-        .select("id");
-      if (error) return { ok: false as const, error: error.message };
-      inserted += ins?.length ?? 0;
+      const { error } = await db.from("marketing_contacts").insert(chunk as never);
+      if (!error) {
+        inserted += chunk.length;
+        continue;
+      }
+      if (error.code !== "23505") return { ok: false as const, error: error.message };
+      for (const row of chunk) {
+        const { error: rowErr } = await db.from("marketing_contacts").insert(row as never);
+        if (!rowErr) inserted++;
+        else if (rowErr.code === "23505") skippedConflicts++;
+        else return { ok: false as const, error: rowErr.message };
+      }
     }
 
 
-    return { ok: true as const, inserted, alreadyStored, duplicates, roleAddresses };
+
+    return {
+      ok: true as const,
+      inserted,
+      alreadyStored: alreadyStored + skippedConflicts,
+      duplicates,
+      roleAddresses,
+    };
   });
 
 const TokenOnly = z.object({ accessToken: z.string().min(1) });
