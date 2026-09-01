@@ -244,6 +244,9 @@ function MarketingContactsPage() {
         if (!res.ok) setErr(res.error ?? "Test send failed");
         else setNotice(`Test ${isSms ? "text" : "email"} sent to ${to.trim()}.`);
       });
+    } catch (e) {
+      console.error("testSend threw:", e);
+      setErr(e instanceof Error ? e.message : "Test send failed unexpectedly. Check the console.");
     } finally {
       setBusy(false);
     }
