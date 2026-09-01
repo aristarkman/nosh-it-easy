@@ -228,9 +228,13 @@ function MarketingContactsPage() {
     const to = window.prompt(
       isSms
         ? "Send a test text to which phone number? (e.g. 2015550100)"
-        : "Send a test copy to which email address?",
+        : "Send a test copy to which email address? (e.g. you@example.com)",
     );
-    if (!to) return;
+    if (to === null) return; // user hit Cancel — no message needed, that's expected
+    if (!to.trim()) {
+      setErr("No address entered — test send cancelled.");
+      return;
+    }
     setBusy(true);
     setErr(null);
     setNotice(null);
