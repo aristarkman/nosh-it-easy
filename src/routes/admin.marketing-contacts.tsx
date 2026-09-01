@@ -537,6 +537,35 @@ function MarketingContactsPage() {
           </div>
         )}
 
+        {!isSmsDraft && (
+          <div className="mt-5">
+            <div className="flex items-center justify-between">
+              <label className="block text-sm font-semibold">Preview</label>
+              <button
+                onClick={() => setShowPreview((v) => !v)}
+                className="rounded-full border border-border px-3 py-1 text-xs font-bold"
+              >
+                {showPreview ? "Hide preview" : "Show preview"}
+              </button>
+            </div>
+            {showPreview && (
+              <div className="mt-2 overflow-hidden rounded-xl border border-border bg-muted">
+                <iframe
+                  title="Email preview"
+                  sandbox=""
+                  srcDoc={buildEmailPreviewHtml({
+                    message: message || "Your message will appear here.",
+                    contentType,
+                    ctaLabel: includeCta ? ctaLabel : null,
+                    ctaUrl: includeCta ? ctaUrl : null,
+                  })}
+                  className="h-[560px] w-full border-0 bg-white"
+                />
+              </div>
+            )}
+          </div>
+        )}
+
 
         <div className="mt-4 flex items-center gap-2">
           <button
