@@ -11,6 +11,7 @@ import {
   runMarketingCampaignBatchNow,
   sendMarketingCampaignTest,
 } from "@/lib/marketing-contacts.functions";
+import { buildEmailPreviewHtml } from "@/lib/email-preview";
 import {
   Loader2,
   Upload,
@@ -105,6 +106,7 @@ function MarketingContactsPage() {
   const [ctaLabel, setCtaLabel] = useState("Order Now");
   const [ctaUrl, setCtaUrl] = useState("https://takeout.koshernosh.com");
   const [includeCta, setIncludeCta] = useState(true);
+  const [showPreview, setShowPreview] = useState(true);
   const [rampKey, setRampKey] = useState<"conservative" | "standard" | "sms">("conservative");
   const [editingCampaignId, setEditingCampaignId] = useState<string | null>(null);
 
