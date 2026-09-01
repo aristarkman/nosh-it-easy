@@ -88,6 +88,8 @@ function MarketingContactsPage() {
   const [err, setErr] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [testTargetCampaignId, setTestTargetCampaignId] = useState<string | null>(null);
+  const [testAddressInput, setTestAddressInput] = useState("");
 
   const [pasteText, setPasteText] = useState("");
   const parsed = useMemo(() => parseContacts(pasteText), [pasteText]);
@@ -223,16 +225,18 @@ function MarketingContactsPage() {
     }
   }
 
-  async function testSend(c: any) {
+  function openTestSend(c: any) {
+    setTestTargetCampaignId(c.id);
+    setTestAddressInput("");
+    setErr(null);
+    setNotice(null);
+  }
+
+  async function submitTestSend(c: any) {
     const isSms = c.channel === "sms";
-    const to = window.prompt(
-      isSms
-        ? "Send a test text to which phone number? (e.g. 2015550100)"
-        : "Send a test copy to which email address? (e.g. you@example.com)",
-    );
-    if (to === null) return; // user hit Cancel — no message needed, that's expected
-    if (!to.trim()) {
-      setErr("No address entered — test send cancelled.");
+    const to = testAddressInput.trim();
+    if (!to) {
+      setErr("Enter an address first.");
       return;
     }
     setBusy(true);
@@ -240,9 +244,12 @@ function MarketingContactsPage() {
     setNotice(null);
     try {
       await withToken(async (t) => {
-        const res = await doTest({ data: { accessToken: t, campaignId: c.id, to: to.trim() } });
+        const res = await doTest({ data: { accessToken: t, campaignId: c.id, to } });
         if (!res.ok) setErr(res.error ?? "Test send failed");
-        else setNotice(`Test ${isSms ? "text" : "email"} sent to ${to.trim()}.`);
+        else {
+          setNotice(`Test ${isSms ? "text" : "email"} sent to ${to}.`);
+          setTestTargetCampaignId(null);
+        }
       });
     } catch (e) {
       console.error("testSend threw:", e);
@@ -527,7 +534,7 @@ function MarketingContactsPage() {
                         </button>
                       ))}
                     <button
-                      onClick={() => testSend(c)}
+                      onClick={() => openTestSend(c)}
                       disabled={busy}
                       className="rounded-full border border-border px-4 py-1.5 text-xs font-bold disabled:opacity-40"
                     >
@@ -543,6 +550,35 @@ function MarketingContactsPage() {
                       </button>
                     )}
                   </div>
+                  {testTargetCampaignId === c.id && (
+                    <div className="mt-2 flex flex-wrap items-center gap-2 rounded-lg border border-border bg-muted/40 p-2">
+                      <input
+                        autoFocus
+                        type={c.channel === "sms" ? "tel" : "email"}
+                        value={testAddressInput}
+                        onChange={(e) => setTestAddressInput(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") submitTestSend(c);
+                          if (e.key === "Escape") setTestTargetCampaignId(null);
+                        }}
+                        placeholder={c.channel === "sms" ? "2015550100" : "you@example.com"}
+                        className="min-w-0 flex-1 rounded border border-border bg-background px-2 py-1 text-sm"
+                      />
+                      <button
+                        onClick={() => submitTestSend(c)}
+                        disabled={busy}
+                        className="rounded-full bg-primary px-3 py-1 text-xs font-bold text-primary-foreground disabled:opacity-40"
+                      >
+                        Send
+                      </button>
+                      <button
+                        onClick={() => setTestTargetCampaignId(null)}
+                        className="rounded-full px-3 py-1 text-xs font-bold text-muted-foreground"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  )}
                 </div>
               );
             })}
