@@ -60,14 +60,11 @@ function buildHtml(input: {
     <table role="presentation" width="100%" style="background:#f4f4f5;padding:32px 16px;">
       <tr><td align="center">
         <table role="presentation" width="100%" style="max-width:560px;background:#ffffff;border-radius:16px;overflow:hidden;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
-          <tr><td style="background:${BRAND_COLOR};padding:28px 32px;">
-            <span style="font-size:20px;font-weight:800;color:#ffffff;letter-spacing:0.02em;">The Kosher Nosh</span>
-          </td></tr>
           <tr><td style="padding:32px;">
             <div style="font-size:15px;line-height:1.65;color:#1a1a1a;">${body}</div>
             ${cta}
           </td></tr>
-          <tr><td style="padding:20px 32px;background:#fafafa;border-top:1px solid #eee;">
+          <tr><td style="padding:20px 32px;background:#fafafa;">
             <p style="font-size:11px;color:#999;line-height:1.6;margin:0;">
               ${esc(input.physicalAddress)}<br>
               ${unsubLine}
