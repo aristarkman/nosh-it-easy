@@ -6,6 +6,7 @@ import {
   importMarketingContacts,
   getMarketingOverview,
   createMarketingCampaign,
+  updateMarketingCampaign,
   setMarketingCampaignStatus,
   runMarketingCampaignBatchNow,
   sendMarketingCampaignTest,
@@ -104,11 +105,13 @@ function MarketingContactsPage() {
   const [ctaLabel, setCtaLabel] = useState("Order Now");
   const [ctaUrl, setCtaUrl] = useState("https://takeout.koshernosh.com");
   const [rampKey, setRampKey] = useState<"conservative" | "standard" | "sms">("conservative");
+  const [editingCampaignId, setEditingCampaignId] = useState<string | null>(null);
 
 
   const doImport = useServerFn(importMarketingContacts);
   const doOverview = useServerFn(getMarketingOverview);
   const doCreate = useServerFn(createMarketingCampaign);
+  const doUpdate = useServerFn(updateMarketingCampaign);
   const doStatus = useServerFn(setMarketingCampaignStatus);
   const doRunNow = useServerFn(runMarketingCampaignBatchNow);
   const doTest = useServerFn(sendMarketingCampaignTest);
@@ -162,12 +165,58 @@ function MarketingContactsPage() {
     }
   }
 
+  function editCampaign(c: any) {
+    setEditingCampaignId(c.id);
+    setChannel(c.channel);
+    setName(c.name);
+    setSubject(c.subject ?? "");
+    setMessage(c.message ?? "");
+    setContentType(c.content_type === "html" ? "html" : "text");
+    setCtaLabel(c.cta_label ?? "");
+    setCtaUrl(c.cta_url ?? "");
+    setErr(null);
+    setNotice(null);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  function cancelEdit() {
+    setEditingCampaignId(null);
+    setName("");
+    setSubject("");
+    setMessage("");
+    setCtaLabel("Order Now");
+    setCtaUrl("https://takeout.koshernosh.com");
+  }
+
   async function handleCreate() {
     setBusy(true);
     setErr(null);
     setNotice(null);
     try {
       await withToken(async (t) => {
+        if (editingCampaignId) {
+          const res = await doUpdate({
+            data: {
+              accessToken: t,
+              campaignId: editingCampaignId,
+              name: name.trim(),
+              subject: channel === "sms" ? undefined : subject.trim(),
+              message: message.trim(),
+              contentType: channel === "sms" ? "text" : contentType,
+              ctaLabel: channel === "sms" ? undefined : ctaLabel.trim() || undefined,
+              ctaUrl: channel === "sms" ? undefined : ctaUrl.trim() || undefined,
+            },
+          });
+          if (!res.ok) {
+            setErr(res.error ?? "Could not save changes");
+            return;
+          }
+          setNotice("Campaign updated.");
+          cancelEdit();
+          await refresh();
+          return;
+        }
+
         const res = await doCreate({
           data: {
             accessToken: t,
@@ -343,15 +392,16 @@ function MarketingContactsPage() {
       <section className="rounded-2xl border border-border bg-card p-5">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h2 className="flex items-center gap-2 font-display text-lg">
-            {isSmsDraft ? <MessageSquare className="size-4" /> : <Mail className="size-4" />} New
-            drip campaign
+            {isSmsDraft ? <MessageSquare className="size-4" /> : <Mail className="size-4" />}
+            {editingCampaignId ? `Editing "${name}"` : "New drip campaign"}
           </h2>
           <div className="flex gap-1 rounded-full bg-muted p-0.5 text-xs font-bold">
             {(["email", "sms"] as const).map((ch) => (
               <button
                 key={ch}
                 onClick={() => setChannel(ch)}
-                className={`rounded-full px-4 py-1.5 ${channel === ch ? "bg-background shadow-sm" : "text-muted-foreground"}`}
+                disabled={!!editingCampaignId}
+                className={`rounded-full px-4 py-1.5 disabled:opacity-40 ${channel === ch ? "bg-background shadow-sm" : "text-muted-foreground"}`}
               >
                 {ch === "email" ? "Email" : "SMS"}
               </button>
@@ -425,7 +475,7 @@ function MarketingContactsPage() {
         )}
 
         {!isSmsDraft && (
-          <div className="mt-4 grid gap-3 sm:grid-cols-3">
+          <div className={`mt-4 grid gap-3 ${editingCampaignId ? "sm:grid-cols-2" : "sm:grid-cols-3"}`}>
             <div>
               <label className="block text-xs font-semibold text-muted-foreground">
                 Button text
@@ -446,31 +496,44 @@ function MarketingContactsPage() {
                 className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary"
               />
             </div>
-            <div>
-              <label className="block text-xs font-semibold text-muted-foreground">
-                Warm-up ramp
-              </label>
-              <select
-                value={rampKey}
-                onChange={(e) => setRampKey(e.target.value as "conservative" | "standard")}
-                className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary"
-              >
-                <option value="conservative">Conservative — 50/100/200/400/600/800/1000…</option>
-                <option value="standard">Standard — 100/200/400/800/1500/3000</option>
-              </select>
-            </div>
+            {!editingCampaignId && (
+              <div>
+                <label className="block text-xs font-semibold text-muted-foreground">
+                  Warm-up ramp
+                </label>
+                <select
+                  value={rampKey}
+                  onChange={(e) => setRampKey(e.target.value as "conservative" | "standard")}
+                  className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary"
+                >
+                  <option value="conservative">Conservative — 50/100/200/400/600/800/1000…</option>
+                  <option value="standard">Standard — 100/200/400/800/1500/3000</option>
+                </select>
+              </div>
+            )}
           </div>
         )}
 
 
-        <button
-          onClick={handleCreate}
-          disabled={!canCreate}
-          className="mt-4 inline-flex items-center gap-2 rounded-full bg-primary px-5 py-2.5 text-sm font-bold text-primary-foreground disabled:opacity-40"
-        >
-          {busy ? <Loader2 className="size-4 animate-spin" /> : <Send className="size-4" />}
-          Save campaign
-        </button>
+        <div className="mt-4 flex items-center gap-2">
+          <button
+            onClick={handleCreate}
+            disabled={!canCreate}
+            className="inline-flex items-center gap-2 rounded-full bg-primary px-5 py-2.5 text-sm font-bold text-primary-foreground disabled:opacity-40"
+          >
+            {busy ? <Loader2 className="size-4 animate-spin" /> : <Send className="size-4" />}
+            {editingCampaignId ? "Save changes" : "Save campaign"}
+          </button>
+          {editingCampaignId && (
+            <button
+              onClick={cancelEdit}
+              disabled={busy}
+              className="rounded-full border border-border px-5 py-2.5 text-sm font-bold disabled:opacity-40"
+            >
+              Cancel
+            </button>
+          )}
+        </div>
       </section>
 
       <section className="rounded-2xl border border-border bg-card p-5">
@@ -540,6 +603,15 @@ function MarketingContactsPage() {
                     >
                       Send test
                     </button>
+                    {(c.status === "draft" || c.status === "paused") && (
+                      <button
+                        onClick={() => editCampaign(c)}
+                        disabled={busy}
+                        className="rounded-full border border-border px-4 py-1.5 text-xs font-bold disabled:opacity-40"
+                      >
+                        Edit
+                      </button>
+                    )}
                     {c.status === "running" && (
                       <button
                         onClick={() => runNow(c.id)}

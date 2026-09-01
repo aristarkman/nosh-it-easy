@@ -168,6 +168,59 @@ export const createMarketingCampaign = createServerFn({ method: "POST" })
     return { ok: true as const, id: row.id };
   });
 
+const UpdateCampaignSchema = z.object({
+  accessToken: z.string().min(1),
+  campaignId: z.string().uuid(),
+  name: z.string().min(1).max(120),
+  subject: z.string().max(200).optional(),
+  message: z.string().min(1).max(20000),
+  contentType: z.enum(["text", "html"]).default("text"),
+  ctaLabel: z.string().max(60).optional(),
+  ctaUrl: z.string().url().max(500).optional(),
+});
+
+// Editing is only allowed for draft/paused campaigns — once a campaign is
+// running or completed, some recipients have already gotten the old
+// content, so changing it now would make the messages inconsistent across
+// the audience.
+export const updateMarketingCampaign = createServerFn({ method: "POST" })
+  .inputValidator((input: unknown) => UpdateCampaignSchema.parse(input))
+  .handler(async ({ data }) => {
+    const { requireAdminByToken } = await import("@/server/admin-guard.server");
+    const admin = await requireAdminByToken(data.accessToken);
+    if (!admin.ok) return { ok: false as const, error: admin.error };
+
+    const { data: existing, error: fetchError } = await admin.supabaseAdmin
+      .from("marketing_campaigns")
+      .select("id,channel,status")
+      .eq("id", data.campaignId)
+      .maybeSingle();
+    if (fetchError || !existing) {
+      return { ok: false as const, error: fetchError?.message ?? "Campaign not found" };
+    }
+    if (existing.status !== "draft" && existing.status !== "paused") {
+      return {
+        ok: false as const,
+        error: `Can't edit a campaign that's ${existing.status}. Pause it first.`,
+      };
+    }
+    const isSms = existing.channel === "sms";
+
+    const { error } = await admin.supabaseAdmin
+      .from("marketing_campaigns")
+      .update({
+        name: data.name.trim(),
+        subject: (isSms ? data.name : data.subject?.trim() || data.name).slice(0, 200),
+        message: data.message.trim(),
+        content_type: isSms ? "text" : data.contentType,
+        cta_label: isSms ? null : data.ctaLabel?.trim() || null,
+        cta_url: isSms ? null : data.ctaUrl?.trim() || null,
+      })
+      .eq("id", data.campaignId);
+    if (error) return { ok: false as const, error: error.message };
+    return { ok: true as const };
+  });
+
 const StatusSchema = z.object({
   accessToken: z.string().min(1),
   campaignId: z.string().uuid(),
