@@ -39,22 +39,18 @@ export function dailyCap(campaign: Pick<Campaign, "ramp" | "day_index">): number
 }
 
 export async function sendCampaignEmail(campaign: Campaign, to: string, testPrefix = false) {
-  const { data, error } = await supabaseAdmin.functions.invoke("send-marketing-email", {
-    body: {
-      to,
-      subject: testPrefix ? `[TEST] ${campaign.subject}` : campaign.subject,
-      message: campaign.message,
-      contentType: campaign.content_type === "html" ? "html" : "text",
-      ctaLabel: campaign.cta_label,
-      ctaUrl: campaign.cta_url,
-      includeOneClickUnsubscribe: true,
-    },
+  const { sendMarketingEmail } = await import("@/server/marketing-email.server");
+  await sendMarketingEmail({
+    to,
+    subject: testPrefix ? `[TEST] ${campaign.subject}` : campaign.subject,
+    message: campaign.message,
+    contentType: campaign.content_type === "html" ? "html" : "text",
+    ctaLabel: campaign.cta_label,
+    ctaUrl: campaign.cta_url,
+    includeOneClickUnsubscribe: true,
   });
-  if (error) throw error;
-  if (data && (data as { ok?: boolean }).ok === false) {
-    throw new Error((data as { error?: string }).error ?? "Send failed");
-  }
 }
+
 
 export async function sendCampaignSms(campaign: Campaign, rawPhone: string, testPrefix = false) {
   const to = normalizePhone(rawPhone);
