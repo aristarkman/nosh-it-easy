@@ -58,18 +58,35 @@ export const importMarketingContacts = createServerFn({ method: "POST" })
     }
 
     // Skip anyone already stored (keeps their unsubscribe/bounce state intact).
-    const { data: existing } = await db.from("marketing_contacts").select("email");
-    const existingSet = new Set((existing ?? []).map((r) => r.email.toLowerCase()));
+    // PostgREST caps a plain select at 1000 rows, so page through the list --
+    // otherwise big lists re-insert known contacts and hit the unique index.
+    const existingSet = new Set<string>();
+    const page = 1000;
+    for (let from = 0; ; from += page) {
+      const { data: existing, error } = await db
+        .from("marketing_contacts")
+        .select("email")
+        .order("email", { ascending: true })
+        .range(from, from + page - 1);
+      if (error) return { ok: false as const, error: error.message };
+      for (const r of existing ?? []) if (r.email) existingSet.add(r.email.toLowerCase());
+      if (!existing || existing.length < page) break;
+    }
     const fresh = rows.filter((r) => !existingSet.has(String(r.email)));
     const alreadyStored = rows.length - fresh.length;
 
     let inserted = 0;
     for (let i = 0; i < fresh.length; i += 500) {
       const chunk = fresh.slice(i, i + 500);
-      const { error } = await db.from("marketing_contacts").insert(chunk as never);
+      // ignoreDuplicates: a race or a case-variant row shouldn't abort the import.
+      const { data: ins, error } = await db
+        .from("marketing_contacts")
+        .upsert(chunk as never, { onConflict: "email", ignoreDuplicates: true })
+        .select("id");
       if (error) return { ok: false as const, error: error.message };
-      inserted += chunk.length;
+      inserted += ins?.length ?? 0;
     }
+
 
     return { ok: true as const, inserted, alreadyStored, duplicates, roleAddresses };
   });
