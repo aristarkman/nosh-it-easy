@@ -5,6 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import {
   importMarketingContacts,
   getMarketingOverview,
+  exportMarketingContacts,
   createMarketingCampaign,
   updateMarketingCampaign,
   setMarketingCampaignStatus,
@@ -15,6 +16,7 @@ import { buildEmailPreviewHtml } from "@/lib/email-preview";
 import {
   Loader2,
   Upload,
+  Download,
   Users,
   AlertCircle,
   CheckCircle2,
@@ -77,6 +79,28 @@ function parseContacts(text: string): ParsedContact[] {
   return out.filter((c) => (seen.has(c.email) ? false : (seen.add(c.email), true)));
 }
 
+function toCsv(rows: Record<string, unknown>[], columns: string[]): string {
+  const escape = (v: unknown) => {
+    const s = v == null ? "" : String(v);
+    return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+  };
+  const header = columns.join(",");
+  const body = rows.map((r) => columns.map((c) => escape(r[c])).join(","));
+  return [header, ...body].join("\n");
+}
+
+function downloadCsv(filename: string, csv: string) {
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
 const RAMP_PRESETS: Record<string, number[]> = {
   conservative: [50, 100, 200, 400, 600, 800, 1000, 1000, 1000, 1000],
   standard: [100, 200, 400, 800, 1500, 3000],
@@ -113,6 +137,7 @@ function MarketingContactsPage() {
 
   const doImport = useServerFn(importMarketingContacts);
   const doOverview = useServerFn(getMarketingOverview);
+  const doExport = useServerFn(exportMarketingContacts);
   const doCreate = useServerFn(createMarketingCampaign);
   const doUpdate = useServerFn(updateMarketingCampaign);
   const doStatus = useServerFn(setMarketingCampaignStatus);
@@ -143,6 +168,40 @@ function MarketingContactsPage() {
     refresh();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  async function handleExport() {
+    setBusy(true);
+    setErr(null);
+    setNotice(null);
+    try {
+      await withToken(async (t) => {
+        const res = await doExport({ data: { accessToken: t } });
+        if (!res.ok) {
+          setErr(res.error ?? "Export failed");
+          return;
+        }
+        if (res.contacts.length === 0) {
+          setErr("No subscribed contacts to export.");
+          return;
+        }
+        const csv = toCsv(res.contacts, [
+          "email",
+          "first_name",
+          "last_name",
+          "phone",
+          "sms_subscribed",
+          "bounced",
+          "last_order_at",
+          "source",
+          "created_at",
+        ]);
+        downloadCsv(`marketing-contacts-${new Date().toISOString().slice(0, 10)}.csv`, csv);
+        setNotice(`Downloaded ${res.contacts.length} subscribed contact${res.contacts.length === 1 ? "" : "s"}.`);
+      });
+    } finally {
+      setBusy(false);
+    }
+  }
 
   async function handleImport() {
     setBusy(true);
@@ -326,12 +385,23 @@ function MarketingContactsPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="font-display text-2xl">Marketing Contacts</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Import your GloriaFood customer list once, then send it in small daily batches so your
-          sending domain warms up instead of getting blacklisted.
-        </p>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="font-display text-2xl">Marketing Contacts</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Import your GloriaFood customer list once, then send it in small daily batches so your
+            sending domain warms up instead of getting blacklisted.
+          </p>
+        </div>
+        <button
+          onClick={handleExport}
+          disabled={busy}
+          title="Download everyone who hasn't unsubscribed from email marketing"
+          className="inline-flex items-center gap-2 rounded-full border border-border px-4 py-2 text-sm font-bold hover:border-primary disabled:opacity-40"
+        >
+          {busy ? <Loader2 className="size-4 animate-spin" /> : <Download className="size-4" />}
+          Download subscribed list
+        </button>
       </div>
 
       {notice && (
