@@ -128,6 +128,28 @@ export const getMarketingOverview = createServerFn({ method: "POST" })
     };
   });
 
+// Anyone still subscribed to email marketing (i.e. hasn't unsubscribed) —
+// for the admin's "download customer list" button. Bounced contacts are
+// included (bounce is a deliverability fact, not an opt-out) but flagged
+// in the export so the admin can see it.
+export const exportMarketingContacts = createServerFn({ method: "POST" })
+  .inputValidator((input: unknown) => TokenOnly.parse(input))
+  .handler(async ({ data }) => {
+    const { requireAdminByToken } = await import("@/server/admin-guard.server");
+    const admin = await requireAdminByToken(data.accessToken);
+    if (!admin.ok) return { ok: false as const, error: admin.error };
+
+    const { data: rows, error } = await admin.supabaseAdmin
+      .from("marketing_contacts")
+      .select("email,first_name,last_name,phone,sms_subscribed,bounced,last_order_at,source,created_at")
+      .eq("subscribed", true)
+      .order("last_order_at", { ascending: false, nullsFirst: false })
+      .limit(20000);
+    if (error) return { ok: false as const, error: error.message };
+
+    return { ok: true as const, contacts: rows ?? [] };
+  });
+
 const CreateCampaignSchema = z.object({
   accessToken: z.string().min(1),
   channel: z.enum(["email", "sms"]).default("email"),
