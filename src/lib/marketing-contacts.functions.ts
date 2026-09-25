@@ -161,6 +161,18 @@ export const getMarketingOverview = createServerFn({ method: "POST" })
     };
   });
 
+type ExportContactRow = {
+  email: string;
+  first_name: string | null;
+  last_name: string | null;
+  phone: string | null;
+  sms_subscribed: boolean;
+  bounced: boolean;
+  last_order_at: string | null;
+  source: string;
+  created_at: string;
+};
+
 // Anyone still subscribed to email marketing (i.e. hasn't unsubscribed) —
 // for the admin's "download customer list" button. Bounced contacts are
 // included (bounce is a deliverability fact, not an opt-out) but flagged
@@ -172,15 +184,26 @@ export const exportMarketingContacts = createServerFn({ method: "POST" })
     const admin = await requireAdminByToken(data.accessToken);
     if (!admin.ok) return { ok: false as const, error: admin.error };
 
-    const { data: rows, error } = await admin.supabaseAdmin
-      .from("marketing_contacts")
-      .select("email,first_name,last_name,phone,sms_subscribed,bounced,last_order_at,source,created_at")
-      .eq("subscribed", true)
-      .order("last_order_at", { ascending: false, nullsFirst: false })
-      .limit(20000);
-    if (error) return { ok: false as const, error: error.message };
+    // PostgREST caps a plain select at 1000 rows regardless of .limit(), so
+    // page through with .range() (same pattern as importMarketingContacts
+    // above) up to an overall cap.
+    const EXPORT_CAP = 20000;
+    const page = 1000;
+    const rows: ExportContactRow[] = [];
+    for (let from = 0; from < EXPORT_CAP; from += page) {
+      const { data: chunk, error } = await admin.supabaseAdmin
+        .from("marketing_contacts")
+        .select("email,first_name,last_name,phone,sms_subscribed,bounced,last_order_at,source,created_at")
+        .eq("subscribed", true)
+        .order("last_order_at", { ascending: false, nullsFirst: false })
+        .order("email", { ascending: true })
+        .range(from, Math.min(from + page, EXPORT_CAP) - 1);
+      if (error) return { ok: false as const, error: error.message };
+      rows.push(...((chunk ?? []) as ExportContactRow[]));
+      if (!chunk || chunk.length < page) break;
+    }
 
-    return { ok: true as const, contacts: rows ?? [] };
+    return { ok: true as const, contacts: rows };
   });
 
 const CreateCampaignSchema = z.object({
