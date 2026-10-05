@@ -167,6 +167,54 @@ export function buildOrderTicket(order: TicketOrder, locationName: string | unde
 
   b.feed(7);
   b.cut();
+
+  // Gift orders: append a second, price-free packing slip with the card
+  // message, cut separately so it can go in the bag.
+  const segs = (order.notes ?? "").split("|").map((p) => p.trim());
+  if (segs.includes("gift:1")) {
+    const giftMsg = segs.find((p) => p.startsWith("giftmsg:"))?.slice("giftmsg:".length).trim();
+    b.bold(true);
+    b.align("center");
+    b.doubleSize(true);
+    b.line(locationName ?? order.location_id);
+    b.reverse(true);
+    b.line(" GIFT ");
+    b.reverse(false);
+    b.tallText(true);
+    b.line(`#${order.order_number}`);
+    b.align("left");
+    b.divider("=", WIDTH);
+    if (order.order_type === "delivery" && order.delivery_address) {
+      b.line(`To: ${order.customer_name}`);
+      b.line(order.delivery_address);
+    }
+    b.divider("-", WIDTH);
+    b.line("ITEMS");
+    for (const item of order.items) {
+      const qtyLabel = item.soldByPound ? formatQuantity(item.quantity, true) : `${item.quantity}`;
+      b.line(`${qtyLabel} x ${item.name}`);
+      for (const mod of item.modifiers ?? []) {
+        for (const opt of mod.options ?? []) b.line(`   + ${opt.name}`);
+      }
+    }
+    b.divider("*", WIDTH);
+    b.align("center");
+    b.line("GIFT MESSAGE");
+    b.align("left");
+    b.feed(1);
+    if (giftMsg) {
+      b.line(giftMsg);
+    } else {
+      // Blank area to hand-write a card message
+      for (let i = 0; i < 4; i++) b.line("_".repeat(WIDTH));
+    }
+    b.feed(1);
+    b.divider("*", WIDTH);
+    b.align("center");
+    b.line("Enjoy! - The Famous Kosher Nosh");
+    b.feed(7);
+    b.cut();
+  }
   return b;
 }
 
