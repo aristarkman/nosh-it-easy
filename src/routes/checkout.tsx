@@ -104,6 +104,8 @@ function CheckoutPage() {
   const [smsConsent, setSmsConsent] = useState(false);
   const [marketingSmsConsent, setMarketingSmsConsent] = useState(false);
   const [utensilsRequested, setUtensilsRequested] = useState(false);
+  const [isGift, setIsGift] = useState(false);
+  const [giftMessage, setGiftMessage] = useState("");
   const [email, setEmail] = useState("");
   const [address, setAddress] = useState("");
   const [zip, setZip] = useState("");
@@ -599,6 +601,11 @@ function CheckoutPage() {
       .replace(/\|/g, ",")
       .replace(/\r?\n+/g, " / ")
       .slice(0, 300);
+    const cleanGiftMessage = giftMessage
+      .trim()
+      .replace(/\|/g, ",")
+      .replace(/\r?\n+/g, " / ")
+      .slice(0, 250);
 
     // Server-side delivery-area guard. The client zone check above is only a
     // UI affordance — re-verify the address against the saved polygons before
@@ -826,6 +833,8 @@ function CheckoutPage() {
       utensils_requested: utensilsRequested,
       notes: [
         cleanOrderNote ? `note:${cleanOrderNote}` : null,
+        isGift ? "gift:1" : null,
+        isGift && cleanGiftMessage ? `giftmsg:${cleanGiftMessage}` : null,
         `tip:${pricing.tipAmount.toFixed(2)}`,
         `sms:${smsConsent ? 1 : 0}`,
         pricing.promo
@@ -1160,6 +1169,27 @@ function CheckoutPage() {
                 Please include plastic cutlery and napkins
               </label>
             </div>
+            <div className="flex items-start gap-2 mt-2">
+              <Checkbox
+                id="isGift"
+                checked={isGift}
+                onCheckedChange={(checked) => setIsGift(checked === true)}
+              />
+              <label htmlFor="isGift" className="text-sm text-muted-foreground leading-snug">
+                This order is a gift — no prices will be printed on the slip
+              </label>
+            </div>
+            {isGift && (
+              <textarea
+                value={giftMessage}
+                onChange={(e) => setGiftMessage(e.target.value)}
+                aria-label="Gift card message"
+                maxLength={250}
+                rows={3}
+                placeholder="Message for the gift card (optional), e.g. Mazel tov! Love, the Cohens"
+                className="mt-2 w-full rounded-xl border border-border bg-background p-3 text-sm outline-none focus:border-primary"
+              />
+            )}
           </Section>
 
           {orderType === "delivery" ? (
