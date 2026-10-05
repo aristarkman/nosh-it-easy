@@ -14,7 +14,7 @@ const FTD_SCRIPT = () =>
 // separately activated for the "PaymentTokenization" JWT scope. FTD
 // paymentTokenId charges must go through V1 or V2 instead, authenticated
 // with the same simple portal-generated Ecom Token used by the FTD widget
-// itself (IPOSPAYS_API_KEY) — no separate JWT auth flow needed.
+// itself (the store's IPOSPAYS_API_KEY_*) — no separate JWT auth flow needed.
 const TRANSACT_URL = () =>
   isLive()
     ? "https://payment.ipospays.com/api/v1/iposTransact"
@@ -25,11 +25,40 @@ const GPAY_SCRIPT = () =>
     ? "https://payment.ipospays.com/ftd/v1/gpay.js"
     : "https://payment.ipospays.tech/ftd/v1/gpay.js";
 
-export const getFtdConfig = createServerFn({ method: "GET" }).handler(async () => {
-  const authToken = process.env.IPOSPAYS_API_KEY;
-  const tpn = process.env.IPOSPAYS_TERMINAL_ID;
-  if (!authToken || !tpn) throw new Error("iPOSpays credentials are not configured");
+// Each store has its own iPOSpays merchant account, so orders are charged to
+// the store they're placed for. No fallback to a shared credential on
+// purpose: a missing per-store secret should fail loudly rather than
+// silently charge the other store's account.
+const LocationIdSchema = z.enum(["glen-rock", "cresskill"]);
+type StoreId = z.infer<typeof LocationIdSchema>;
+
+function credentialsFor(locationId: StoreId): { authToken: string; tpn: string } {
+  const all = {
+    "glen-rock": {
+      authToken: process.env.IPOSPAYS_API_KEY_GLEN_ROCK,
+      tpn: process.env.IPOSPAYS_TERMINAL_ID_GLEN_ROCK,
+      names: "IPOSPAYS_API_KEY_GLEN_ROCK / IPOSPAYS_TERMINAL_ID_GLEN_ROCK",
+    },
+    cresskill: {
+      authToken: process.env.IPOSPAYS_API_KEY_CRESSKILL,
+      tpn: process.env.IPOSPAYS_TERMINAL_ID_CRESSKILL,
+      names: "IPOSPAYS_API_KEY_CRESSKILL / IPOSPAYS_TERMINAL_ID_CRESSKILL",
+    },
+  }[locationId];
+  const authToken = all.authToken?.trim();
+  const tpn = all.tpn?.trim();
+  if (!authToken || !tpn) {
+    throw new Error(`iPOSpays credentials are not configured for ${locationId} (${all.names})`);
+  }
+  return { authToken, tpn };
+}
+
+export const getFtdConfig = createServerFn({ method: "GET" })
+  .inputValidator((input) => z.object({ locationId: LocationIdSchema }).parse(input))
+  .handler(async ({ data }) => {
+  const { authToken, tpn } = credentialsFor(data.locationId);
   console.log("iPOSpays FTD config", {
+    locationId: data.locationId,
     tpn,
     tokenLength: authToken.length,
     tokenMasked:
@@ -56,6 +85,9 @@ export const chargeWithToken = createServerFn({ method: "POST" })
   .inputValidator((input) =>
     z
       .object({
+        // Must be the same store whose TPN the card form was loaded with —
+        // an FTD paymentTokenId is only valid against the TPN that minted it.
+        locationId: LocationIdSchema,
         paymentTokenId: z.string().min(8).optional(),
         // Encrypted payload from iPOSpays' gpay.js callback — opaque to us,
         // passed straight through to iposTransact's preferences.GooglePay.
@@ -70,8 +102,7 @@ export const chargeWithToken = createServerFn({ method: "POST" })
       .parse(input),
   )
   .handler(async ({ data }) => {
-    const authToken = process.env.IPOSPAYS_API_KEY!;
-    const tpn = process.env.IPOSPAYS_TERMINAL_ID!;
+    const { authToken, tpn } = credentialsFor(data.locationId);
 
     const maskedToken =
       authToken.length > 8
@@ -79,6 +110,7 @@ export const chargeWithToken = createServerFn({ method: "POST" })
         : "(too short to mask)";
     console.log("iPOSpays transact request", {
       url: TRANSACT_URL(),
+      locationId: data.locationId,
       tpn,
       tokenLength: authToken.length,
       tokenMasked: maskedToken,

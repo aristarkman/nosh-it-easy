@@ -144,7 +144,8 @@ function CheckoutPage() {
   const [selectedAddrId, setSelectedAddrId] = useState<string>("");
 
   const [ftdReady, setFtdReady] = useState(false);
-  const ftdLoadedRef = useRef(false);
+  // Which store's TPN the currently-loaded card form was minted for.
+  const ftdLocationRef = useRef<string | null>(null);
 
   const [gpayReady, setGpayReady] = useState(false);
   const gpayLoadedRef = useRef(false);
@@ -281,28 +282,39 @@ function CheckoutPage() {
     })();
   }, [location]);
 
-  // Load Freedom-to-Design script when card is selected
+  // Load the Freedom-to-Design script when card is selected. Each store has
+  // its own iPOSpays TPN, and a card token is only valid for the TPN that
+  // minted it, so the form is (re)loaded for the current store — including
+  // when the customer switches stores mid-checkout.
   useEffect(() => {
-    if (pay !== "card" || ftdLoadedRef.current) return;
-    ftdLoadedRef.current = true;
+    if (pay !== "card" || !location) return;
+    if (ftdLocationRef.current === location) return;
+    const forLocation = location;
+    document.getElementById("ftd")?.remove();
+    ftdLocationRef.current = forLocation;
+    setFtdReady(false);
     (async () => {
       try {
-        const cfg = await getFtdConfig();
+        const cfg = await getFtdConfig({ data: { locationId: forLocation } });
+        if (ftdLocationRef.current !== forLocation) return; // store changed again while loading
         const s = document.createElement("script");
         s.id = "ftd";
         s.src = cfg.scriptUrl;
         s.setAttribute("security_key", cfg.authToken);
         s.setAttribute("data-tpn", cfg.tpn);
         s.defer = true;
-        s.onload = () => setFtdReady(true);
+        s.onload = () => {
+          if (ftdLocationRef.current === forLocation) setFtdReady(true);
+        };
         s.onerror = () => toast.error("Could not load secure card form.");
         document.head.appendChild(s);
       } catch (e) {
         console.error(e);
+        if (ftdLocationRef.current === forLocation) ftdLocationRef.current = null;
         toast.error("Card payments are not configured yet.");
       }
     })();
-  }, [pay]);
+  }, [pay, location]);
 
   // Load gpay.js + wire up the payment-token callback once Google Pay is
   // selected. The actual "pay" click happens on Google's own button
@@ -674,7 +686,7 @@ function CheckoutPage() {
 
     try {
       if (pay === "card") {
-        if (!ftdReady || typeof window.postData !== "function") {
+        if (!ftdReady || ftdLocationRef.current !== location || typeof window.postData !== "function") {
           toast.error("Card form is still loading. Please wait a moment.");
           setSubmitting(false);
           return;
@@ -712,6 +724,7 @@ function CheckoutPage() {
         }
         const res = await chargeWithToken({
           data: {
+            locationId: location,
             paymentTokenId,
             amountCents: Math.round(pricing.total * 100),
             referenceId: orderNumber,
@@ -755,6 +768,7 @@ function CheckoutPage() {
         }
         const res = await chargeWithToken({
           data: {
+            locationId: location,
             googlePayToken,
             amountCents: Math.round(pricing.total * 100),
             referenceId: orderNumber,
