@@ -102,7 +102,6 @@ function CheckoutPage() {
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [smsConsent, setSmsConsent] = useState(false);
-  const [marketingSmsConsent, setMarketingSmsConsent] = useState(false);
   const [utensilsRequested, setUtensilsRequested] = useState(false);
   const [isGift, setIsGift] = useState(false);
   const [giftMessage, setGiftMessage] = useState("");
@@ -947,12 +946,12 @@ function CheckoutPage() {
     // number reachable by future marketing blasts and keeps the one-time
     // opt-in confirmation tracking consistent with signup and the
     // standalone /sms-opt-in page.
-    if (phone.trim() && (smsConsent || marketingSmsConsent)) {
+    if (phone.trim() && smsConsent) {
       void subscribeToSmsUpdates({
         data: {
           phone: phone.trim(),
           transactionalConsent: smsConsent,
-          marketingConsent: marketingSmsConsent,
+          marketingConsent: false,
           source: "checkout",
         },
       }).catch((e) => console.error("subscribeToSmsUpdates failed:", e));
@@ -1116,30 +1115,6 @@ function CheckoutPage() {
                 <Link to="/terms" className="underline">
                   Terms
                 </Link>
-              </label>
-            </div>
-            <div className="flex items-start gap-2">
-              <Checkbox
-                id="marketingSmsConsent"
-                checked={marketingSmsConsent}
-                onCheckedChange={(checked) => setMarketingSmsConsent(checked === true)}
-              />
-              <label
-                htmlFor="marketingSmsConsent"
-                className="text-sm text-muted-foreground leading-snug"
-              >
-                I agree to receive marketing text messages (deals, specials, and cart reminders)
-                from The Kosher Nosh at the number provided. Message frequency varies. Msg &amp;
-                data rates may apply. Reply STOP to opt out, HELP for help. Consent is not a
-                condition of purchase.{" "}
-                <Link to="/privacy" className="underline">
-                  Privacy Policy
-                </Link>{" "}
-                ·{" "}
-                <Link to="/terms" className="underline">
-                  Terms
-                </Link>
-                . Can also be managed anytime in account settings.
               </label>
             </div>
           </Section>
