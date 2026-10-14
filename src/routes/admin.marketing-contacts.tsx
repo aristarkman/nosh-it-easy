@@ -198,6 +198,9 @@ function MarketingContactsPage() {
         downloadCsv(`marketing-contacts-${new Date().toISOString().slice(0, 10)}.csv`, csv);
         setNotice(`Downloaded ${res.contacts.length} subscribed contact${res.contacts.length === 1 ? "" : "s"}.`);
       });
+    } catch (e) {
+      console.error("Export failed", e);
+      setErr(`Download failed: ${e instanceof Error ? e.message : "please try again."}`);
     } finally {
       setBusy(false);
     }
