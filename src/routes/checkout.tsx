@@ -1005,7 +1005,12 @@ function CheckoutPage() {
 
     // Dispatch ASAP delivery orders immediately. Scheduled deliveries are quoted
     // closer to pickup time by the scheduled re-quote job.
-    if (orderType === "delivery" && whenType === "asap") {
+    if (orderType === "delivery" && whenType === "asap" && location === "glen-rock") {
+      // Glen Rock: accept + send to Shipday from the cloud (no tablet needed).
+      void import("@/lib/cloud-accept.functions")
+        .then((m) => m.cloudAcceptOrder({ data: { orderId: data.id } }))
+        .catch((e) => console.error("Cloud accept failed:", e));
+    } else if (orderType === "delivery" && whenType === "asap") {
       dispatchShipday({
         data: {
           orderNumber: data.order_number,
