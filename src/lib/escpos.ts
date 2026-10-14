@@ -44,7 +44,18 @@ export class EscPosBuilder {
   text(s: string) {
     // Printers expect single-byte text (CP437-ish). Strip characters outside
     // basic Latin/punctuation to avoid garbled output on non-UTF-8 firmware.
-    const cleaned = s.normalize("NFKD").replace(/[\u0300-\u036f]/g, "");
+    // Map common smart punctuation (phone autocorrect) to ASCII first, and
+    // drop emoji/symbols entirely rather than printing "?".
+    const cleaned = s
+      .replace(/[\u2018\u2019\u201A\u201B\u2032\u02BC]/g, "'")
+      .replace(/[\u201C\u201D\u201E\u201F\u2033]/g, '"')
+      .replace(/[\u2013\u2014\u2015\u2212]/g, "-")
+      .replace(/\u2026/g, "...")
+      .replace(/[\u00A0\u2000-\u200B\u202F]/g, " ")
+      .replace(/[\u200C-\u200F\uFE0F\u20E3]/g, "")
+      .replace(/\p{Extended_Pictographic}/gu, "")
+      .normalize("NFKD")
+      .replace(/[\u0300-\u036f]/g, "");
     for (let i = 0; i < cleaned.length; i++) {
       const code = cleaned.charCodeAt(i);
       this.chunks.push(code < 256 ? code : 0x3f); // fallback '?'
