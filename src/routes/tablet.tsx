@@ -489,6 +489,35 @@ function TabletPage() {
     }
   }, [orders, authChecked, stationId]);
 
+  // Orders accepted by the cloud (Glen Rock ASAP delivery) never pass
+  // through advance() here, so print them once and mark printed:1 in notes
+  // so a reload/second tablet doesn't print again.
+  useEffect(() => {
+    if (!authChecked) return;
+    const pending = orders.filter(
+      (order) =>
+        order.location_id === stationId &&
+        order.status === "accepted" &&
+        /cloudaccept:1/.test(order.notes ?? "") &&
+        !/printed:1/.test(order.notes ?? "") &&
+        !autoPrintedRef.current.has(order.id),
+    );
+    for (const order of pending) {
+      autoPrintedRef.current.add(order.id);
+      const locName = LOCATIONS.find((location) => location.id === order.location_id)?.name;
+      try {
+        printOrderTicket(order, locName);
+        void supabase
+          .from("orders")
+          .update({ notes: `${order.notes ?? ""} | printed:1` })
+          .eq("id", order.id);
+      } catch (error) {
+        console.error("Cloud-accepted print failed:", error);
+        toast.error(`Could not auto-print ${order.order_number}. Print manually from the order card.`);
+      }
+    }
+  }, [orders, authChecked, stationId]);
+
   const cancel = async (order: Order) => {
     const { error } = await supabase
       .from("orders")
