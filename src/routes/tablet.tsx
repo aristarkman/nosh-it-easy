@@ -37,6 +37,8 @@ const AUTO_LOCATIONS = new Set(["glen-rock"]);
 // otherwise manual: staff still tap Accept (which won't re-print — see
 // autoPrintedRef below) and still choose self-delivery vs Shipday.
 const AUTO_PRINT_LOCATIONS = new Set(["cresskill"]);
+// Cloud-accepted (Glen Rock ASAP) orders older than this are never auto-printed.
+const CLOUD_PRINT_MAX_AGE_MS = 2 * 60 * 60 * 1000;
 
 export const Route = createFileRoute("/tablet")({
   head: () => ({
@@ -491,7 +493,9 @@ function TabletPage() {
 
   // Orders accepted by the cloud (Glen Rock ASAP delivery) never pass
   // through advance() here, so print them once and mark printed:1 in notes
-  // so a reload/second tablet doesn't print again.
+  // so a reload/second tablet doesn't print again. Only recent orders are
+  // eligible: an older cloud-accepted order that somehow never got its
+  // printed:1 mark would otherwise reprint on every watchdog reload.
   useEffect(() => {
     if (!authChecked) return;
     const pending = orders.filter(
@@ -500,6 +504,7 @@ function TabletPage() {
         order.status === "accepted" &&
         /cloudaccept:1/.test(order.notes ?? "") &&
         !/printed:1/.test(order.notes ?? "") &&
+        Date.now() - new Date(order.created_at).getTime() < CLOUD_PRINT_MAX_AGE_MS &&
         !autoPrintedRef.current.has(order.id),
     );
     for (const order of pending) {
@@ -507,10 +512,16 @@ function TabletPage() {
       const locName = LOCATIONS.find((location) => location.id === order.location_id)?.name;
       try {
         printOrderTicket(order, locName);
+        // Supabase query builders are lazy -- they only send the request
+        // when awaited/then'd. A bare `void supabase...update()` never ran,
+        // so printed:1 was never saved and every reload reprinted.
         void supabase
           .from("orders")
           .update({ notes: `${order.notes ?? ""} | printed:1` })
-          .eq("id", order.id);
+          .eq("id", order.id)
+          .then(({ error }) => {
+            if (error) console.error("Could not mark order printed:", error);
+          });
       } catch (error) {
         console.error("Cloud-accepted print failed:", error);
         toast.error(`Could not auto-print ${order.order_number}. Print manually from the order card.`);
