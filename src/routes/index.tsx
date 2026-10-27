@@ -15,6 +15,8 @@ export const Route = createFileRoute("/")({
           "Order pickup or delivery from The Famous Kosher Nosh. Choose Glen Rock or Cresskill, NJ to browse the full deli menu.",
       },
       { property: "og:title", content: "Order Online — The Famous Kosher Nosh" },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
       {
         property: "og:description",
         content: "Pick Glen Rock or Cresskill to start your pickup or delivery order.",
