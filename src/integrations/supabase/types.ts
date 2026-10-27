@@ -323,6 +323,50 @@ export type Database = {
         }
         Relationships: []
       }
+      ghl_order_contact_outbox: {
+        Row: {
+          attempts: number
+          contact_id: string | null
+          created_at: string
+          delivery_nonce: string | null
+          last_error: string | null
+          next_attempt_at: string
+          nonce_expires_at: string | null
+          order_id: string
+          synced_at: string | null
+        }
+        Insert: {
+          attempts?: number
+          contact_id?: string | null
+          created_at?: string
+          delivery_nonce?: string | null
+          last_error?: string | null
+          next_attempt_at?: string
+          nonce_expires_at?: string | null
+          order_id: string
+          synced_at?: string | null
+        }
+        Update: {
+          attempts?: number
+          contact_id?: string | null
+          created_at?: string
+          delivery_nonce?: string | null
+          last_error?: string | null
+          next_attempt_at?: string
+          nonce_expires_at?: string | null
+          order_id?: string
+          synced_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ghl_order_contact_outbox_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: true
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       location_throttle: {
         Row: {
           delivery_lead_min: number
@@ -1399,7 +1443,26 @@ export type Database = {
           isSetofReturn: true
         }
       }
+      claim_ghl_order_contact: {
+        Args: { _nonce: string }
+        Returns: {
+          attempts: number
+          customer_email: string
+          customer_name: string
+          customer_phone: string
+          email_consent: boolean
+          order_id: string
+          sms_consent: boolean
+        }[]
+      }
       current_user_locations: { Args: never; Returns: string[] }
+      ghl_order_marketing_consent: {
+        Args: { _order_id: string }
+        Returns: {
+          email_consent: boolean
+          sms_consent: boolean
+        }[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -1412,6 +1475,7 @@ export type Database = {
         Args: { _order_id: string; _session_id: string }
         Returns: undefined
       }
+      send_pending_ghl_order_contacts: { Args: never; Returns: undefined }
       upsert_abandoned_cart_secure: {
         Args: {
           _customer_name?: string
