@@ -56,6 +56,7 @@ import { Route as WelcomeAddressRouteImport } from './routes/welcome.address'
 import { Route as Char91DotmcpChar93InvokeToolToolRouteImport } from './routes/[.mcp]/invoke-tool/$tool'
 import { Route as ApiPublicHooksCartAbandonmentRouteImport } from './routes/api/public/hooks/cart-abandonment'
 import { Route as ApiPublicHooksDailySalesSummaryRouteImport } from './routes/api/public/hooks/daily-sales-summary'
+import { Route as ApiPublicHooksGhlOrderContactRouteImport } from './routes/api/public/hooks/ghl-order-contact'
 import { Route as ApiPublicHooksMarketingDripRouteImport } from './routes/api/public/hooks/marketing-drip'
 import { Route as ApiPublicHooksRequoteScheduledRouteImport } from './routes/api/public/hooks/requote-scheduled'
 import { Route as ApiPublicHooksShipdayRouteImport } from './routes/api/public/hooks/shipday'
@@ -302,6 +303,12 @@ const ApiPublicHooksDailySalesSummaryRoute =
     path: '/api/public/hooks/daily-sales-summary',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicHooksGhlOrderContactRoute =
+  ApiPublicHooksGhlOrderContactRouteImport.update({
+    id: '/api/public/hooks/ghl-order-contact',
+    path: '/api/public/hooks/ghl-order-contact',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicHooksMarketingDripRoute =
   ApiPublicHooksMarketingDripRouteImport.update({
     id: '/api/public/hooks/marketing-drip',
@@ -379,6 +386,7 @@ export interface FileRoutesByFullPath {
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/api/public/hooks/cart-abandonment': typeof ApiPublicHooksCartAbandonmentRoute
   '/api/public/hooks/daily-sales-summary': typeof ApiPublicHooksDailySalesSummaryRoute
+  '/api/public/hooks/ghl-order-contact': typeof ApiPublicHooksGhlOrderContactRoute
   '/api/public/hooks/marketing-drip': typeof ApiPublicHooksMarketingDripRoute
   '/api/public/hooks/requote-scheduled': typeof ApiPublicHooksRequoteScheduledRoute
   '/api/public/hooks/shipday': typeof ApiPublicHooksShipdayRoute
@@ -432,6 +440,7 @@ export interface FileRoutesByTo {
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/api/public/hooks/cart-abandonment': typeof ApiPublicHooksCartAbandonmentRoute
   '/api/public/hooks/daily-sales-summary': typeof ApiPublicHooksDailySalesSummaryRoute
+  '/api/public/hooks/ghl-order-contact': typeof ApiPublicHooksGhlOrderContactRoute
   '/api/public/hooks/marketing-drip': typeof ApiPublicHooksMarketingDripRoute
   '/api/public/hooks/requote-scheduled': typeof ApiPublicHooksRequoteScheduledRoute
   '/api/public/hooks/shipday': typeof ApiPublicHooksShipdayRoute
@@ -487,6 +496,7 @@ export interface FileRoutesById {
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/api/public/hooks/cart-abandonment': typeof ApiPublicHooksCartAbandonmentRoute
   '/api/public/hooks/daily-sales-summary': typeof ApiPublicHooksDailySalesSummaryRoute
+  '/api/public/hooks/ghl-order-contact': typeof ApiPublicHooksGhlOrderContactRoute
   '/api/public/hooks/marketing-drip': typeof ApiPublicHooksMarketingDripRoute
   '/api/public/hooks/requote-scheduled': typeof ApiPublicHooksRequoteScheduledRoute
   '/api/public/hooks/shipday': typeof ApiPublicHooksShipdayRoute
@@ -543,6 +553,7 @@ export interface FileRouteTypes {
     | '/.mcp/invoke-tool/$tool'
     | '/api/public/hooks/cart-abandonment'
     | '/api/public/hooks/daily-sales-summary'
+    | '/api/public/hooks/ghl-order-contact'
     | '/api/public/hooks/marketing-drip'
     | '/api/public/hooks/requote-scheduled'
     | '/api/public/hooks/shipday'
@@ -596,6 +607,7 @@ export interface FileRouteTypes {
     | '/.mcp/invoke-tool/$tool'
     | '/api/public/hooks/cart-abandonment'
     | '/api/public/hooks/daily-sales-summary'
+    | '/api/public/hooks/ghl-order-contact'
     | '/api/public/hooks/marketing-drip'
     | '/api/public/hooks/requote-scheduled'
     | '/api/public/hooks/shipday'
@@ -650,6 +662,7 @@ export interface FileRouteTypes {
     | '/.mcp/invoke-tool/$tool'
     | '/api/public/hooks/cart-abandonment'
     | '/api/public/hooks/daily-sales-summary'
+    | '/api/public/hooks/ghl-order-contact'
     | '/api/public/hooks/marketing-drip'
     | '/api/public/hooks/requote-scheduled'
     | '/api/public/hooks/shipday'
@@ -688,6 +701,7 @@ export interface RootRouteChildren {
   Char91DotmcpChar93InvokeToolToolRoute: typeof Char91DotmcpChar93InvokeToolToolRoute
   ApiPublicHooksCartAbandonmentRoute: typeof ApiPublicHooksCartAbandonmentRoute
   ApiPublicHooksDailySalesSummaryRoute: typeof ApiPublicHooksDailySalesSummaryRoute
+  ApiPublicHooksGhlOrderContactRoute: typeof ApiPublicHooksGhlOrderContactRoute
   ApiPublicHooksMarketingDripRoute: typeof ApiPublicHooksMarketingDripRoute
   ApiPublicHooksRequoteScheduledRoute: typeof ApiPublicHooksRequoteScheduledRoute
   ApiPublicHooksShipdayRoute: typeof ApiPublicHooksShipdayRoute
@@ -1026,6 +1040,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicHooksDailySalesSummaryRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/hooks/ghl-order-contact': {
+      id: '/api/public/hooks/ghl-order-contact'
+      path: '/api/public/hooks/ghl-order-contact'
+      fullPath: '/api/public/hooks/ghl-order-contact'
+      preLoaderRoute: typeof ApiPublicHooksGhlOrderContactRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/hooks/marketing-drip': {
       id: '/api/public/hooks/marketing-drip'
       path: '/api/public/hooks/marketing-drip'
@@ -1138,6 +1159,7 @@ const rootRouteChildren: RootRouteChildren = {
   Char91DotmcpChar93InvokeToolToolRoute: Char91DotmcpChar93InvokeToolToolRoute,
   ApiPublicHooksCartAbandonmentRoute: ApiPublicHooksCartAbandonmentRoute,
   ApiPublicHooksDailySalesSummaryRoute: ApiPublicHooksDailySalesSummaryRoute,
+  ApiPublicHooksGhlOrderContactRoute: ApiPublicHooksGhlOrderContactRoute,
   ApiPublicHooksMarketingDripRoute: ApiPublicHooksMarketingDripRoute,
   ApiPublicHooksRequoteScheduledRoute: ApiPublicHooksRequoteScheduledRoute,
   ApiPublicHooksShipdayRoute: ApiPublicHooksShipdayRoute,
