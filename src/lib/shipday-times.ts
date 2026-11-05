@@ -9,6 +9,12 @@ export const PICKUP_LEAD_MINUTES = 30;
 // Ask Shipday for a driver this long before that pickup.
 export const DRIVER_DISPATCH_LEAD_MINUTES = 45;
 
+// When the food must be ready: the driver pickup time for a customer's
+// scheduled delivery time. Shown on the tablet and kitchen ticket.
+export function driverPickupIso(deliveryIso: string): string {
+  return new Date(new Date(deliveryIso).getTime() - PICKUP_LEAD_MINUTES * 60_000).toISOString();
+}
+
 export function shipdayScheduleFields(deliveryIso: string): {
   expectedDeliveryDate: string;
   expectedDeliveryTime: string;

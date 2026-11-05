@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { PICKUP_LEAD_MINUTES, shipdayScheduleFields } from "./shipday-times";
+import { PICKUP_LEAD_MINUTES, driverPickupIso, shipdayScheduleFields } from "./shipday-times";
 
 describe("shipdayScheduleFields", () => {
   it("sends the customer's 2:30pm EDT time as the delivery time, with pickup earlier", () => {
@@ -31,5 +31,10 @@ describe("shipdayScheduleFields", () => {
       const f = shipdayScheduleFields(iso);
       expect(f.expectedPickupTime <= f.expectedDeliveryTime).toBe(true);
     }
+  });
+
+  it("driverPickupIso is the customer time minus the pickup lead", () => {
+    expect(driverPickupIso("2026-07-23T18:30:00.000Z")).toBe("2026-07-23T18:00:00.000Z");
+    expect(driverPickupIso("2026-07-24T00:10:00.000Z")).toBe("2026-07-23T23:40:00.000Z");
   });
 });

@@ -20,6 +20,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { LOCATIONS, fmt, type CartLine } from "@/lib/order-context";
 import { sendOrderStatusSms } from "@/lib/sms.functions";
 import { dispatchShipday } from "@/lib/shipday.functions";
+import { driverPickupIso } from "@/lib/shipday-times";
 import { geocodeAddress } from "@/lib/geocoding.functions";
 import { useNewOrderAlarm } from "@/lib/use-new-order-alarm";
 import { useWakeLock } from "@/lib/use-wake-lock";
@@ -867,6 +868,9 @@ function DeliveryChoiceDialog({
               <div className="mt-3 flex items-center gap-2 text-sm text-muted-foreground">
                 <Clock className="size-4" /> Scheduled for{" "}
                 {formatScheduledTime(order.scheduled_time)}
+                {order.order_type === "delivery" && (
+                  <> · driver pickup ~{formatScheduledTime(driverPickupIso(order.scheduled_time))}</>
+                )}
               </div>
             )}
           </div>
@@ -1004,6 +1008,15 @@ function OrderCard({
           {o.scheduled_time && (
             <span className="ml-auto font-extrabold">{formatScheduledTime(o.scheduled_time)}</span>
           )}
+        </div>
+      )}
+      {isScheduled && o.order_type === "delivery" && o.scheduled_time && (
+        <div className="flex items-center gap-2 border-b border-amber-500/30 bg-amber-500/25 px-4 py-2.5 text-sm font-bold text-amber-900 dark:text-amber-200">
+          <Truck className="size-4 shrink-0" />
+          DRIVER PICKUP — FOOD READY BY
+          <span className="ml-auto font-extrabold">
+            {formatScheduledTime(driverPickupIso(o.scheduled_time))}
+          </span>
         </div>
       )}
 
