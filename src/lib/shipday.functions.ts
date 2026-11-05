@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
+import { shipdayScheduleFields } from "./shipday-times";
 
 const SHIPDAY_BASE = "https://api.shipday.com";
 
@@ -42,15 +43,9 @@ function shipdayErrorMessage(status: number, body: Record<string, unknown>): str
   return apiMessage || `Shipday error (${status})`;
 }
 
-// Shipday wants expectedPickupTime as HH:mm:ss (and a separate expectedDeliveryDate
-// as YYYY-MM-DD). Send the raw UTC components — Shipday converts to the account's
-// local timezone for display itself; pre-converting to Eastern here caused a
-// double offset (e.g. 4:45pm EDT showed up in Shipday as 12:45pm).
-function toShipdayDateTime(isoString: string): { date: string; time: string } {
-  const iso = new Date(isoString).toISOString(); // e.g. "2026-07-23T20:45:00.000Z"
-  return { date: iso.slice(0, 10), time: iso.slice(11, 19) };
-}
-
+// Shipday times are raw UTC (it converts to the account's timezone for
+// display itself; pre-converting to Eastern caused a double offset). See
+// shipdayScheduleFields for how the customer's time maps to pickup/delivery.
 const DispatchInput = z.object({
   orderNumber: z.string().min(1).max(64),
   locationId: z.string().min(1).max(64),
@@ -121,7 +116,7 @@ export const dispatchShipday = createServerFn({ method: "POST" })
       return { ok: false as const, message: `No pickup address for ${data.locationId}` };
     }
 
-    const scheduled = data.scheduledTime ? toShipdayDateTime(data.scheduledTime) : null;
+    const scheduled = data.scheduledTime ? shipdayScheduleFields(data.scheduledTime) : null;
 
     const payload = {
       orderNumber: data.orderNumber,
@@ -149,8 +144,9 @@ export const dispatchShipday = createServerFn({ method: "POST" })
       totalOrderCost: data.total,
       deliveryInstruction: data.notes || undefined,
       paymentMethod: "credit_card",
-      expectedPickupTime: scheduled?.time,
-      expectedDeliveryDate: scheduled?.date,
+      expectedPickupTime: scheduled?.expectedPickupTime,
+      expectedDeliveryTime: scheduled?.expectedDeliveryTime,
+      expectedDeliveryDate: scheduled?.expectedDeliveryDate,
     };
 
     try {

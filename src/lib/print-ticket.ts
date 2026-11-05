@@ -7,6 +7,7 @@
 import { EscPosBuilder } from "./escpos";
 import type { CartLine } from "./order-context";
 import { formatQuantity } from "./price-display";
+import { driverPickupIso } from "./shipday-times";
 
 const WIDTH = 42; // characters per line on an 80mm printer at standard font
 
@@ -104,6 +105,11 @@ export function buildOrderTicket(order: TicketOrder, locationName: string | unde
     b.reverse(false);
     b.tallText(true);
     b.line(`>>> ${formatScheduledTime(order.scheduled_time!)} <<<`);
+    if (order.order_type === "delivery") {
+      // The scheduled time is when the customer wants it at their door; the
+      // driver leaves earlier, so the kitchen needs the food ready by then.
+      b.line(`Driver pickup ~${formatScheduledTime(driverPickupIso(order.scheduled_time!))}`);
+    }
     b.align("left");
     b.divider("=", WIDTH);
   }
