@@ -1,21 +1,9 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { shipdayScheduleFields } from "./shipday-times";
+import { PICKUPS } from "./store-pickups";
 
 const SHIPDAY_BASE = "https://api.shipday.com";
-
-const PICKUPS: Record<string, { name: string; address: string; phone: string }> = {
-  "glen-rock": {
-    name: "The Kosher Nosh",
-    address: "894 Prospect St, Glen Rock, NJ 07452",
-    phone: "+12014451186",
-  },
-  cresskill: {
-    name: "The Nosh",
-    address: "172 Piermont Road, Cresskill, NJ 07626",
-    phone: "+12013310000",
-  },
-};
 
 function getApiKey(locationId: string): string | undefined {
   const key =
@@ -116,7 +104,7 @@ export const dispatchShipday = createServerFn({ method: "POST" })
       return { ok: false as const, message: `No pickup address for ${data.locationId}` };
     }
 
-    const scheduled = data.scheduledTime ? shipdayScheduleFields(data.scheduledTime) : null;
+    const scheduled = data.scheduledTime ? shipdayScheduleFields(data.scheduledTime, data.notes) : null;
 
     const payload = {
       orderNumber: data.orderNumber,

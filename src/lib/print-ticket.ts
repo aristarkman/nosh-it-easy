@@ -108,7 +108,7 @@ export function buildOrderTicket(order: TicketOrder, locationName: string | unde
     if (order.order_type === "delivery") {
       // The scheduled time is when the customer wants it at their door; the
       // driver leaves earlier, so the kitchen needs the food ready by then.
-      b.line(`Driver pickup ~${formatScheduledTime(driverPickupIso(order.scheduled_time!))}`);
+      b.line(`Driver pickup ~${formatScheduledTime(driverPickupIso(order.scheduled_time!, order.notes))}`);
     }
     b.align("left");
     b.divider("=", WIDTH);

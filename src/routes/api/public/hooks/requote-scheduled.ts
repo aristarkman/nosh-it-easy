@@ -1,24 +1,13 @@
 import { createFileRoute } from "@tanstack/react-router";
 import {
   DRIVER_DISPATCH_LEAD_MINUTES,
-  PICKUP_LEAD_MINUTES,
+  MAX_PICKUP_LEAD_MINUTES,
+  driverPickupIso,
   shipdayScheduleFields,
 } from "@/lib/shipday-times";
+import { PICKUPS } from "@/lib/store-pickups";
 
 const SHIPDAY_BASE = "https://api.shipday.com";
-
-const PICKUPS: Record<string, { name: string; address: string; phone: string }> = {
-  "glen-rock": {
-    name: "The Kosher Nosh",
-    address: "894 Prospect St, Glen Rock, NJ 07452",
-    phone: "+12014451186",
-  },
-  cresskill: {
-    name: "The Nosh",
-    address: "172 Piermont Road, Cresskill, NJ 07626",
-    phone: "+12013310000",
-  },
-};
 
 function getApiKey(locationId: string): string | undefined {
   const key =
@@ -67,7 +56,7 @@ async function dispatch(
   if (!order.delivery_address) return { ok: false, message: "Missing delivery address" };
 
   const items = Array.isArray(order.items) ? (order.items as CartItem[]) : [];
-  const scheduled = order.scheduled_time ? shipdayScheduleFields(order.scheduled_time) : null;
+  const scheduled = order.scheduled_time ? shipdayScheduleFields(order.scheduled_time, order.notes) : null;
   const payload = {
     orderNumber: order.order_number,
     customerName: order.customer_name,
@@ -161,11 +150,13 @@ export const Route = createFileRoute("/api/public/hooks/requote-scheduled")({
         }
 
         const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-        // scheduled_time is the customer's delivery time, so dispatch
-        // DRIVER_DISPATCH_LEAD_MINUTES before the driver's pickup, which is
-        // itself PICKUP_LEAD_MINUTES before that.
+        // scheduled_time is the customer's delivery time. Dispatch
+        // DRIVER_DISPATCH_LEAD_MINUTES before each order's own driver pickup
+        // (see the per-order check below); this query cutoff just has to be
+        // wide enough to include any order whose pickup lead could be that
+        // long.
         const cutoff = new Date(
-          Date.now() + (PICKUP_LEAD_MINUTES + DRIVER_DISPATCH_LEAD_MINUTES) * 60 * 1000,
+          Date.now() + (MAX_PICKUP_LEAD_MINUTES + DRIVER_DISPATCH_LEAD_MINUTES) * 60 * 1000,
         ).toISOString();
 
         const { data: orders, error } = await supabaseAdmin
@@ -193,6 +184,10 @@ export const Route = createFileRoute("/api/public/hooks/requote-scheduled")({
 
         for (const order of (orders ?? []) as OrderRow[]) {
           if (!order.delivery_address || !order.notes?.includes("delivery:shipday")) continue;
+          const dispatchAt =
+            new Date(driverPickupIso(order.scheduled_time as string, order.notes)).getTime() -
+            DRIVER_DISPATCH_LEAD_MINUTES * 60 * 1000;
+          if (Date.now() < dispatchAt) continue; // not time to request a driver yet
           checked++;
 
           const result = await dispatch(order);
