@@ -1,4 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
+import {
+  DRIVER_DISPATCH_LEAD_MINUTES,
+  PICKUP_LEAD_MINUTES,
+  shipdayScheduleFields,
+} from "@/lib/shipday-times";
 
 const SHIPDAY_BASE = "https://api.shipday.com";
 
@@ -50,15 +55,6 @@ function parseTip(notes: string | null): number {
   return match ? Number(match[1]) : 0;
 }
 
-// Shipday wants expectedPickupTime as HH:mm:ss (and a separate expectedDeliveryDate
-// as YYYY-MM-DD). Send the raw UTC components — Shipday converts to the account's
-// local timezone for display itself; pre-converting to Eastern here caused a
-// double offset (e.g. 4:45pm EDT showed up in Shipday as 12:45pm).
-function toShipdayDateTime(isoString: string): { date: string; time: string } {
-  const iso = new Date(isoString).toISOString(); // e.g. "2026-07-23T20:45:00.000Z"
-  return { date: iso.slice(0, 10), time: iso.slice(11, 19) };
-}
-
 async function dispatch(
   order: OrderRow
 ): Promise<
@@ -71,7 +67,7 @@ async function dispatch(
   if (!order.delivery_address) return { ok: false, message: "Missing delivery address" };
 
   const items = Array.isArray(order.items) ? (order.items as CartItem[]) : [];
-  const scheduled = order.scheduled_time ? toShipdayDateTime(order.scheduled_time) : null;
+  const scheduled = order.scheduled_time ? shipdayScheduleFields(order.scheduled_time) : null;
   const payload = {
     orderNumber: order.order_number,
     customerName: order.customer_name,
@@ -96,8 +92,9 @@ async function dispatch(
     totalOrderCost: Number(order.total),
     deliveryInstruction: order.notes || undefined,
     paymentMethod: "credit_card",
-    expectedPickupTime: scheduled?.time,
-    expectedDeliveryDate: scheduled?.date,
+    expectedPickupTime: scheduled?.expectedPickupTime,
+    expectedDeliveryTime: scheduled?.expectedDeliveryTime,
+    expectedDeliveryDate: scheduled?.expectedDeliveryDate,
   };
 
   try {
@@ -164,7 +161,12 @@ export const Route = createFileRoute("/api/public/hooks/requote-scheduled")({
         }
 
         const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-        const cutoff = new Date(Date.now() + 45 * 60 * 1000).toISOString();
+        // scheduled_time is the customer's delivery time, so dispatch
+        // DRIVER_DISPATCH_LEAD_MINUTES before the driver's pickup, which is
+        // itself PICKUP_LEAD_MINUTES before that.
+        const cutoff = new Date(
+          Date.now() + (PICKUP_LEAD_MINUTES + DRIVER_DISPATCH_LEAD_MINUTES) * 60 * 1000,
+        ).toISOString();
 
         const { data: orders, error } = await supabaseAdmin
           .from("orders")
