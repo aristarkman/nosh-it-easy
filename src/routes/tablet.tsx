@@ -869,7 +869,7 @@ function DeliveryChoiceDialog({
                 <Clock className="size-4" /> Scheduled for{" "}
                 {formatScheduledTime(order.scheduled_time)}
                 {order.order_type === "delivery" && (
-                  <> · driver pickup ~{formatScheduledTime(driverPickupIso(order.scheduled_time))}</>
+                  <> · driver pickup ~{formatScheduledTime(driverPickupIso(order.scheduled_time, order.notes))}</>
                 )}
               </div>
             )}
@@ -1015,7 +1015,7 @@ function OrderCard({
           <Truck className="size-4 shrink-0" />
           DRIVER PICKUP — FOOD READY BY
           <span className="ml-auto font-extrabold">
-            {formatScheduledTime(driverPickupIso(o.scheduled_time))}
+            {formatScheduledTime(driverPickupIso(o.scheduled_time, o.notes))}
           </span>
         </div>
       )}

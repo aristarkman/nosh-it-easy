@@ -11,6 +11,8 @@ import {
   subscribeToSmsUpdates,
 } from "@/lib/sms.functions";
 import { dispatchShipday } from "@/lib/shipday.functions";
+import { estimateDriverPickup } from "@/lib/drive-time.functions";
+import { pickupNoteSegment } from "@/lib/shipday-times";
 import { reportSystemAlert } from "@/lib/system-alerts";
 import { markCartRecovered, track } from "@/lib/analytics";
 import {
@@ -624,6 +626,22 @@ function CheckoutPage() {
       }
     }
 
+    // Scheduled deliveries: ask Google how long the drive really takes at
+    // that time, so the driver is sent to pick up early enough. Done before
+    // payment; a failure just means no estimate is stored and the default
+    // pickup lead is used everywhere, so it can never block the order.
+    let driverPickupAt: string | null = null;
+    if (orderType === "delivery" && whenType === "schedule" && scheduledTime) {
+      const estimate = await estimateDriverPickup({
+        data: {
+          locationId: location,
+          address: `${address.trim()}, ${zip}`,
+          scheduledTime: new Date(scheduledTime).toISOString(),
+        },
+      }).catch(() => null);
+      driverPickupAt = estimate?.pickupIso ?? null;
+    }
+
     // Re-price the order server-side. This is the source of truth for every
 
     // dollar amount from here on — the client-computed `subtotal`/`tax`/`total`
@@ -835,6 +853,7 @@ function CheckoutPage() {
         isGift ? "gift:1" : null,
         isGift && cleanGiftMessage ? `giftmsg:${cleanGiftMessage}` : null,
         `tip:${pricing.tipAmount.toFixed(2)}`,
+        driverPickupAt ? pickupNoteSegment(driverPickupAt) : null,
         `sms:${smsConsent ? 1 : 0}`,
         pricing.promo
           ? `promo:${pricing.promo.code}(-${pricing.promo.discountAmount.toFixed(2)})`
